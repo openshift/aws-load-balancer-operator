@@ -1,0 +1,6 @@
+apiVersion: networking.olm.openshift.io/v1alpha1
+kind: AWSLoadBalancerController
+metadata:
+  name: awsloadbalancercontroller-sample
+spec:
+  # TODO(user): Add fields here
