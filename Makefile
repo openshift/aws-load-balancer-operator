@@ -227,3 +227,8 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) image-push IMG=$(CATALOG_IMG)
+
+verify:
+	hack/verify-deps.sh
+	hack/verify-generated.sh
+	hack/verify-gofmt.sh
