@@ -116,7 +116,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: controller:latest
+                image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
                     path: /healthz
