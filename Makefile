@@ -98,9 +98,12 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet -mod=vendor ./...
 
+ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
+
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
+	mkdir -p "$(ENVTEST_ASSETS_DIR)"
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)")" go test -race ./... -coverprofile cover.out -covermode=atomic
 
 ##@ Build
 
