@@ -19,6 +19,7 @@ package awsloadbalancercontroller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	arv1 "k8s.io/api/admissionregistration/v1"
@@ -29,10 +30,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
+
+const allowedResourceName = "cluster"
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
@@ -108,5 +113,20 @@ func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&corev1.Service{}).
 		Owns(&arv1.ValidatingWebhookConfiguration{}).
 		Owns(&arv1.MutatingWebhookConfiguration{}).
+		WithEventFilter(reconcileClusterNamedResource()).
 		Complete(r)
+}
+
+func reconcileClusterNamedResource() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return strings.EqualFold(allowedResourceName, e.Object.GetName())
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return strings.EqualFold(allowedResourceName, e.ObjectNew.GetName())
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return strings.EqualFold(allowedResourceName, e.Object.GetName())
+		},
+	}
 }

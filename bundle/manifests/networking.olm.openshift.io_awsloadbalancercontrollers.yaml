@@ -36,14 +36,128 @@ spec:
             description: AWSLoadBalancerControllerSpec defines the desired state of
               AWSLoadBalancerController
             properties:
-              foo:
-                description: Foo is an example field of AWSLoadBalancerController.
-                  Edit awsloadbalancercontroller_types.go to remove/update
+              additionalResourceTags:
+                additionalProperties:
+                  type: string
+                description: "Default AWS Tags that will be applied to all AWS resources
+                  managed by this controller (default []). \n This value is required
+                  so that this controller can function as expected in parallel to
+                  openshift-router."
+                type: object
+              config:
+                description: Config specifies further customization options for the
+                  controller's deployment spec.
+                properties:
+                  replicas:
+                    default: 2
+                    format: int32
+                    type: integer
+                type: object
+              enabledAddons:
+                description: AWSAddon describes the AWS services that can be integrated
+                  with the AWS Load Balancer.
+                items:
+                  enum:
+                  - AWSShield
+                  - AWSAddonWAFv1
+                  - AWSAddonWAFv2
+                  type: string
+                type: array
+              ingressClass:
+                default: alb
+                description: IngressClass specifies the Ingress class which the controller
+                  will reconcile. This will default to "alb".
+                type: string
+              subnetTagging:
+                default: Auto
+                description: "SubnetTagging describes how resource tagging will be
+                  done by the operator. \n When in \"Auto\", the operator will detect
+                  the subnets where the load balancers will be provisioned and have
+                  the required resource tags on them. Whereas when set to manual,
+                  this responsibility lies on the user."
+                enum:
+                - Auto
+                - Manual
                 type: string
             type: object
           status:
             description: AWSLoadBalancerControllerStatus defines the observed state
-              of AWSLoadBalancerController
+              of AWSLoadBalancerController.
+            properties:
+              conditions:
+                description: Conditions is a list of operator-specific conditions
+                  and their status.
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource. --- This struct is intended for direct
+                    use as an array at the field path .status.conditions.  For example,
+                    type FooStatus struct{ // Represents the observations of a foo's
+                    current state. // Known .status.conditions.type are: \"Available\",
+                    \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                    // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                    `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another. This should be when
+                        the underlying condition changed.  If that is not known, then
+                        using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human readable message indicating
+                        details about the transition. This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.generation
+                        that the condition was set based upon. For instance, if .metadata.generation
+                        is currently 12, but the .status.conditions[x].observedGeneration
+                        is 9, the condition is out of date with respect to the current
+                        state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: reason contains a programmatic identifier indicating
+                        the reason for the condition's last transition. Producers
+                        of specific condition types may define expected values and
+                        meanings for this field, and whether the values are considered
+                        a guaranteed API. The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        --- Many .condition.type values are consistent across resources
+                        like Available, but because arbitrary conditions can be useful
+                        (see .node.status.conditions), the ability to deconflict is
+                        important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: ObservedGeneration is the most recent generation observed.
+                format: int64
+                type: integer
             type: object
         type: object
     served: true
