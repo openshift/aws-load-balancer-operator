@@ -51,8 +51,6 @@ type AWSLoadBalancerControllerSpec struct {
 	// set to manual, this responsibility lies on the user.
 	//
 	// +kubebuilder:default:=Auto
-	// +kubebuilder:validation:Optional
-	// +optional
 	SubnetTagging SubnetTaggingPolicy `json:"subnetTagging,omitempty"`
 
 	// Default AWS Tags that will be applied to all AWS resources managed by this
@@ -62,29 +60,21 @@ type AWSLoadBalancerControllerSpec struct {
 	// in parallel to openshift-router.
 	//
 	// +kubebuilder:default:={}
-	// +kubebuilder:validation:Optional
-	// +optional
 	AdditionalResourceTags map[string]string `json:"additionalResourceTags,omitempty"`
 
 	// IngressClass specifies the Ingress class which the controller will reconcile.
 	// This will default to "alb".
 	//
 	// +kubebuilder:default:=alb
-	// +kubebuilder:validation:Optional
-	// +optional
 	IngressClass string `json:"ingressClass,omitempty"`
 
 	// Config specifies further customization options for the controller's deployment spec.
 	//
-	// +kubebuilder:validation:Optional
-	// +optional
 	Config *AWSLoadBalancerDeploymentConfig `json:"config,omitempty"`
 
 	// AWSAddon describes the AWS services that can be integrated with
 	// the AWS Load Balancer.
 	//
-	// +kubebuilder:validation:Optional
-	// +optional
 	EnabledAddons []AWSAddon `json:"enabledAddons,omitempty"` // indicates which AWS addons should be disabled.
 
 }
@@ -92,8 +82,6 @@ type AWSLoadBalancerControllerSpec struct {
 type AWSLoadBalancerDeploymentConfig struct {
 
 	// +kubebuilder:default:=2
-	// +kubebuilder:validation:Optional
-	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
 }
 
@@ -103,14 +91,10 @@ type AWSLoadBalancerControllerStatus struct {
 	// Conditions is a list of operator-specific conditions
 	// and their status.
 	//
-	// +kubebuilder:validation:Optional
-	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// ObservedGeneration is the most recent generation observed.
 	//
-	// +kubebuilder:validation:Optional
-	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
