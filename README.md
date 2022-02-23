@@ -1,5 +1,9 @@
 # aws-load-balancer-operator
 
+This operator is used to install, manage and configure an instance of
+[aws-load-balancer-controller](https://github.com/kubernetes-sigs/aws-load-balancer-controller/)
+in a OpenShift cluster.
+
 ### Running the operator
 
 1. Build and push the image to an image registry.
@@ -20,6 +24,6 @@
     ```
    Alternatively use the `CredentialRequest` resource in the `hack` directory
 3. Deploy the operator
-  ```bash
-  make deploy
-  ```
+    ```bash
+    make deploy
+    ```

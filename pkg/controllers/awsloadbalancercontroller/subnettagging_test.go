@@ -13,12 +13,13 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
+	awstypes "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
@@ -107,12 +108,12 @@ func TestClassifySubnet(t *testing.T) {
 
 func testSubnet(name string, tagKeys ...string) ec2types.Subnet {
 	s := ec2types.Subnet{
-		SubnetId: aws.String(name),
+		SubnetId: awstypes.String(name),
 	}
 	for _, k := range tagKeys {
 		s.Tags = append(s.Tags, ec2types.Tag{
-			Key:   aws.String(k),
-			Value: aws.String("1"),
+			Key:   awstypes.String(k),
+			Value: awstypes.String("1"),
 		})
 	}
 	return s
@@ -274,6 +275,7 @@ type testEC2Client struct {
 	clusterID         string
 	taggedResources   []string
 	untaggedResources []string
+	aws.VPCClient
 }
 
 var badQueryError = errors.New("bad query")
@@ -284,16 +286,16 @@ func (t *testEC2Client) DescribeSubnets(_ context.Context, input *ec2.DescribeSu
 		t.t.Errorf("query does not have correct number of filters")
 		return nil, badQueryError
 	}
-	if aws.ToString(input.Filters[0].Name) != tagKeyFilterName {
-		t.t.Errorf("unexpected filter name %s", aws.ToString(input.Filters[0].Name))
+	if awstypes.ToString(input.Filters[0].Name) != tagKeyFilterName {
+		t.t.Errorf("unexpected filter name %s", awstypes.ToString(input.Filters[0].Name))
 		return nil, badQueryError
 	}
 	if len(input.Filters[0].Values) != 1 {
-		t.t.Errorf("filter name %s does not have correct value", aws.ToString(input.Filters[0].Name))
+		t.t.Errorf("filter name %s does not have correct value", awstypes.ToString(input.Filters[0].Name))
 		return nil, badQueryError
 	}
 	if input.Filters[0].Values[0] != fmt.Sprintf(clusterOwnedTagKey, t.clusterID) {
-		t.t.Errorf("unexpected filter value %s for name %s", input.Filters[0].Values[0], aws.ToString(input.Filters[0].Name))
+		t.t.Errorf("unexpected filter value %s for name %s", input.Filters[0].Values[0], awstypes.ToString(input.Filters[0].Name))
 		return nil, badQueryError
 	}
 	return &ec2.DescribeSubnetsOutput{Subnets: t.subnets}, nil
