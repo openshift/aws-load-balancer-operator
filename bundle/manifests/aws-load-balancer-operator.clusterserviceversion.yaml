@@ -91,6 +91,18 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - serviceaccounts
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
           - services
           verbs:
           - create
@@ -140,6 +152,14 @@ spec:
           - update
           - watch
         - apiGroups:
+          - config.openshift.io
+          resources:
+          - infrastructures
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - networking.olm.openshift.io
           resources:
           - awsloadbalancercontrollers
@@ -166,7 +186,7 @@ spec:
           - patch
           - update
         - apiGroups:
-          - rbac.k8s.io
+          - rbac.authorization.k8s.io
           resources:
           - clusterrolebindings
           - clusterroles

@@ -230,7 +230,7 @@ func TestTagSubnets(t *testing.T) {
 			}
 
 			var albc albo.AWSLoadBalancerController
-			controllerKey := types.NamespacedName{Name: allowedResourceName}
+			controllerKey := types.NamespacedName{Name: controllerName}
 			err = client.Get(context.Background(), controllerKey, &albc)
 			if err != nil {
 				t.Errorf("unexpected error getting Infrastructure: %v", err)

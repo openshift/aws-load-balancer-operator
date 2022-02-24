@@ -63,6 +63,23 @@ CONTAINER_ENGINE ?= docker
 OPERATOR_SDK_VERSION = v1.17.0
 
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
+## iamctl vars
+
+# Assets folder for iamctl cli.
+IAMCTL_ASSETS_DIR ?= ./assets
+
+# Output path for generated file(s).
+IAMCTL_OUTPUT_DIR ?= ./pkg/controllers/awsloadbalancercontroller
+
+# Generated file name.
+IAMCTL_OUTPUT_FILE ?= iam_policy.go
+
+# Go Package of the generated file.
+IAMCTL_GO_PACKAGE ?= awsloadbalancercontroller
+
+# Built go binary path.
+IAMCTL_BINARY ?= ./bin/iamctl
+
 
 .PHONY: all
 all: build
@@ -92,7 +109,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 	hack/sync-upstream-crds.sh
 
 .PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen iamctl-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 .PHONY: fmt
@@ -102,6 +119,12 @@ fmt: ## Run go fmt against code.
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet -mod=vendor ./...
+
+.PHONY: iamctl-gen
+iamctl-gen: iamctl-build
+	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE)
+	go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
+	go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
 
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
@@ -127,6 +150,11 @@ image-build: test ## Build container image with the manager.
 .PHONY: image-push
 image-push: ## Push container image with the manager.
 	${CONTAINER_ENGINE} push ${IMG}
+
+.PHONY: iamctl-build
+iamctl-build: fmt vet ## Build iamctl binary.
+	cd ./cmd/iamctl && go build -mod=vendor -o $(IAMCTL_BINARY) . 
+	mv ./cmd/iamctl/$(IAMCTL_BINARY) ./bin/
 
 ##@ Deployment
 

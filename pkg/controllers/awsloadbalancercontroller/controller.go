@@ -21,13 +21,15 @@ import (
 	"fmt"
 	"strings"
 
-	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	arv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -38,7 +40,11 @@ import (
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
 )
 
-const allowedResourceName = "cluster"
+const (
+	controllerName               = "cluster"
+	controllerSecretName         = "aws-load-balancer-operator-credentials"
+	controllerServiceAccountName = "aws-load-balancer-operator-controller-manager"
+)
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
@@ -53,8 +59,10 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="config.openshift.io",resources=infrastructures,verbs=get;list;watch
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=rbac.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cloudcredential.openshift.io,resources=credentialsrequests;credentialsrequests/status;credentialsrequests/finalizers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs=get;list;watch;create;update;patch;delete
 
@@ -77,7 +85,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if err := r.ensureCredentialsRequest(ctx); err != nil {
+	if err := r.ensureCredentialsRequest(ctx, r.Namespace, lbController); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %s: %w", req, err)
 	}
 
@@ -130,13 +138,13 @@ func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager)
 func reconcileClusterNamedResource() predicate.Funcs {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			return strings.EqualFold(allowedResourceName, e.Object.GetName())
+			return strings.EqualFold(controllerName, e.Object.GetName())
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return strings.EqualFold(allowedResourceName, e.ObjectNew.GetName())
+			return strings.EqualFold(controllerName, e.ObjectNew.GetName())
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return strings.EqualFold(allowedResourceName, e.Object.GetName())
+			return strings.EqualFold(controllerName, e.Object.GetName())
 		},
 	}
 }
