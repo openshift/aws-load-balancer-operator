@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
 )
 
 const allowedResourceName = "cluster"
@@ -45,6 +46,7 @@ type AWSLoadBalancerControllerReconciler struct {
 	Scheme    *runtime.Scheme
 	Namespace string
 	Image     string
+	EC2Client aws.EC2Client
 }
 
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers,verbs=get;list;watch;create;update;patch;delete
@@ -64,7 +66,15 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, fmt.Errorf("failed to get AwsLoadBalancerController %s: %w", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to get AWSLoadBalancerController %s: %w", req, err)
+	}
+
+	// if the processed subnets have not yet been written into the status or if the tagging policy has changed then update the subnets
+	if lbController.Status.Subnets == nil || (lbController.Spec.SubnetTagging != lbController.Status.Subnets.SubnetTagging) {
+		err := r.tagSubnets(ctx, lbController)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update subnets: %w", err)
+		}
 	}
 
 	if err := r.ensureCredentialsRequest(ctx); err != nil {

@@ -8,9 +8,11 @@ metadata:
           "apiVersion": "networking.olm.openshift.io/v1alpha1",
           "kind": "AWSLoadBalancerController",
           "metadata": {
-            "name": "awsloadbalancercontroller-sample"
+            "name": "cluster"
           },
-          "spec": null
+          "spec": {
+            "subnetTagging": "Auto"
+          }
         }
       ]
     capabilities: Basic Install
@@ -182,6 +184,17 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
+                env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      key: aws_access_key_id
+                      name: aws-load-balancer-operator
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: aws_secret_access_key
+                      name: aws-load-balancer-operator
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
