@@ -20,10 +20,12 @@ import (
 	"context"
 	"flag"
 	"os"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -51,6 +53,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(apiextensionv1.AddToScheme(scheme))
+	utilruntime.Must(cco.Install(scheme))
 
 	utilruntime.Must(networkingolmv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
@@ -100,11 +104,17 @@ func main() {
 		setupLog.Error(err, "unable to make EC2 Client")
 		os.Exit(1)
 	}
+	crds, err := awsloadbalancercontroller.LoadDefaultCRDs()
+	if err != nil {
+		setupLog.Error(err, "failed to load default CRDs: %v", err)
+		os.Exit(1)
+	}
 
 	if err = (&awsloadbalancercontroller.AWSLoadBalancerControllerReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		EC2Client: ec2Client,
+		Client:                    mgr.GetClient(),
+		Scheme:                    mgr.GetScheme(),
+		EC2Client:                 ec2Client,
+		CustomResourceDefinitions: crds,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AWSLoadBalancerController")
 		os.Exit(1)
@@ -123,11 +133,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
 }

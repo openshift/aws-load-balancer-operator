@@ -65,6 +65,18 @@ spec:
           - update
           - watch
         - apiGroups:
+          - apiextenstions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - apps
           resources:
           - deployments

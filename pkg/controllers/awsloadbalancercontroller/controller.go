@@ -26,6 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -43,10 +44,11 @@ const allowedResourceName = "cluster"
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Namespace string
-	Image     string
-	EC2Client aws.EC2Client
+	Scheme                    *runtime.Scheme
+	Namespace                 string
+	Image                     string
+	EC2Client                 aws.EC2Client
+	CustomResourceDefinitions []*apiextensionv1.CustomResourceDefinition
 }
 
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers,verbs=get;list;watch;create;update;patch;delete
@@ -55,6 +57,7 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apiextenstions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cloudcredential.openshift.io,resources=credentialsrequests;credentialsrequests/status;credentialsrequests/finalizers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs=get;list;watch;create;update;patch;delete
 
@@ -77,7 +80,11 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
-	if err := r.ensureCredentialsRequest(ctx); err != nil {
+	if err := r.ensureCustomResourceDefinitions(ctx, lbController); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure CustomResourceDefinitions for AWSLoadBalancerController %s: %v", req, err)
+	}
+
+	if err := r.ensureCredentialsRequest(ctx, r.Namespace); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %s: %w", req, err)
 	}
 
@@ -113,6 +120,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&albo.AWSLoadBalancerController{}).
+		Owns(&apiextensionv1.CustomResourceDefinition{}).
 		Owns(&cco.CredentialsRequest{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRole{}).
