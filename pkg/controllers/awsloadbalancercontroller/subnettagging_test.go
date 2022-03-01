@@ -69,7 +69,7 @@ func TestClassifySubnet(t *testing.T) {
 				testSubnet("subnet-1", publicELBTagKey),
 				testSubnet("subnet-2", publicELBTagKey, internalELBTagKey),
 			},
-			expectedError: "subnet subnet-2 has both both tags with keys kubernetes.io/role/internal-elb and kubernetes.io/role/elb",
+			expectedError: "subnet subnet-2 has both tags with keys kubernetes.io/role/internal-elb and kubernetes.io/role/elb",
 		},
 		{
 			name: "tagged subnets",

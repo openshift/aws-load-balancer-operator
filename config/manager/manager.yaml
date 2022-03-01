@@ -57,15 +57,17 @@ spec:
             cpu: 10m
             memory: 64Mi
         env:
-          - name: AWS_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                key: aws_access_key_id
-                name: aws-load-balancer-operator
-          - name: AWS_SECRET_ACCESS_KEY
-            valueFrom:
-              secretKeyRef:
-                key: aws_secret_access_key
-                name: aws-load-balancer-operator
+          - name: AWS_SHARED_CREDENTIALS_FILE
+            value: /etc/aws-credentials/credentials
+        volumeMounts:
+          - mountPath: /etc/aws-credentials
+            name: aws-credentials
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+        - name: aws-credentials
+          secret:
+            secretName: aws-load-balancer-operator
+            items:
+              - key: credentials
+                path: credentials

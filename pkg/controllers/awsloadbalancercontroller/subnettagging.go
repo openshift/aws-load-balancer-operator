@@ -24,6 +24,8 @@ const (
 	tagKeyALBOTagged   = "networking.olm.openshift.io/albo/tagged"
 )
 
+// tagSubnets will add detect the subnets of the cluster and then tag them appropriately. It then writes the detected
+// subnet IDs into the status along with their tagged roles.
 func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, controller *albo.AWSLoadBalancerController) error {
 	// fetch the Infrastructure for the cluster ID
 	infrastructureKey := types.NamespacedName{Name: "cluster"}
@@ -141,7 +143,7 @@ func classifySubnets(subnets []ec2types.Subnet) (sets.String, sets.String, sets.
 		}
 		if hasTag(s.Tags, publicELBTagKey) {
 			if internal.Has(subnetID) {
-				return nil, nil, nil, nil, fmt.Errorf("subnet %s has both both tags with keys %s and %s", subnetID, internalELBTagKey, publicELBTagKey)
+				return nil, nil, nil, nil, fmt.Errorf("subnet %s has both tags with keys %s and %s", subnetID, internalELBTagKey, publicELBTagKey)
 			}
 			public.Insert(subnetID)
 			// only check operator tagging if the subnet is a public subnet

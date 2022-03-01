@@ -17,10 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
-	"path/filepath"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -29,13 +28,13 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 
 	configv1 "github.com/openshift/api/config/v1"
-	configv1client "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -70,46 +69,12 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 
-	// the kube-config flag is already defined elsewhere and cannot be redeclared here. This is just falls back to the default
-	// kubeconfig file path location and attempts to detect if the operator is running in-cluster or locally.
-	var kubeconfig string
-	if home := homeDir(); home != "" {
-		kubeconfig = filepath.Join(homeDir(), ".kube", "config")
-	}
-
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	// a client-go based Infrastructure client is required because the controller-runtime client cannot be used
-	// before the controller manager is started. Open issue upstream https://github.com/kubernetes-sigs/controller-runtime/issues/607
-	var clientConfig *rest.Config
-	_, err := os.Stat(kubeconfig)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			setupLog.Error(err, "failed to stat the provided kube config file")
-			os.Exit(1)
-		} else {
-			clientConfig, err = rest.InClusterConfig()
-			if err != nil {
-				setupLog.Error(err, "failed to get client config in-cluster")
-				os.Exit(1)
-			}
-		}
-	} else {
-		clientConfig, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			setupLog.Error(err, "failed to make client config from passed kube config file", kubeconfig)
-			os.Exit(1)
-		}
-	}
-	configClient, err := configv1client.NewForConfig(clientConfig)
-	if err != nil {
-		setupLog.Error(err, "failed to make configv1 client")
-		os.Exit(1)
-	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -119,13 +84,18 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7de51cf3.openshift.io",
+		// The default cached client does not always return an updated value after write operations. So we use a non-cache client
+		// https://pkg.go.dev/sigs.k8s.io/controller-runtime#hdr-Clients_and_Caches
+		NewClient: func(_ cache.Cache, config *rest.Config, options client.Options, _ ...client.Object) (client.Client, error) {
+			return client.New(config, options)
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
-	ec2Client, err := aws.GetEC2Client(configClient)
+	ec2Client, err := aws.GetEC2Client(context.TODO(), mgr.GetClient())
 	if err != nil {
 		setupLog.Error(err, "unable to make EC2 Client")
 		os.Exit(1)
