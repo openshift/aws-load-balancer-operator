@@ -8,9 +8,11 @@ metadata:
           "apiVersion": "networking.olm.openshift.io/v1alpha1",
           "kind": "AWSLoadBalancerController",
           "metadata": {
-            "name": "awsloadbalancercontroller-sample"
+            "name": "cluster"
           },
-          "spec": null
+          "spec": {
+            "subnetTagging": "Auto"
+          }
         }
       ]
     capabilities: Basic Install
@@ -182,6 +184,9 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
+                env:
+                - name: AWS_SHARED_CREDENTIALS_FILE
+                  value: /etc/aws-credentials/credentials
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
@@ -205,10 +210,20 @@ spec:
                     memory: 64Mi
                 securityContext:
                   allowPrivilegeEscalation: false
+                volumeMounts:
+                - mountPath: /etc/aws-credentials
+                  name: aws-credentials
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: aws-load-balancer-operator-controller-manager
               terminationGracePeriodSeconds: 10
+              volumes:
+              - name: aws-credentials
+                secret:
+                  items:
+                  - key: credentials
+                    path: credentials
+                  secretName: aws-load-balancer-operator
       permissions:
       - rules:
         - apiGroups:

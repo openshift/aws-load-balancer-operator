@@ -112,6 +112,43 @@ type AWSLoadBalancerControllerStatus struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Subnets contains details of the subnets of the cluster
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	Subnets *AWSLoadBalancerControllerStatusSubnets `json:"subnets,omitempty"`
+}
+
+type AWSLoadBalancerControllerStatusSubnets struct {
+	// SubnetTagging indicates the current status of the subnet tags
+	// +kubebuilder:validation:Optional
+	// +optional
+	SubnetTagging SubnetTaggingPolicy `json:"subnetTagging,omitempty"`
+
+	// Internal is the list of subnet ids which have the tag `kubernetes.io/role/internal-elb`
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	Internal []string `json:"internal,omitempty"`
+
+	// Public is the list of subnet ids which have the tag `kubernetes.io/role/elb`
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	Public []string `json:"public,omitempty"`
+
+	// Tagged is the list of subnet ids which have been tagged by the operator
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	Tagged []string `json:"tagged,omitempty"`
+
+	// Untagged is the list of subnet ids which do not have any role tags
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	Untagged []string `json:"untagged,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: aws-load-balancer-operator-system
+namespace: aws-load-balancer-operator
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named

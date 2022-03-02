@@ -56,5 +56,18 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        env:
+          - name: AWS_SHARED_CREDENTIALS_FILE
+            value: /etc/aws-credentials/credentials
+        volumeMounts:
+          - mountPath: /etc/aws-credentials
+            name: aws-credentials
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+        - name: aws-credentials
+          secret:
+            secretName: aws-load-balancer-operator
+            items:
+              - key: credentials
+                path: credentials

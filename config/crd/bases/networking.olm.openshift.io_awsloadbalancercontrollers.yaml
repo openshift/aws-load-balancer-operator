@@ -159,6 +159,41 @@ spec:
                 description: ObservedGeneration is the most recent generation observed.
                 format: int64
                 type: integer
+              subnets:
+                description: Subnets contains details of the subnets of the cluster
+                properties:
+                  internal:
+                    description: Internal is the list of subnet ids which have the
+                      tag `kubernetes.io/role/internal-elb`
+                    items:
+                      type: string
+                    type: array
+                  public:
+                    description: Public is the list of subnet ids which have the tag
+                      `kubernetes.io/role/elb`
+                    items:
+                      type: string
+                    type: array
+                  subnetTagging:
+                    description: SubnetTagging indicates the current status of the
+                      subnet tags
+                    enum:
+                    - Auto
+                    - Manual
+                    type: string
+                  tagged:
+                    description: Tagged is the list of subnet ids which have been
+                      tagged by the operator
+                    items:
+                      type: string
+                    type: array
+                  untagged:
+                    description: Untagged is the list of subnet ids which do not have
+                      any role tags
+                    items:
+                      type: string
+                    type: array
+                type: object
             type: object
         type: object
     served: true
