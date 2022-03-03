@@ -1,0 +1,7 @@
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: IngressClassParams
+metadata:
+  name: awesome-class
+spec:
+  group:
+    name: my-group
