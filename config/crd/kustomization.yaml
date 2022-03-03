@@ -3,6 +3,8 @@
 # It should be run by config/default
 resources:
 - bases/networking.olm.openshift.io_awsloadbalancercontrollers.yaml
+- bases/elbv2.k8s.aws_ingressclassparams.yaml
+- bases/elbv2.k8s.aws_targetgroupbindings.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

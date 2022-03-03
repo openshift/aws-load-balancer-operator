@@ -5,6 +5,46 @@ metadata:
     alm-examples: |-
       [
         {
+          "apiVersion": "elbv2.k8s.aws/v1alpha1",
+          "kind": "TargetGroupBinding",
+          "metadata": {
+            "name": "my-tgb"
+          },
+          "spec": {
+            "serviceRef": {
+              "name": "awesome-service",
+              "port": 80
+            },
+            "targetGroupARN": "\u003carn-to-targetGroup\u003e"
+          }
+        },
+        {
+          "apiVersion": "elbv2.k8s.aws/v1beta1",
+          "kind": "IngressClassParams",
+          "metadata": {
+            "name": "awesome-class"
+          },
+          "spec": {
+            "group": {
+              "name": "my-group"
+            }
+          }
+        },
+        {
+          "apiVersion": "elbv2.k8s.aws/v1beta1",
+          "kind": "TargetGroupBinding",
+          "metadata": {
+            "name": "my-tgb"
+          },
+          "spec": {
+            "serviceRef": {
+              "name": "awesome-service",
+              "port": 80
+            },
+            "targetGroupARN": "\u003carn-to-targetGroup\u003e"
+          }
+        },
+        {
           "apiVersion": "networking.olm.openshift.io/v1alpha1",
           "kind": "AWSLoadBalancerController",
           "metadata": {
@@ -30,6 +70,15 @@ spec:
       kind: AWSLoadBalancerController
       name: awsloadbalancercontrollers.networking.olm.openshift.io
       version: v1alpha1
+    - kind: IngressClassParams
+      name: ingressclassparams.elbv2.k8s.aws
+      version: v1beta1
+    - kind: TargetGroupBinding
+      name: targetgroupbindings.elbv2.k8s.aws
+      version: v1alpha1
+    - kind: TargetGroupBinding
+      name: targetgroupbindings.elbv2.k8s.aws
+      version: v1beta1
   description: Operator to simplify management of aws-load-balancer-controller
   displayName: aws-load-balancer-operator
   icon:

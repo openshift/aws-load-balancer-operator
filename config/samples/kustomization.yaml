@@ -1,4 +1,7 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - autosubnettagging.yaml
+- targetgroupbindings-v1alpha1.yaml
+- targetgroupbindings-v1beta1.yaml
+- ingressclassparams.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
