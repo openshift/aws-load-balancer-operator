@@ -62,6 +62,8 @@ CONTAINER_ENGINE ?= docker
 
 OPERATOR_SDK_VERSION = v1.17.0
 
+GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
+
 .PHONY: all
 all: build
 
@@ -104,7 +106,7 @@ vet: ## Run go vet against code.
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate lint fmt vet envtest ## Run tests.
 	mkdir -p "$(ENVTEST_ASSETS_DIR)"
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)")" go test -race ./... -coverprofile cover.out -covermode=atomic
 
@@ -247,8 +249,13 @@ catalog-build: opm ## Build a catalog image.
 catalog-push: ## Push a catalog image.
 	$(MAKE) image-push IMG=$(CATALOG_IMG)
 
+.PHONY: verify
 verify:
 	hack/verify-deps.sh
 	hack/verify-generated.sh
 	hack/verify-gofmt.sh
 	hack/verify-bundle.sh
+
+.PHONY: lint
+lint:
+	$(GOLANGCI_LINT) run --config .golangci.yaml
