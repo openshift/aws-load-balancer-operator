@@ -69,6 +69,14 @@ func NewEvent(we watch.Event) Event {
 	case *rbacv1.ClusterRoleBinding:
 		te.ObjType = "clusterrolebinding"
 		te.Name = obj.Name
+	case *rbacv1.Role:
+		te.ObjType = "role"
+		te.Name = obj.Name
+		te.Namespace = obj.Namespace
+	case *rbacv1.RoleBinding:
+		te.ObjType = "rolebinding"
+		te.Name = obj.Name
+		te.Namespace = obj.Namespace
 	case *corev1.Namespace:
 		te.ObjType = "namespace"
 		te.Name = obj.Name

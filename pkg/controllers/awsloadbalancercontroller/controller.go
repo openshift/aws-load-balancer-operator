@@ -41,14 +41,16 @@ import (
 )
 
 const (
-	controllerName               = "cluster"
-	controllerSecretName         = "albo-cluster-credentials"
-	controllerServiceAccountName = "albo-cluster-sa"
+	controllerBaseName = "aws-load-balancer-controller"
+	controllerName     = "cluster"
+
 	// the port on which controller metrics are served
 	controllerMetricsPort = 8080
 	// the port on which the controller webhook is served
 	controllerWebhookPort = 9443
 )
+
+var commonResourceName = fmt.Sprintf("%s-%s", controllerBaseName, controllerName)
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
@@ -63,8 +65,20 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=endpoints,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups="discovery.k8s.io",resources=endpointslices,verbs=get;list;watch
+//+kubebuilder:rbac:groups="extensions",resources=ingresses,verbs=get;list;watch;patch;update
+//+kubebuilder:rbac:groups="elbv2.k8s.aws",resources=ingressclassparams,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="elbv2.k8s.aws",resources=targetgroupbindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.k8s.io",resources=ingressclasses,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups="config.openshift.io",resources=infrastructures,verbs=get;list;watch
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cloudcredential.openshift.io,resources=credentialsrequests;credentialsrequests/status;credentialsrequests/finalizers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -103,7 +117,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ServiceAccount for AWSLoadBalancerControler %s: %w", req, err)
 	}
 
-	err = r.ensureClusterRoleAndBindings(ctx, lbController)
+	err = r.ensureClusterRoleAndBinding(ctx, sa, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %s: %w", req, err)
 	}

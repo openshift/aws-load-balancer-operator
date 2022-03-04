@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
 func TestDesiredIngressClass(t *testing.T) {
@@ -63,9 +64,9 @@ func TestEnsureIngressClass(t *testing.T) {
 				controller.Status.IngressClass = tc.existingIngressClass.Name
 			}
 			existingObjects = append(existingObjects, controller)
-			testClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(existingObjects...).Build()
+			testClient := fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(existingObjects...).Build()
 			r := &AWSLoadBalancerControllerReconciler{
-				Scheme: scheme,
+				Scheme: test.Scheme,
 				Client: testClient,
 			}
 			err := r.ensureIngressClass(context.Background(), controller)

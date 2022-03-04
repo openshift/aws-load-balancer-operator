@@ -112,7 +112,7 @@ func desiredCredentialsRequest(ctx context.Context, name types.NamespacedName, s
 			Namespace: name.Namespace,
 		},
 		Spec: cco.CredentialsRequestSpec{
-			ServiceAccountNames: []string{controllerServiceAccountName},
+			ServiceAccountNames: []string{commonResourceName},
 			SecretRef:           secretRef,
 		},
 	}
@@ -147,7 +147,7 @@ func createCredentialsRequestName(name string) types.NamespacedName {
 
 func createCredentialsSecretRef(namespace string) corev1.ObjectReference {
 	return corev1.ObjectReference{
-		Name:      controllerSecretName,
+		Name:      commonResourceName,
 		Namespace: namespace,
 	}
 }

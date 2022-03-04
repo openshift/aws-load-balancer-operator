@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
 func testControllerService(name, namespace string, selector map[string]string) *corev1.Service {
@@ -159,10 +160,10 @@ func TestEnsureService(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			testClient := fake.NewClientBuilder().WithObjects(tc.existingObjects...).WithScheme(scheme).Build()
+			testClient := fake.NewClientBuilder().WithObjects(tc.existingObjects...).WithScheme(test.Scheme).Build()
 			r := &AWSLoadBalancerControllerReconciler{
 				Client: testClient,
-				Scheme: scheme,
+				Scheme: test.Scheme,
 			}
 			_, err := r.ensureService(context.Background(), "test-namespace", tc.controller, tc.deployment)
 			if err != nil {
