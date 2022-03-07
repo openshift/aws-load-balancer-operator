@@ -118,6 +118,12 @@ type AWSLoadBalancerControllerStatus struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	Subnets *AWSLoadBalancerControllerStatusSubnets `json:"subnets,omitempty"`
+
+	// IngressClass is the current default Ingress class.
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	IngressClass string `json:"ingressClass,omitempty"`
 }
 
 type AWSLoadBalancerControllerStatusSubnets struct {

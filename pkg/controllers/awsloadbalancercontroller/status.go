@@ -65,3 +65,14 @@ func equalStrings(x1, x2 []string) bool {
 	sort.Strings(x2c)
 	return cmp.Equal(x1c, x2c)
 }
+
+func (r *AWSLoadBalancerControllerReconciler) updateStatusIngressClass(ctx context.Context, controller *albo.AWSLoadBalancerController, ingressClass string) error {
+
+	if controller.Status.IngressClass == ingressClass {
+		return nil
+	}
+
+	updated := controller.DeepCopy()
+	updated.Status.IngressClass = ingressClass
+	return r.Status().Update(ctx, updated)
+}

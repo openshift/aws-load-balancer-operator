@@ -84,6 +84,10 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	if err := r.ensureIngressClass(ctx, lbController); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure default IngressClass for AWSLoadBalancerController %s: %v", req, err)
+	}
+
 	if err := r.ensureCredentialsRequest(ctx, r.Namespace, lbController); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %s: %w", req, err)
 	}

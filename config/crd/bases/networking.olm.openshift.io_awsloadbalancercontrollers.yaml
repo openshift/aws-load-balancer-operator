@@ -155,6 +155,9 @@ spec:
                   - type
                   type: object
                 type: array
+              ingressClass:
+                description: IngressClass is the current default Ingress class.
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed.
                 format: int64
