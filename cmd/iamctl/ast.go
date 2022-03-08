@@ -69,7 +69,6 @@ func buildKeyValueExpr(input interface{}) ast.Expr {
 	case iamPolicyConditionKeyValue:
 		exprs := make([]ast.Expr, 0, 1)
 		for k, v := range val {
-
 			exprs = append(exprs, &ast.KeyValueExpr{
 				Key:   buildStrings(k),
 				Value: buildStrings(v),
@@ -88,7 +87,6 @@ func buildKeyValueExpr(input interface{}) ast.Expr {
 }
 
 func generateIAMPolicy(input, output, pkg string) {
-
 	tmpl, err := template.New("").Parse(filetemplate)
 	if err != nil {
 		panic(err)
@@ -119,12 +117,11 @@ func generateIAMPolicy(input, output, pkg string) {
 	}
 
 	// Minifying here as a workaround for current limitations
-	// in credential requests lenght (2048 max bytes).
+	// in credential requests length (2048 max bytes).
 	miniPoliicy := minify(policy)
 
 	exprs := make([]ast.Expr, 0, len(miniPoliicy.Statement))
 	for _, p := range miniPoliicy.Statement {
-
 		// Workaround since cloud credential operator doesn't
 		// support multiple resources in its spec.
 		for _, r := range p.Resource {

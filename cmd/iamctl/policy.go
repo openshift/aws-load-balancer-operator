@@ -20,7 +20,7 @@ type AWSValue []string
 
 func (v *AWSValue) UnmarshalJSON(input []byte) error {
 	var raw interface{}
-	json.Unmarshal(input, &raw)
+	_ = json.Unmarshal(input, &raw)
 	var elements []string
 
 	switch item := raw.(type) {

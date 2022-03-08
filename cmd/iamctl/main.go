@@ -37,17 +37,16 @@ func main() {
 }
 
 func init() {
-
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	rootCmd.PersistentFlags().StringVarP(&inputFile, "input-file", "i", "", "Used to specify input JSON file path.")
-	rootCmd.MarkPersistentFlagRequired("input-file")
+	_ = rootCmd.MarkPersistentFlagRequired("input-file")
 
 	rootCmd.PersistentFlags().StringVarP(&outputFile, "output-file", "o", "", "Used to specify output Go file path.")
-	rootCmd.MarkPersistentFlagRequired("output-file")
+	_ = rootCmd.MarkPersistentFlagRequired("output-file")
 
 	rootCmd.PersistentFlags().StringVarP(&pkg, "package", "p", "main", "Used to specify output Go file path.")
-	rootCmd.MarkPersistentFlagRequired("package")
+	_ = rootCmd.MarkPersistentFlagRequired("package")
 }
