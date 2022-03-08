@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
@@ -26,7 +27,6 @@ const (
 )
 
 func TestEnsureCredentialsRequest(t *testing.T) {
-
 	managedTypesList := []client.ObjectList{
 		&cco.CredentialsRequestList{},
 	}
@@ -91,6 +91,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 				Client:    cl,
 				Namespace: testOperatorNamespace,
 				Image:     test.OperandImage,
+				Scheme:    test.Scheme,
 			}
 
 			c := test.NewEventCollector(t, cl, managedTypesList, len(tc.expectedEvents))
@@ -99,7 +100,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 			c.Start(context.TODO())
 			defer c.Stop()
 
-			err := r.ensureCredentialsRequest(context.TODO(), r.Namespace, nil)
+			err := r.ensureCredentialsRequest(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: metav1.ObjectMeta{Name: controllerName}})
 			// error check
 			if err != nil {
 				if !tc.errExpected {

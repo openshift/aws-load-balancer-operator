@@ -42,8 +42,8 @@ import (
 
 const (
 	controllerName               = "cluster"
-	controllerSecretName         = "aws-load-balancer-operator-credentials"
-	controllerServiceAccountName = "aws-load-balancer-operator-controller-manager"
+	controllerSecretName         = "albo-cluster-credentials"
+	controllerServiceAccountName = "albo-cluster-sa"
 )
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
@@ -59,7 +59,6 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="config.openshift.io",resources=infrastructures,verbs=get;list;watch
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
