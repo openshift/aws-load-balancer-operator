@@ -34,9 +34,13 @@ const (
 	awsCredentialsPath = "/aws/credentials"
 	// awsCredentialsVolumeName is the name of the volume with AWS credentials from the CredentialsRequest
 	awsCredentialsVolumeName = "aws-credentials"
+	// the directory for the webhook certificate and key.
+	webhookTLSDir = "/tls"
+	// the name of the volume mount with the webhook tls config
+	webhookTLSVolumeName = "tls"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace string, image string, sa *corev1.ServiceAccount, crSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace, image string, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
 	deploymentName := fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)
 
 	reqLogger := log.FromContext(ctx).WithValues("deployment", deploymentName)
@@ -47,7 +51,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 		return nil, fmt.Errorf("failed to get existing deployment %s: %w", deploymentName, err)
 	}
 
-	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, crSecretName, controller, sa)
+	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, crSecretName, servingSecretName, controller, sa)
 	err = controllerutil.SetOwnerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on deployment %s: %w", deploymentName, err)
@@ -77,7 +81,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 	return current, nil
 }
 
-func desiredDeployment(name, namespace, image string, vpcID, clusterName string, awsRegion string, credentialsRequestSecretName string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
+func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, credentialsRequestSecretName, servingSecret string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -118,6 +122,10 @@ func desiredDeployment(name, namespace, image string, vpcID, clusterName string,
 									Name:      awsCredentialsVolumeName,
 									MountPath: awsCredentialsDir,
 								},
+								{
+									Name:      webhookTLSVolumeName,
+									MountPath: webhookTLSDir,
+								},
 							},
 						},
 					},
@@ -126,7 +134,17 @@ func desiredDeployment(name, namespace, image string, vpcID, clusterName string,
 						{
 							Name: awsCredentialsVolumeName,
 							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{SecretName: credentialsRequestSecretName},
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: credentialsRequestSecretName,
+								},
+							},
+						},
+						{
+							Name: webhookTLSVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: servingSecret,
+								},
 							},
 						},
 					},
@@ -142,6 +160,7 @@ func desiredDeployment(name, namespace, image string, vpcID, clusterName string,
 
 func desiredContainerArgs(controller *albo.AWSLoadBalancerController, clusterName, vpcID string) []string {
 	var args []string
+	args = append(args, fmt.Sprintf("--webhook-cert-dir=%s", webhookTLSDir))
 	args = append(args, fmt.Sprintf("--aws-vpc-id=%s", vpcID))
 	args = append(args, fmt.Sprintf("--cluster-name=%s", clusterName))
 

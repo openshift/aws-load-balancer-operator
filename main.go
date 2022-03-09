@@ -26,6 +26,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	arv1 "k8s.io/api/admissionregistration/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,6 +70,7 @@ func init() {
 	utilruntime.Must(configv1.Install(scheme))
 	utilruntime.Must(cco.Install(scheme))
 	utilruntime.Must(networkingv1.AddToScheme(scheme))
+	utilruntime.Must(arv1.AddToScheme(scheme))
 }
 
 func main() {
@@ -83,7 +85,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&namespace, "namespace", "aws-load-balancer-operator", "The namespace where operands should be installed")
-	flag.StringVar(&image, "image", "quay.io/anaik/aws-load-balancer-controller:latest", "The image to be used for the operand")
+	flag.StringVar(&image, "image", "quay.io/anaik/aws-load-balancer-controller:v0.0.1", "The image to be used for the operand")
 	opts := zap.Options{
 		Development: true,
 	}

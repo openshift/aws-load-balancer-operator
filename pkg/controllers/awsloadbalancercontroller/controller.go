@@ -89,6 +89,8 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to get AWSLoadBalancerController %s: %w", req, err)
 	}
 
+	servingSecretName := fmt.Sprintf("%s-serving-%s", controllerResourcePrefix, lbController.Name)
+
 	// if the processed subnets have not yet been written into the status or if the tagging policy has changed then update the subnets
 	if lbController.Status.Subnets == nil || (lbController.Spec.SubnetTagging != lbController.Status.Subnets.SubnetTagging) {
 		err := r.tagSubnets(ctx, lbController)
@@ -121,12 +123,12 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %s: %w", req, err)
 	}
 
-	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, credentialsRequestSecretName, lbController)
+	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, credentialsRequestSecretName, servingSecretName, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %s: %w", req, err)
 	}
 
-	service, err := r.ensureService(ctx, r.Namespace, lbController, deployment)
+	service, err := r.ensureService(ctx, r.Namespace, lbController, servingSecretName, deployment)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure service for AWSLoadBalancerController %s: %w", req, err)
 	}
