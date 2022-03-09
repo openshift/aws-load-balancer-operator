@@ -54,6 +54,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(networkingolmv1alpha1.AddToScheme(scheme))
+
+	utilruntime.Must(cco.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 
 	utilruntime.Must(configv1.Install(scheme))

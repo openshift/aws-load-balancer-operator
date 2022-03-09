@@ -57,6 +57,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - config.openshift.io
+  resources:
+  - infrastructures
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - networking.olm.openshift.io
   resources:
   - awsloadbalancercontrollers
@@ -83,7 +91,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - rbac.k8s.io
+  - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
   - clusterroles
