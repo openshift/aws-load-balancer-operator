@@ -8,7 +8,7 @@ func getControllerRules() []rbacv1.PolicyRule {
 		{
 			APIGroups: []string{""},
 			Resources: []string{"endpoints"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{""},
@@ -18,17 +18,17 @@ func getControllerRules() []rbacv1.PolicyRule {
 		{
 			APIGroups: []string{""},
 			Resources: []string{"namespaces"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{""},
 			Resources: []string{"nodes"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{""},
 			Resources: []string{"pods"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{""},
@@ -38,12 +38,12 @@ func getControllerRules() []rbacv1.PolicyRule {
 		{
 			APIGroups: []string{""},
 			Resources: []string{"secrets"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{""},
 			Resources: []string{"services"},
-			Verbs:     []string{"get, list", "patch", "update", "watch"},
+			Verbs:     []string{"get", "list", "patch", "update", "watch"},
 		},
 		{
 			APIGroups: []string{""},
@@ -53,12 +53,12 @@ func getControllerRules() []rbacv1.PolicyRule {
 		{
 			APIGroups: []string{"discovery.k8s.io"},
 			Resources: []string{"endpointslices"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{"elbv2.k8s.aws"},
 			Resources: []string{"ingressclassparams"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{"elbv2.k8s.aws"},
@@ -83,7 +83,7 @@ func getControllerRules() []rbacv1.PolicyRule {
 		{
 			APIGroups: []string{"networking.k8s.io"},
 			Resources: []string{"ingressclasses"},
-			Verbs:     []string{"get, list", "watch"},
+			Verbs:     []string{"get", "list", "watch"},
 		},
 		{
 			APIGroups: []string{"networking.k8s.io"},
