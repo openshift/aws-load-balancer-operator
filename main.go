@@ -53,6 +53,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(cco.Install(scheme))
 
 	utilruntime.Must(networkingolmv1alpha1.AddToScheme(scheme))
 
@@ -68,12 +69,15 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var namespace string
+	var image string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-
+	flag.StringVar(&namespace, "namespace", "aws-load-balancer-operator", "The namespace where operands should be installed")
+	flag.StringVar(&image, "image", "quay.io/anaik/aws-load-balancer-controller:latest", "The image to be used for the operand")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -100,16 +104,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	ec2Client, err := aws.GetEC2Client(context.TODO(), mgr.GetClient())
+	ec2Client, vpcID, clusterName, err := aws.GetEC2Client(context.TODO(), mgr.GetClient())
 	if err != nil {
 		setupLog.Error(err, "unable to make EC2 Client")
 		os.Exit(1)
 	}
 
 	if err = (&awsloadbalancercontroller.AWSLoadBalancerControllerReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		EC2Client: ec2Client,
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		EC2Client:   ec2Client,
+		Namespace:   namespace,
+		Image:       image,
+		VPCID:       vpcID,
+		ClusterName: clusterName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AWSLoadBalancerController")
 		os.Exit(1)

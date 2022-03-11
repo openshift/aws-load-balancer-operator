@@ -48,6 +48,8 @@ const (
 	controllerMetricsPort = 8080
 	// the port on which the controller webhook is served
 	controllerWebhookPort = 9443
+	// common prefix for all resource of an operand
+	controllerResourcePrefix = "aws-load-balancer-controller"
 )
 
 var commonResourceName = fmt.Sprintf("%s-%s", controllerBaseName, controllerName)
@@ -55,10 +57,12 @@ var commonResourceName = fmt.Sprintf("%s-%s", controllerBaseName, controllerName
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Namespace string
-	Image     string
-	EC2Client aws.EC2Client
+	Scheme      *runtime.Scheme
+	Namespace   string
+	Image       string
+	EC2Client   aws.EC2Client
+	ClusterName string
+	VPCID       string
 }
 
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers,verbs=get;list;watch;create;update;patch;delete
