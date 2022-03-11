@@ -96,6 +96,16 @@ func getControllerRules() []rbacv1.PolicyRule {
 			Verbs:     []string{"patch", "update"},
 		},
 		{
+			APIGroups: []string{"networking.k8s.io"},
+			Resources: []string{"ingresses"},
+			Verbs:     []string{"get", "list", "patch", "update", "watch"},
+		},
+		{
+			APIGroups: []string{"networking.k8s.io"},
+			Resources: []string{"ingresses/status"},
+			Verbs:     []string{"patch", "update"},
+		},
+		{
 			APIGroups: []string{"elbv2.k8s.aws"},
 			Resources: []string{"ingressclassparams"},
 			Verbs:     []string{"create", "delete", "get", "list", "patch", "update", "watch"},
@@ -105,7 +115,6 @@ func getControllerRules() []rbacv1.PolicyRule {
 			Resources: []string{"ingressclassparams/status"},
 			Verbs:     []string{"get"},
 		},
-
 		{
 			APIGroups: []string{"elbv2.k8s.aws"},
 			Resources: []string{"targetgroupbindings/status"},

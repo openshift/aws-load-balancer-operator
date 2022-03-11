@@ -18,9 +18,8 @@ rules:
   resources:
   - events
   verbs:
-  - get
-  - list
-  - watch
+  - create
+  - patch
 - apiGroups:
   - ""
   resources:
@@ -45,6 +44,14 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - ""
   resources:
@@ -77,6 +84,14 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - services/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - admissionregistration.k8s.io
   resources:
@@ -147,6 +162,14 @@ rules:
 - apiGroups:
   - elbv2.k8s.aws
   resources:
+  - ingressclassparams/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - elbv2.k8s.aws
+  resources:
   - targetgroupbindings
   verbs:
   - create
@@ -156,6 +179,14 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - elbv2.k8s.aws
+  resources:
+  - targetgroupbindings/status
+  verbs:
+  - get
+  - patch
+  - update
 - apiGroups:
   - extensions
   resources:
@@ -167,15 +198,49 @@ rules:
   - update
   - watch
 - apiGroups:
+  - extensions
+  resources:
+  - ingresses/status
+  verbs:
+  - patch
+  - update
+- apiGroups:
   - networking.k8s.io
   resources:
   - ingressclasses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingressclasses/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses
   verbs:
   - get
   - list
   - patch
   - update
   - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses/status
+  verbs:
+  - patch
+  - update
 - apiGroups:
   - networking.olm.openshift.io
   resources:
