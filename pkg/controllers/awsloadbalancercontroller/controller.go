@@ -126,7 +126,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %s: %w", req, err)
 	}
 
-	deployment, err := r.ensureControllerDeployment(ctx, r.Namespace, r.Image, sa, lbController)
+	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %s: %w", req, err)
 	}

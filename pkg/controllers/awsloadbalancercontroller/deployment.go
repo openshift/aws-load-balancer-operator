@@ -25,10 +25,10 @@ const (
 	appInstanceName = "app.kubernetes.io/instance"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureControllerDeployment(ctx context.Context, namespace string, image string, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace string, image string, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
 	deploymentName := fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)
 
-	exists, current, err := r.currentControllerDeployment(ctx, deploymentName, namespace)
+	exists, current, err := r.currentDeployment(ctx, deploymentName, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing deployment %s: %w", deploymentName, err)
 	}
@@ -44,18 +44,21 @@ func (r *AWSLoadBalancerControllerReconciler) ensureControllerDeployment(ctx con
 		if err != nil {
 			return nil, fmt.Errorf("failed to create deployment %s: %w", deploymentName, err)
 		}
-		_, current, err = r.currentControllerDeployment(ctx, deploymentName, namespace)
+		_, current, err = r.currentDeployment(ctx, deploymentName, namespace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get new deployment %s: %w", deploymentName, err)
 		}
+		return current, nil
 	}
-	err = r.updateDeployment(ctx, current, desired)
+	updated, err := r.updateDeployment(ctx, current, desired)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update existing deployment: %w", err)
 	}
-	_, current, err = r.currentControllerDeployment(ctx, deploymentName, namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get existing deployment: %w", err)
+	if updated {
+		_, current, err = r.currentDeployment(ctx, deploymentName, namespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get existing deployment: %w", err)
+		}
 	}
 	return current, nil
 }
@@ -143,7 +146,7 @@ func desiredContainerArgs(controller *albo.AWSLoadBalancerController, clusterNam
 	return args
 }
 
-func (r *AWSLoadBalancerControllerReconciler) currentControllerDeployment(ctx context.Context, name string, namespace string) (bool, *appsv1.Deployment, error) {
+func (r *AWSLoadBalancerControllerReconciler) currentDeployment(ctx context.Context, name string, namespace string) (bool, *appsv1.Deployment, error) {
 	var deployment appsv1.Deployment
 	err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &deployment)
 	if err != nil {
@@ -159,7 +162,8 @@ func (r *AWSLoadBalancerControllerReconciler) createDeployment(ctx context.Conte
 	return r.Create(ctx, deployment)
 }
 
-func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Context, current, desired *appsv1.Deployment) error {
+// updateDeployment updates the deployment if required and indicates if an update actually occurred
+func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Context, current, desired *appsv1.Deployment) (bool, error) {
 	updated := current.DeepCopy()
 
 	var outdated bool
@@ -192,7 +196,7 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 
 			}
 			if foundIndex < 0 {
-				return fmt.Errorf("deployment %s does not have a container with the name %s", current.Name, desiredContainer.Name)
+				return false, fmt.Errorf("deployment %s does not have a container with the name %s", current.Name, desiredContainer.Name)
 			}
 
 			if container, changed := hasContainerChanged(updated.Spec.Template.Spec.Containers[foundIndex], desiredContainer); changed {
@@ -205,10 +209,11 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 	if outdated {
 		err := r.Update(ctx, updated)
 		if err != nil {
-			return fmt.Errorf("failed to update existing deployment %s: %w", updated.Name, err)
+			return false, fmt.Errorf("failed to update existing deployment %s: %w", updated.Name, err)
 		}
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 func hasContainerChanged(current, desired corev1.Container) (corev1.Container, bool) {
