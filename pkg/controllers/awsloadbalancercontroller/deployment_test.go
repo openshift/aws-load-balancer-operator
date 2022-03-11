@@ -241,6 +241,7 @@ func TestUpdateDeployment(t *testing.T) {
 		existingDeployment *appsv1.Deployment
 		desiredDeployment  *appsv1.Deployment
 		expectedDeployment *appsv1.Deployment
+		expectUpdate       bool
 	}{
 		{
 			name: "image changed",
@@ -253,6 +254,7 @@ func TestUpdateDeployment(t *testing.T) {
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
 				testContainer("controller", "controller:v2"),
 			).build(),
+			expectUpdate: true,
 		},
 		{
 			name: "replicas changed from value",
@@ -265,6 +267,7 @@ func TestUpdateDeployment(t *testing.T) {
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
 				testContainer("controller", "controller:v1"),
 			).withReplicas(2).build(),
+			expectUpdate: true,
 		},
 		{
 			name: "replicas changed from nil",
@@ -277,6 +280,7 @@ func TestUpdateDeployment(t *testing.T) {
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
 				testContainer("controller", "controller:v1"),
 			).withReplicas(1).build(),
+			expectUpdate: true,
 		},
 		{
 			name: "container args changed",
@@ -289,6 +293,7 @@ func TestUpdateDeployment(t *testing.T) {
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
 				testContainer("controller", "controller:v1", "--arg2", "--arg3"),
 			).build(),
+			expectUpdate: true,
 		},
 		{
 			name: "container injected into current deployment",
@@ -302,6 +307,7 @@ func TestUpdateDeployment(t *testing.T) {
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
 				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
 			).build(),
+			expectUpdate: true,
 		},
 		{
 			name: "desired container removed from deployment",
@@ -316,6 +322,18 @@ func TestUpdateDeployment(t *testing.T) {
 				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
 				testContainer("sidecar", "sidecar:v1"),
 			).build(),
+			expectUpdate: true,
+		}, {
+			name: "no change in deployment",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+			).build(),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -324,9 +342,12 @@ func TestUpdateDeployment(t *testing.T) {
 			r := &AWSLoadBalancerControllerReconciler{
 				Client: client,
 			}
-			err := r.updateDeployment(ctx, tc.existingDeployment, tc.desiredDeployment)
+			updated, err := r.updateDeployment(ctx, tc.existingDeployment, tc.desiredDeployment)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.expectUpdate != updated {
+				t.Errorf("expected update to be %t, instead was %t", tc.expectUpdate, updated)
 			}
 			currentDeployment := &appsv1.Deployment{}
 			err = r.Get(ctx, types.NamespacedName{Namespace: tc.expectedDeployment.Namespace, Name: tc.expectedDeployment.Name}, currentDeployment)
@@ -335,7 +356,7 @@ func TestUpdateDeployment(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(currentDeployment.Spec, tc.expectedDeployment.Spec); diff != "" {
-				t.Fatalf("deployment is not has unexpected fields:\n%s", diff)
+				t.Fatalf("deployment spec mismatch:\n%s", diff)
 			}
 		})
 	}
@@ -397,7 +418,7 @@ func TestEnsureDeployment(t *testing.T) {
 				ClusterName: "test-cluster",
 				VPCID:       "test-vpc",
 			}
-			_, err := r.ensureControllerDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, tc.controller)
+			_, err := r.ensureDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, tc.controller)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
