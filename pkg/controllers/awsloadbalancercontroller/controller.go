@@ -63,6 +63,7 @@ type AWSLoadBalancerControllerReconciler struct {
 	EC2Client   aws.EC2Client
 	ClusterName string
 	VPCID       string
+	AWSRegion   string
 }
 
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers,verbs=get;list;watch;create;update;patch;delete

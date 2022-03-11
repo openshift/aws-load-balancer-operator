@@ -21,6 +21,10 @@ import (
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
+const (
+	testAWSRegion = "us-east-1"
+)
+
 func TestDesiredArgs(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
@@ -227,11 +231,40 @@ func (b *testDeploymentBuilder) build() *appsv1.Deployment {
 	return d
 }
 
-func testContainer(name, image string, args ...string) corev1.Container {
+type testContainerBuilder struct {
+	name  string
+	image string
+	args  []string
+	env   []corev1.EnvVar
+}
+
+func testContainer(name, image string) *testContainerBuilder {
+	return &testContainerBuilder{
+		name:  name,
+		image: image,
+	}
+}
+
+func (b *testContainerBuilder) withEnvs(envs ...corev1.EnvVar) *testContainerBuilder {
+	b.env = envs
+	return b
+}
+func (b *testContainerBuilder) withArgs(args ...string) *testContainerBuilder {
+	b.args = args
+	return b
+}
+
+func (b *testContainerBuilder) withRegionEnv() *testContainerBuilder {
+	b.env = append(b.env, corev1.EnvVar{Name: awsRegionEnvVarName, Value: testAWSRegion})
+	return b
+}
+
+func (b *testContainerBuilder) build() corev1.Container {
 	return corev1.Container{
-		Name:  name,
-		Image: image,
-		Args:  args,
+		Name:  b.name,
+		Image: b.image,
+		Args:  b.args,
+		Env:   b.env,
 	}
 }
 
@@ -246,93 +279,137 @@ func TestUpdateDeployment(t *testing.T) {
 		{
 			name: "image changed",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v2"),
+				testContainer("controller", "controller:v2").build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v2"),
+				testContainer("controller", "controller:v2").build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "replicas changed from value",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).withReplicas(1).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).withReplicas(2).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).withReplicas(2).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "replicas changed from nil",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).withReplicas(1).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1"),
+				testContainer("controller", "controller:v1").build(),
 			).withReplicas(1).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "container args changed",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg2", "--arg3"),
+				testContainer("controller", "controller:v1").withArgs("--arg2", "--arg3").build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg2", "--arg3"),
+				testContainer("controller", "controller:v1").withArgs("--arg2", "--arg3").build(),
+			).build(),
+			expectUpdate: true,
+		},
+		{
+			name: "container environment variables changed",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withEnvs(
+					corev1.EnvVar{Name: "test-1", Value: "value-1"},
+				).build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withEnvs(
+					corev1.EnvVar{
+						Name: "test-1",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key: "test-secret",
+							},
+						},
+					},
+					corev1.EnvVar{Name: "test-2", Value: "value-2"},
+				).build(),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withEnvs(
+					corev1.EnvVar{
+						Name: "test-1",
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key: "test-secret",
+							},
+						},
+					},
+					corev1.EnvVar{Name: "test-2", Value: "value-2"},
+				).build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "container injected into current deployment",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
-				testContainer("sidecar", "sidecar:v1"),
+				testContainer("controller", "controller:v1").build(),
+				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+				testContainer("controller", "controller:v1").build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+				testContainer("controller", "controller:v1").build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "desired container removed from deployment",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("sidecar", "sidecar:v1"),
+				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
-				testContainer("sidecar", "sidecar:v1"),
+				testContainer("controller", "controller:v1").build(),
+				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
-				testContainer("sidecar", "sidecar:v1"),
+				testContainer("controller", "controller:v1").build(),
+				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
 			expectUpdate: true,
 		}, {
 			name: "no change in deployment",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
+					corev1.EnvVar{Name: "test-1", Value: "test-1"},
+					corev1.EnvVar{Name: "test-2", Value: "test-2"},
+				).build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
+					corev1.EnvVar{Name: "test-1", Value: "test-1"},
+					corev1.EnvVar{Name: "test-2", Value: "test-2"},
+				).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
-				testContainer("controller", "controller:v1", "--arg1", "--arg2"),
+				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
+					corev1.EnvVar{Name: "test-1", Value: "test-1"},
+					corev1.EnvVar{Name: "test-2", Value: "test-2"},
+				).build(),
 			).build(),
 		},
 	} {
@@ -383,7 +460,7 @@ func TestEnsureDeployment(t *testing.T) {
 				"cluster",
 				"test-namespace",
 				"test-sa").withContainers(
-				testContainer("controller", "test-image"),
+				testContainer("controller", "test-image").withRegionEnv().build(),
 			).withOwnerReference("cluster").build(),
 		},
 		{
@@ -398,7 +475,7 @@ func TestEnsureDeployment(t *testing.T) {
 					"cluster",
 					"test-namespace",
 					"test-sa").withContainers(
-					testContainer("controller", "controller:v0.1"),
+					testContainer("controller", "controller:v0.1").build(),
 				).build(),
 			},
 			expectedDeployment: testDeployment(
@@ -406,7 +483,7 @@ func TestEnsureDeployment(t *testing.T) {
 				"test-namespace",
 				"test-sa",
 			).withContainers(
-				testContainer("controller", "test-image"),
+				testContainer("controller", "test-image").withRegionEnv().build(),
 			).withResourceVersion("2").build(),
 		},
 	} {
@@ -417,6 +494,7 @@ func TestEnsureDeployment(t *testing.T) {
 				Scheme:      test.Scheme,
 				ClusterName: "test-cluster",
 				VPCID:       "test-vpc",
+				AWSRegion:   testAWSRegion,
 			}
 			_, err := r.ensureDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, tc.controller)
 			if err != nil {

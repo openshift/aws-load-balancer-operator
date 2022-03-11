@@ -23,6 +23,8 @@ const (
 	appLabelName    = "app.kubernetes.io/name"
 	appName         = "aws-load-balancer-operator"
 	appInstanceName = "app.kubernetes.io/instance"
+	// awsRegionEnvVarName is the name of the environment variable which hold the AWS region for the controller
+	awsRegionEnvVarName = "AWS_DEFAULT_REGION"
 )
 
 func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace string, image string, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
@@ -33,7 +35,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 		return nil, fmt.Errorf("failed to get existing deployment %s: %w", deploymentName, err)
 	}
 
-	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, controller, sa)
+	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, controller, sa)
 	err = controllerutil.SetOwnerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on deployment %s: %w", deploymentName, err)
@@ -63,7 +65,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 	return current, nil
 }
 
-func desiredDeployment(name, namespace, image string, vpcID, clusterName string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
+func desiredDeployment(name, namespace, image string, vpcID, clusterName string, awsRegion string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -90,6 +92,12 @@ func desiredDeployment(name, namespace, image string, vpcID, clusterName string,
 							Name:  "controller",
 							Image: image,
 							Args:  desiredContainerArgs(controller, clusterName, vpcID),
+							Env: []corev1.EnvVar{
+								{
+									Name:  awsRegionEnvVarName,
+									Value: awsRegion,
+								},
+							},
 						},
 					},
 					ServiceAccountName: sa.Name,
@@ -224,5 +232,29 @@ func hasContainerChanged(current, desired corev1.Container) (corev1.Container, b
 	if !cmp.Equal(current.Args, desired.Args) {
 		updated = true
 	}
+
+	if len(current.Env) == len(desired.Env) {
+		currentEnvs := indexedContainerEnv(current.Env)
+		for _, e := range desired.Env {
+			if ce, ok := currentEnvs[e.Name]; !ok {
+				updated = true
+				break
+			} else if !cmp.Equal(ce, e) {
+				updated = true
+				break
+			}
+		}
+	} else {
+		updated = true
+	}
+
 	return desired, updated
+}
+
+func indexedContainerEnv(envs []corev1.EnvVar) map[string]corev1.EnvVar {
+	indexed := make(map[string]corev1.EnvVar)
+	for _, e := range envs {
+		indexed[e.Name] = e
+	}
+	return indexed
 }
