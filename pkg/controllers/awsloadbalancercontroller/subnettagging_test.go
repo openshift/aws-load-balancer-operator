@@ -7,16 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	configv1 "github.com/openshift/api/config/v1"
-	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -24,22 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
-
-var (
-	scheme = runtime.NewScheme()
-)
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	utilruntime.Must(albo.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
-
-	utilruntime.Must(configv1.Install(scheme))
-	utilruntime.Must(cco.Install(scheme))
-	utilruntime.Must(networkingv1.AddToScheme(scheme))
-}
 
 func TestClassifySubnet(t *testing.T) {
 	for _, tc := range []struct {
@@ -203,7 +184,7 @@ func TestTagSubnets(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			controller := testALBC(tc.taggingPolicy)
-			client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+			client := fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(
 				testInfrastructure("test-cluster", "us-west-1"),
 				controller,
 			).Build()

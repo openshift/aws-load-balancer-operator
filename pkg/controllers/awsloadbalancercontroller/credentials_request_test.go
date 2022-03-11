@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	testOperatorNamespace           = test.OperatorNamespace
 	testCredentialsRequestName      = credentialRequestName
 	testCredentialsRequestNamespace = credentialRequestNamespace
 )
@@ -89,7 +88,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 
 			r := &AWSLoadBalancerControllerReconciler{
 				Client:    cl,
-				Namespace: testOperatorNamespace,
+				Namespace: test.OperatorNamespace,
 				Image:     test.OperandImage,
 				Scheme:    test.Scheme,
 			}
@@ -145,7 +144,7 @@ func testCompleteCredentialsRequest() *cco.CredentialsRequest {
 		},
 		Spec: cco.CredentialsRequestSpec{
 			ProviderSpec: cfg,
-			SecretRef:    createCredentialsSecretRef(testOperatorNamespace),
+			SecretRef:    createCredentialsSecretRef(test.OperatorNamespace),
 		},
 	}
 }

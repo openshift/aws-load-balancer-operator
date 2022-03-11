@@ -18,11 +18,14 @@ package test
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
+	configv1 "github.com/openshift/api/config/v1"
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 
-	albv1aplha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
 const (
@@ -36,13 +39,12 @@ var (
 )
 
 func init() {
-	if err := clientgoscheme.AddToScheme(Scheme); err != nil {
-		panic(err)
-	}
-	if err := albv1aplha1.AddToScheme(Scheme); err != nil {
-		panic(err)
-	}
-	if err := cco.AddToScheme(Scheme); err != nil {
-		panic(err)
-	}
+	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
+
+	utilruntime.Must(albo.AddToScheme(Scheme))
+	//+kubebuilder:scaffold:scheme
+
+	utilruntime.Must(configv1.Install(Scheme))
+	utilruntime.Must(cco.Install(Scheme))
+	utilruntime.Must(rbacv1.AddToScheme(Scheme))
 }
