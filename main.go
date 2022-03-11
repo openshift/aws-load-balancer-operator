@@ -25,6 +25,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -60,6 +61,7 @@ func init() {
 
 	utilruntime.Must(configv1.Install(scheme))
 	utilruntime.Must(cco.Install(scheme))
+	utilruntime.Must(networkingv1.AddToScheme(scheme))
 }
 
 func main() {
