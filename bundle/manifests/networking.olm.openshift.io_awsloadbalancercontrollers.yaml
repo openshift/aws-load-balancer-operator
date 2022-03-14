@@ -66,7 +66,8 @@ spec:
               ingressClass:
                 default: alb
                 description: IngressClass specifies the Ingress class which the controller
-                  will reconcile. This will default to "alb".
+                  will reconcile. This Ingress class will be created unless it already
+                  exists. The value will default to "alb".
                 type: string
               subnetTagging:
                 default: Auto
