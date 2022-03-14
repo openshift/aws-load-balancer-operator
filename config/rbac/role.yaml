@@ -93,6 +93,25 @@ rules:
   - list
   - watch
 - apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingressclasses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingressclasses/status
+  verbs:
+  - patch
+  - update
+- apiGroups:
   - networking.olm.openshift.io
   resources:
   - awsloadbalancercontrollers
