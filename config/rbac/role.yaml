@@ -38,14 +38,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - services/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
   - admissionregistration.k8s.io
   resources:
   - mutatingwebhookconfigurations
@@ -104,13 +96,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - networking.k8s.io
-  resources:
-  - ingressclasses/status
-  verbs:
-  - patch
-  - update
 - apiGroups:
   - networking.olm.openshift.io
   resources:
