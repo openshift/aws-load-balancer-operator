@@ -67,7 +67,8 @@ type AWSLoadBalancerControllerSpec struct {
 	AdditionalResourceTags map[string]string `json:"additionalResourceTags,omitempty"`
 
 	// IngressClass specifies the Ingress class which the controller will reconcile.
-	// This will default to "alb".
+	// This Ingress class will be created unless it already exists.
+	// The value will default to "alb".
 	//
 	// +kubebuilder:default:=alb
 	// +kubebuilder:validation:Optional
