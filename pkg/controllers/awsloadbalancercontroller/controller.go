@@ -78,27 +78,6 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups=cloudcredential.openshift.io,resources=credentialsrequests;credentialsrequests/status;credentialsrequests/finalizers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs=get;list;watch;create;update;patch;delete
 
-// Rbac policies required from upstream https://github.com/kubernetes-sigs/aws-load-balancer-controller/tree/main/config/rbac.
-//
-//+kubebuilder:rbac:groups="",resources=endpoints,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
-//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
-//+kubebuilder:rbac:groups="",resources=pods/status,verbs=get;patch;update
-//+kubebuilder:rbac:groups="",resources=services/status,verbs=get;patch;update
-//+kubebuilder:rbac:groups="discovery.k8s.io",resources=endpointslices,verbs=get;list;watch
-//+kubebuilder:rbac:groups="elbv2.k8s.aws",resources=targetgroupbindings,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="elbv2.k8s.aws",resources=targetgroupbindings/status,verbs=get;patch;update
-//+kubebuilder:rbac:groups="elbv2.k8s.aws",resources=ingressclassparams,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="elbv2.k8s.aws",resources=ingressclassparams/status,verbs=get;patch;update
-//+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses/status,verbs=patch;update
-//+kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;list;watch;update;patch
-//+kubebuilder:rbac:groups="networking.k8s.io",resources=ingressclasses,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="networking.k8s.io",resources=ingressclasses/status,verbs=get;patch;update
-//+kubebuilder:rbac:groups="extensions",resources=ingresses,verbs=get;list;watch;patch;update
-//+kubebuilder:rbac:groups="extensions",resources=ingresses/status,verbs=update;patch
-
 func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
