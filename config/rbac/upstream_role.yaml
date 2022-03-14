@@ -1,10 +1,57 @@
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: manager-role
+  name: controller-role
 rules:
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - patch
+  - update
 - apiGroups:
   - ""
   resources:
@@ -16,10 +63,8 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - serviceaccounts
+  - services
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
@@ -28,7 +73,30 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - services
+  - services/status
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - elbv2.k8s.aws
+  resources:
+  - ingressclassparams
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - elbv2.k8s.aws
+  resources:
+  - targetgroupbindings
   verbs:
   - create
   - delete
@@ -38,48 +106,33 @@ rules:
   - update
   - watch
 - apiGroups:
-  - admissionregistration.k8s.io
+  - elbv2.k8s.aws
   resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
+  - targetgroupbindings/status
   verbs:
-  - create
-  - delete
+  - patch
+  - update
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs:
   - get
   - list
   - patch
   - update
   - watch
 - apiGroups:
-  - apps
+  - extensions
   resources:
-  - deployments
+  - ingresses/status
   verbs:
-  - create
-  - delete
-  - get
-  - list
   - patch
   - update
-  - watch
 - apiGroups:
-  - cloudcredential.openshift.io
+  - networking.k8s.io
   resources:
-  - credentialsrequests
-  - credentialsrequests/finalizers
-  - credentialsrequests/status
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - config.openshift.io
-  resources:
-  - infrastructures
+  - ingressclasses
   verbs:
   - get
   - list
@@ -87,53 +140,17 @@ rules:
 - apiGroups:
   - networking.k8s.io
   resources:
-  - ingressclasses
+  - ingresses
   verbs:
-  - create
-  - delete
   - get
   - list
   - patch
   - update
   - watch
 - apiGroups:
-  - networking.olm.openshift.io
+  - networking.k8s.io
   resources:
-  - awsloadbalancercontrollers
+  - ingresses/status
   verbs:
-  - create
-  - delete
-  - get
-  - list
   - patch
   - update
-  - watch
-- apiGroups:
-  - networking.olm.openshift.io
-  resources:
-  - awsloadbalancercontrollers/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - networking.olm.openshift.io
-  resources:
-  - awsloadbalancercontrollers/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterrolebindings
-  - clusterroles
-  - rolebindings
-  - roles
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
