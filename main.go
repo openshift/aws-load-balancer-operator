@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -27,6 +28,7 @@ import (
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -44,6 +46,10 @@ import (
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/awsloadbalancercontroller"
 	//+kubebuilder:scaffold:imports
+)
+
+const (
+	clusterInfrastructureName = "cluster"
 )
 
 var (
@@ -104,7 +110,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	ec2Client, vpcID, clusterName, err := aws.GetEC2Client(context.TODO(), mgr.GetClient())
+	// get the cluster details
+	clusterName, awsRegion, err := clusterInfo(context.TODO(), mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "failed to get cluster details")
+		os.Exit(1)
+	}
+
+	// make and aws.EC2Client
+	ec2Client, err := aws.NewClient(context.TODO(), awsRegion)
+	if err != nil {
+		setupLog.Error(err, "failed to make aws client")
+		os.Exit(1)
+	}
+
+	// get the VPC ID where the cluster is running
+	vpcID, err := aws.GetVPCId(context.TODO(), ec2Client, clusterName)
+	if err != nil {
+		setupLog.Error(err, "failed to get VPC ID")
+		os.Exit(1)
+	}
+
 	if err != nil {
 		setupLog.Error(err, "unable to make EC2 Client")
 		os.Exit(1)
@@ -118,6 +144,7 @@ func main() {
 		Image:       image,
 		VPCID:       vpcID,
 		ClusterName: clusterName,
+		AWSRegion:   awsRegion,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AWSLoadBalancerController")
 		os.Exit(1)
@@ -138,4 +165,29 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func clusterInfo(ctx context.Context, client client.Client) (clusterName, awsRegion string, err error) {
+	var infra configv1.Infrastructure
+	infraKey := types.NamespacedName{
+		Name: clusterInfrastructureName,
+	}
+	err = client.Get(ctx, infraKey, &infra)
+	if err != nil {
+		err = fmt.Errorf("failed to get Infrastructure %q: %w", clusterInfrastructureName, err)
+		return
+	}
+
+	if infra.Status.InfrastructureName == "" {
+		err = fmt.Errorf("could not get AWS region from Infrastructure %q status", clusterInfrastructureName)
+		return
+	}
+	clusterName = infra.Status.InfrastructureName
+
+	if infra.Status.PlatformStatus == nil || infra.Status.PlatformStatus.AWS == nil || infra.Status.PlatformStatus.AWS.Region == "" {
+		err = fmt.Errorf("could not get AWS region from Infrastructure %q status", clusterInfrastructureName)
+		return
+	}
+	awsRegion = infra.Status.PlatformStatus.AWS.Region
+	return
 }
