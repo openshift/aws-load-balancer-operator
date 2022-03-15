@@ -109,7 +109,7 @@ func getLeaderElectionRules() []rbacv1.PolicyRule {
 		{
 			APIGroups:     []string{""},
 			Resources:     []string{"configmaps"},
-			ResourceNames: []string{"aws-load-balancer-contoller-leader"},
+			ResourceNames: []string{"aws-load-balancer-controller-leader"},
 			Verbs:         []string{"get", "update", "patch"},
 		},
 	}
