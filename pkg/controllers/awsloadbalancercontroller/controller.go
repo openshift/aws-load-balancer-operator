@@ -41,9 +41,8 @@ import (
 )
 
 const (
-	controllerBaseName = "aws-load-balancer-controller"
-	controllerName     = "cluster"
-
+	// the name of the AWSLoadBalancerController resource which will be reconciled
+	controllerName = "cluster"
 	// the port on which controller metrics are served
 	controllerMetricsPort = 8080
 	// the port on which the controller webhook is served
@@ -52,7 +51,7 @@ const (
 	controllerResourcePrefix = "aws-load-balancer-controller"
 )
 
-var commonResourceName = fmt.Sprintf("%s-%s", controllerBaseName, controllerName)
+var commonResourceName = fmt.Sprintf("%s-%s", controllerResourcePrefix, controllerName)
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
@@ -111,7 +110,11 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure default IngressClass for AWSLoadBalancerController %s: %v", req, err)
 	}
 
-	if err := r.ensureCredentialsRequest(ctx, r.Namespace, lbController); err != nil {
+	var (
+		credentialsRequestSecretName string
+		err                          error
+	)
+	if credentialsRequestSecretName, err = r.ensureCredentialsRequest(ctx, r.Namespace, lbController); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %s: %w", req, err)
 	}
 
@@ -127,7 +130,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %s: %w", req, err)
 	}
 
-	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, lbController)
+	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, credentialsRequestSecretName, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %s: %w", req, err)
 	}
