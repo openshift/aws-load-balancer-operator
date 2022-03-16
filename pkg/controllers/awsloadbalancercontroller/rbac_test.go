@@ -20,6 +20,8 @@ import (
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
+var testResourceName = "aws-load-balancer-controller-cluster"
+
 func TestEnsureClusterRolesAndBinding(t *testing.T) {
 	managedTypesList := []client.ObjectList{
 		&rbacv1.ClusterRoleList{},
@@ -45,21 +47,21 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "clusterrole",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "role",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -67,7 +69,7 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "rolebinding",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -84,14 +86,14 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "role",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -99,7 +101,7 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "rolebinding",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -116,21 +118,21 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "clusterrole",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "rolebinding",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -147,21 +149,21 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Modified,
 					ObjType:   "clusterrole",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "role",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -169,7 +171,7 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "rolebinding",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -186,21 +188,21 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "clusterrole",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
 					NamespacedName: types.NamespacedName{
-						Name: commonResourceName,
+						Name: testResourceName,
 					},
 				},
 				{
 					EventType: watch.Modified,
 					ObjType:   "role",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -208,7 +210,7 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					EventType: watch.Added,
 					ObjType:   "rolebinding",
 					NamespacedName: types.NamespacedName{
-						Name:      commonResourceName,
+						Name:      testResourceName,
 						Namespace: test.OperatorNamespace,
 					},
 				},
@@ -263,17 +265,17 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 }
 
 func testPreExistingClusterRole() *rbacv1.ClusterRole {
-	return buildClusterRole(commonResourceName, getControllerRules())
+	return buildClusterRole(testResourceName, getControllerRules())
 }
 
 func testOutDatedPreExistingClusterRole() *rbacv1.ClusterRole {
-	return buildClusterRole(commonResourceName, []rbacv1.PolicyRule{})
+	return buildClusterRole(testResourceName, []rbacv1.PolicyRule{})
 }
 
 func testPreExistingRole() *rbacv1.Role {
-	return buildRole(commonResourceName, test.OperatorNamespace, getLeaderElectionRules())
+	return buildRole(testResourceName, test.OperatorNamespace, getLeaderElectionRules())
 }
 
 func testOutDatedPreExistingRole() *rbacv1.Role {
-	return buildRole(commonResourceName, test.OperatorNamespace, []rbacv1.PolicyRule{})
+	return buildRole(testResourceName, test.OperatorNamespace, []rbacv1.PolicyRule{})
 }

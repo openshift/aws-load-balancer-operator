@@ -52,7 +52,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 	// The secret created will be in the operator namespace.
 	secretRef := createCredentialsSecretRef(credentialRequestSecretName, namespace)
 
-	desired, err := desiredCredentialsRequest(ctx, credReq, secretRef)
+	desired, err := desiredCredentialsRequest(ctx, credReq, secretRef, fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name))
 	if err != nil {
 		return "", fmt.Errorf("failed to build desired credential request: %w", err)
 	}
@@ -103,14 +103,14 @@ func (r *AWSLoadBalancerControllerReconciler) updateCredentialsRequest(ctx conte
 	return nil
 }
 
-func desiredCredentialsRequest(ctx context.Context, name types.NamespacedName, secretRef corev1.ObjectReference) (*cco.CredentialsRequest, error) {
+func desiredCredentialsRequest(ctx context.Context, name types.NamespacedName, secretRef corev1.ObjectReference, saName string) (*cco.CredentialsRequest, error) {
 	credentialsRequest := &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.Name,
 			Namespace: name.Namespace,
 		},
 		Spec: cco.CredentialsRequestSpec{
-			ServiceAccountNames: []string{commonResourceName},
+			ServiceAccountNames: []string{saName},
 			SecretRef:           secretRef,
 		},
 	}

@@ -20,7 +20,7 @@ import (
 func (r *AWSLoadBalancerControllerReconciler) ensureClusterRole(ctx context.Context, controller *albo.AWSLoadBalancerController) error {
 	reqLogger := log.FromContext(ctx)
 
-	desired := desiredClusterRole(ctx)
+	desired := desiredClusterRole(ctx, fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name))
 
 	reqLogger.Info("ensuring clusterroles", "clusterroles", desired.Name)
 
@@ -94,8 +94,8 @@ func (r *AWSLoadBalancerControllerReconciler) currentClusterRole(ctx context.Con
 	return true, obj, nil
 }
 
-func desiredClusterRole(ctx context.Context) *rbacv1.ClusterRole {
-	return buildClusterRole(commonResourceName, getControllerRules())
+func desiredClusterRole(ctx context.Context, name string) *rbacv1.ClusterRole {
+	return buildClusterRole(name, getControllerRules())
 }
 
 func buildClusterRole(name string, rules []rbacv1.PolicyRule) *rbacv1.ClusterRole {

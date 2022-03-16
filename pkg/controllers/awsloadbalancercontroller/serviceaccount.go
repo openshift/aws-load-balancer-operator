@@ -16,7 +16,7 @@ import (
 )
 
 func (r *AWSLoadBalancerControllerReconciler) ensureControllerServiceAccount(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController) (bool, *corev1.ServiceAccount, error) {
-	nsName := types.NamespacedName{Namespace: r.Namespace, Name: commonResourceName}
+	nsName := types.NamespacedName{Namespace: r.Namespace, Name: fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)}
 
 	reqLogger := log.FromContext(ctx).WithValues("serviceaccout", nsName)
 
@@ -58,7 +58,7 @@ func desiredAWSLoadBalancerServiceAccount(namespace string, controller *albo.AWS
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      commonResourceName,
+			Name:      fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name),
 		},
 	}
 }
