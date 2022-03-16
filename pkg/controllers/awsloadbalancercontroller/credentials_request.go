@@ -20,7 +20,6 @@ import (
 )
 
 const (
-	credentialRequestName      = "aws-load-balancer-credentials-request"
 	credentialRequestNamespace = "openshift-cloud-credential-operator"
 )
 
@@ -36,46 +35,45 @@ func (r *AWSLoadBalancerControllerReconciler) currentCredentialsRequest(ctx cont
 	return true, cr, nil
 }
 
-func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController) error {
-	credReq := createCredentialsRequestName(credentialRequestName)
+// ensureCredentialsRequest ensures the CredentialsRequest resource and return the secret where the credentials will be written
+func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController) (string, error) {
+	credReq := createCredentialsRequestName(fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name))
 
 	reqLogger := log.FromContext(ctx).WithValues("credentialsrequest", credReq)
-	reqLogger.Info("ensuring credentials secret for aws-load-balancer instance")
+	reqLogger.Info("ensuring credentials secret for aws-load-balancer-controller instance")
 
 	exists, current, err := r.currentCredentialsRequest(ctx, credReq)
 	if err != nil {
-		return fmt.Errorf("failed to find existing credential request: %w", err)
+		return "", fmt.Errorf("failed to find existing credential request: %w", err)
 	}
 
+	credentialRequestSecretName := fmt.Sprintf("%s-cr-%s", controllerResourcePrefix, controller.Name)
+
 	// The secret created will be in the operator namespace.
-	secretRef := createCredentialsSecretRef(namespace)
+	secretRef := createCredentialsSecretRef(credentialRequestSecretName, namespace)
 
 	desired, err := desiredCredentialsRequest(ctx, credReq, secretRef)
 	if err != nil {
-		return fmt.Errorf("failed to build desired credential request: %w", err)
+		return "", fmt.Errorf("failed to build desired credential request: %w", err)
 	}
 
 	err = controllerutil.SetOwnerReference(controller, desired, r.Scheme)
 	if err != nil {
-		return fmt.Errorf("failed to set owner reference on desired credentialrequest: %w", err)
+		return "", fmt.Errorf("failed to set owner reference on desired credentialrequest: %w", err)
 	}
 
 	if !exists {
 		if err := r.createCredentialsRequest(ctx, desired); err != nil {
-			return fmt.Errorf("failed to create aws-load-balancer credentials request %s: %w", desired.Name, err)
+			return "", fmt.Errorf("failed to create aws-load-balancer credentials request %s: %w", desired.Name, err)
 		}
-		_, _, err = r.currentCredentialsRequest(ctx, credReq)
-		return err
+		return credentialRequestSecretName, nil
 	}
 
-	if updated, err := r.updateCredentialsRequest(ctx, current, desired); err != nil {
-		return fmt.Errorf("failed to update credential request: %w", err)
-	} else if updated {
-		_, _, err = r.currentCredentialsRequest(ctx, credReq)
-		return err
+	if err := r.updateCredentialsRequest(ctx, current, desired); err != nil {
+		return "", fmt.Errorf("failed to update credential request: %w", err)
 	}
 
-	return nil
+	return credentialRequestSecretName, nil
 }
 
 func (r *AWSLoadBalancerControllerReconciler) createCredentialsRequest(ctx context.Context, desired *cco.CredentialsRequest) error {
@@ -85,24 +83,24 @@ func (r *AWSLoadBalancerControllerReconciler) createCredentialsRequest(ctx conte
 	return nil
 }
 
-// updateCredentialsRequest updates the credentialrequest if needed and returns a flag to denote if the update was done.
-func (r *AWSLoadBalancerControllerReconciler) updateCredentialsRequest(ctx context.Context, current *cco.CredentialsRequest, desired *cco.CredentialsRequest) (bool, error) {
+// updateCredentialsRequest updates the credentialrequest if needed
+func (r *AWSLoadBalancerControllerReconciler) updateCredentialsRequest(ctx context.Context, current *cco.CredentialsRequest, desired *cco.CredentialsRequest) error {
 	var updated *cco.CredentialsRequest
 	changed, err := isCredentialsRequestChanged(current, desired)
 	if err != nil {
-		return false, err
+		return err
 	}
 	if !changed {
-		return false, nil
+		return nil
 	}
 	updated = current.DeepCopy()
 	updated.Name = desired.Name
 	updated.Namespace = desired.Namespace
 	updated.Spec = desired.Spec
 	if err := r.Client.Update(ctx, updated); err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func desiredCredentialsRequest(ctx context.Context, name types.NamespacedName, secretRef corev1.ObjectReference) (*cco.CredentialsRequest, error) {
@@ -145,9 +143,9 @@ func createCredentialsRequestName(name string) types.NamespacedName {
 	}
 }
 
-func createCredentialsSecretRef(namespace string) corev1.ObjectReference {
+func createCredentialsSecretRef(name string, namespace string) corev1.ObjectReference {
 	return corev1.ObjectReference{
-		Name:      commonResourceName,
+		Name:      name,
 		Namespace: namespace,
 	}
 }

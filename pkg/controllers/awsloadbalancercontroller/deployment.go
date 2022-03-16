@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
@@ -25,17 +26,28 @@ const (
 	appInstanceName = "app.kubernetes.io/instance"
 	// awsRegionEnvVarName is the name of the environment variable which hold the AWS region for the controller
 	awsRegionEnvVarName = "AWS_DEFAULT_REGION"
+	// awsCredentialsEnvVarName is the name of the environment varible whose value points to the AWS credentials file
+	awsCredentialEnvVarName = "AWS_SHARED_CREDENTIALS_FILE"
+	// awsCredentialsDir is the directory with the credentials profile file
+	awsCredentialsDir = "/aws"
+	// awsCredentialsPath is the default AWS credentials path
+	awsCredentialsPath = "/aws/credentials"
+	// awsCredentialsVolumeName is the name of the volume with AWS credentials from the CredentialsRequest
+	awsCredentialsVolumeName = "aws-credentials"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace string, image string, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace string, image string, sa *corev1.ServiceAccount, crSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
 	deploymentName := fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)
+
+	reqLogger := log.FromContext(ctx).WithValues("deployment", deploymentName)
+	reqLogger.Info("ensuring deployment for aws-load-balancer-controller instance")
 
 	exists, current, err := r.currentDeployment(ctx, deploymentName, namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing deployment %s: %w", deploymentName, err)
 	}
 
-	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, controller, sa)
+	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, crSecretName, controller, sa)
 	err = controllerutil.SetOwnerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on deployment %s: %w", deploymentName, err)
@@ -65,7 +77,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 	return current, nil
 }
 
-func desiredDeployment(name, namespace, image string, vpcID, clusterName string, awsRegion string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
+func desiredDeployment(name, namespace, image string, vpcID, clusterName string, awsRegion string, credentialsRequestSecretName string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -86,7 +98,6 @@ func desiredDeployment(name, namespace, image string, vpcID, clusterName string,
 					},
 				},
 				Spec: corev1.PodSpec{
-
 					Containers: []corev1.Container{
 						{
 							Name:  "controller",
@@ -97,10 +108,28 @@ func desiredDeployment(name, namespace, image string, vpcID, clusterName string,
 									Name:  awsRegionEnvVarName,
 									Value: awsRegion,
 								},
+								{
+									Name:  awsCredentialEnvVarName,
+									Value: awsCredentialsPath,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      awsCredentialsVolumeName,
+									MountPath: awsCredentialsDir,
+								},
 							},
 						},
 					},
 					ServiceAccountName: sa.Name,
+					Volumes: []corev1.Volume{
+						{
+							Name: awsCredentialsVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{SecretName: credentialsRequestSecretName},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -214,6 +243,11 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 		}
 	}
 
+	if haveVolumesChanged(updated.Spec.Template.Spec.Volumes, desired.Spec.Template.Spec.Volumes) {
+		updated.Spec.Template.Spec.Volumes = desired.Spec.Template.Spec.Volumes
+		outdated = true
+	}
+
 	if outdated {
 		err := r.Update(ctx, updated)
 		if err != nil {
@@ -222,6 +256,29 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 		return true, nil
 	}
 	return false, nil
+}
+
+// haveVolumesChanged if the current volumes differs from the desired volumes
+func haveVolumesChanged(current []corev1.Volume, desired []corev1.Volume) bool {
+	if len(current) != len(desired) {
+		return true
+	}
+	for i := 0; i < len(current); i++ {
+		cv := current[i]
+		dv := desired[i]
+		if cv.Name != dv.Name {
+			return true
+		}
+		if dv.Secret != nil {
+			if cv.Secret == nil {
+				return true
+			}
+			if cv.Secret.SecretName != dv.Secret.SecretName {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func hasContainerChanged(current, desired corev1.Container) (corev1.Container, bool) {
@@ -246,6 +303,19 @@ func hasContainerChanged(current, desired corev1.Container) (corev1.Container, b
 		}
 	} else {
 		updated = true
+	}
+
+	if len(current.VolumeMounts) != len(desired.VolumeMounts) {
+		updated = true
+	} else {
+		for i := 0; i < len(current.VolumeMounts); i++ {
+			cvm := current.VolumeMounts[i]
+			dvm := desired.VolumeMounts[i]
+			if cvm.Name != dvm.Name || cvm.MountPath != dvm.MountPath {
+				updated = true
+				break
+			}
+		}
 	}
 
 	return desired, updated

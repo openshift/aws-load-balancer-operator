@@ -2,6 +2,7 @@ package awsloadbalancercontroller
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -21,7 +22,6 @@ import (
 )
 
 const (
-	testCredentialsRequestName      = credentialRequestName
 	testCredentialsRequestNamespace = credentialRequestNamespace
 )
 
@@ -47,7 +47,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 					ObjType:   "credentialsrequest",
 					NamespacedName: types.NamespacedName{
 						Namespace: testCredentialsRequestNamespace,
-						Name:      testCredentialsRequestName,
+						Name:      "aws-load-balancer-controller-cluster",
 					},
 				},
 			},
@@ -64,7 +64,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 					ObjType:   "credentialsrequest",
 					NamespacedName: types.NamespacedName{
 						Namespace: testCredentialsRequestNamespace,
-						Name:      testCredentialsRequestName,
+						Name:      "aws-load-balancer-controller-cluster",
 					},
 				},
 			},
@@ -99,7 +99,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 			c.Start(context.TODO())
 			defer c.Stop()
 
-			err := r.ensureCredentialsRequest(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: metav1.ObjectMeta{Name: controllerName}})
+			crSecretName, err := r.ensureCredentialsRequest(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: metav1.ObjectMeta{Name: controllerName}})
 			// error check
 			if err != nil {
 				if !tc.errExpected {
@@ -107,6 +107,11 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 				}
 			} else if tc.errExpected {
 				t.Fatalf("error expected but not received")
+			}
+
+			expectedSecretName := fmt.Sprintf("%s-cr-%s", controllerResourcePrefix, "cluster")
+			if err == nil && crSecretName != expectedSecretName {
+				t.Errorf("unexpected CredentialsRequest secret name, expected %q, got %q", expectedSecretName, crSecretName)
 			}
 
 			// collect the events received from Reconcile()
@@ -125,7 +130,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 func testPartialCredentialsRequest() *cco.CredentialsRequest {
 	return &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testCredentialsRequestName,
+			Name:      "aws-load-balancer-controller-cluster",
 			Namespace: testCredentialsRequestNamespace,
 		},
 		Spec: cco.CredentialsRequestSpec{
@@ -139,12 +144,12 @@ func testCompleteCredentialsRequest() *cco.CredentialsRequest {
 	cfg, _ := createProviderConfig(codec)
 	return &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testCredentialsRequestName,
+			Name:      "aws-load-balancer-controller-cluster",
 			Namespace: testCredentialsRequestNamespace,
 		},
 		Spec: cco.CredentialsRequestSpec{
 			ProviderSpec: cfg,
-			SecretRef:    createCredentialsSecretRef(test.OperatorNamespace),
+			SecretRef:    createCredentialsSecretRef("aws-load-balancer-controller-cr-cluster", test.OperatorNamespace),
 		},
 	}
 }

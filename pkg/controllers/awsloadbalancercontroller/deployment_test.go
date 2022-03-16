@@ -158,6 +158,7 @@ type testDeploymentBuilder struct {
 	version        string
 	containers     []corev1.Container
 	ownerReference []metav1.OwnerReference
+	volumes        []corev1.Volume
 }
 
 func testDeployment(name, namespace, serviceAccount string) *testDeploymentBuilder {
@@ -190,6 +191,11 @@ func (b *testDeploymentBuilder) withOwnerReference(name string) *testDeploymentB
 	return b
 }
 
+func (b *testDeploymentBuilder) withVolumes(volumes ...corev1.Volume) *testDeploymentBuilder {
+	b.volumes = volumes
+	return b
+}
+
 func (b *testDeploymentBuilder) build() *appsv1.Deployment {
 	d := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
@@ -219,6 +225,7 @@ func (b *testDeploymentBuilder) build() *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers:         b.containers,
 					ServiceAccountName: b.serviceAccount,
+					Volumes:            b.volumes,
 				},
 			},
 		},
@@ -232,10 +239,11 @@ func (b *testDeploymentBuilder) build() *appsv1.Deployment {
 }
 
 type testContainerBuilder struct {
-	name  string
-	image string
-	args  []string
-	env   []corev1.EnvVar
+	name         string
+	image        string
+	args         []string
+	env          []corev1.EnvVar
+	volumeMounts []corev1.VolumeMount
 }
 
 func testContainer(name, image string) *testContainerBuilder {
@@ -254,17 +262,23 @@ func (b *testContainerBuilder) withArgs(args ...string) *testContainerBuilder {
 	return b
 }
 
-func (b *testContainerBuilder) withRegionEnv() *testContainerBuilder {
-	b.env = append(b.env, corev1.EnvVar{Name: awsRegionEnvVarName, Value: testAWSRegion})
+func (b *testContainerBuilder) withDefaultEnvs() *testContainerBuilder {
+	b.env = append(b.env, corev1.EnvVar{Name: awsRegionEnvVarName, Value: testAWSRegion}, corev1.EnvVar{Name: awsCredentialEnvVarName, Value: awsCredentialsPath})
+	return b
+}
+
+func (b *testContainerBuilder) withVolumeMounts(mounts ...corev1.VolumeMount) *testContainerBuilder {
+	b.volumeMounts = mounts
 	return b
 }
 
 func (b *testContainerBuilder) build() corev1.Container {
 	return corev1.Container{
-		Name:  b.name,
-		Image: b.image,
-		Args:  b.args,
-		Env:   b.env,
+		Name:         b.name,
+		Image:        b.image,
+		Args:         b.args,
+		Env:          b.env,
+		VolumeMounts: b.volumeMounts,
 	}
 }
 
@@ -412,6 +426,85 @@ func TestUpdateDeployment(t *testing.T) {
 				).build(),
 			).build(),
 		},
+		{
+			name: "volume added",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).withVolumes(
+				corev1.Volume{Name: "test-mount"},
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).withVolumes(
+				corev1.Volume{Name: "test-mount"},
+			).build(),
+			expectUpdate: true,
+		},
+		{
+			name: "volume changed",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).withVolumes(
+				corev1.Volume{Name: "test-mount-1"},
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).withVolumes(
+				corev1.Volume{Name: "test-mount-2"},
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).withVolumes(
+				corev1.Volume{Name: "test-mount-2"},
+			).build(),
+			expectUpdate: true,
+		},
+		{
+			name: "volume mount added",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withVolumeMounts(
+					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
+				).build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withVolumeMounts(
+					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
+					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
+				).build(),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withVolumeMounts(
+					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
+					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
+				).build(),
+			).build(),
+			expectUpdate: true,
+		},
+		{
+			name: "volume mount changed",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withVolumeMounts(
+					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
+					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
+				).build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withVolumeMounts(
+					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
+					corev1.VolumeMount{Name: "config", MountPath: "/var/config"},
+				).build(),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+				testContainer("controller", "controller:v1").withVolumeMounts(
+					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
+					corev1.VolumeMount{Name: "config", MountPath: "/var/config"},
+				).build(),
+			).build(),
+			expectUpdate: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -460,8 +553,12 @@ func TestEnsureDeployment(t *testing.T) {
 				"cluster",
 				"test-namespace",
 				"test-sa").withContainers(
-				testContainer("controller", "test-image").withRegionEnv().build(),
-			).withOwnerReference("cluster").build(),
+				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
+					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
+				).build(),
+			).withOwnerReference("cluster").withVolumes(
+				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-secret"}}},
+			).build(),
 		},
 		{
 			name:           "existing controller",
@@ -483,8 +580,12 @@ func TestEnsureDeployment(t *testing.T) {
 				"test-namespace",
 				"test-sa",
 			).withContainers(
-				testContainer("controller", "test-image").withRegionEnv().build(),
-			).withResourceVersion("2").build(),
+				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
+					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
+				).build(),
+			).withResourceVersion("2").withVolumes(
+				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-secret"}}},
+			).build(),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -496,7 +597,7 @@ func TestEnsureDeployment(t *testing.T) {
 				VPCID:       "test-vpc",
 				AWSRegion:   testAWSRegion,
 			}
-			_, err := r.ensureDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, tc.controller)
+			_, err := r.ensureDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, "test-secret", tc.controller)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
