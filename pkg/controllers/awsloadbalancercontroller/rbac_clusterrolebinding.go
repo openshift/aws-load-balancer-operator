@@ -20,7 +20,7 @@ import (
 func (r *AWSLoadBalancerControllerReconciler) ensureClusterRoleBinding(ctx context.Context, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) error {
 	reqLogger := log.FromContext(ctx)
 
-	desired := desiredClusterRoleBinding(ctx, sa)
+	desired := desiredClusterRoleBinding(ctx, sa, fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name))
 	reqLogger.Info("ensuring clusterrolebindings", "clusterrolebindings", desired.Name)
 
 	if err := controllerutil.SetControllerReference(controller, desired, r.Scheme); err != nil {
@@ -100,8 +100,8 @@ func (r *AWSLoadBalancerControllerReconciler) currentClusterRoleBinding(ctx cont
 	return true, obj, nil
 }
 
-func desiredClusterRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) *rbacv1.ClusterRoleBinding {
-	return buildClusterRoleBinding(commonResourceName, commonResourceName, sa)
+func desiredClusterRoleBinding(ctx context.Context, sa *corev1.ServiceAccount, name string) *rbacv1.ClusterRoleBinding {
+	return buildClusterRoleBinding(name, name, sa)
 }
 
 func buildClusterRoleBinding(name, clusterrole string, sa *corev1.ServiceAccount) *rbacv1.ClusterRoleBinding {

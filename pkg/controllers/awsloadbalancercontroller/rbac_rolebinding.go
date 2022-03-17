@@ -20,7 +20,7 @@ import (
 func (r *AWSLoadBalancerControllerReconciler) ensureRoleBinding(ctx context.Context, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) error {
 	reqLogger := log.FromContext(ctx)
 
-	desired := desiredRoleBinding(ctx, r.Namespace, sa)
+	desired := desiredRoleBinding(ctx, fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name), r.Namespace, sa)
 	reqLogger.Info("ensuring rolebindings", "rolebindings", desired.Name)
 
 	if err := controllerutil.SetControllerReference(controller, desired, r.Scheme); err != nil {
@@ -98,8 +98,8 @@ func (r *AWSLoadBalancerControllerReconciler) currentRoleBinding(ctx context.Con
 	return true, obj, nil
 }
 
-func desiredRoleBinding(ctx context.Context, namespace string, sa *corev1.ServiceAccount) *rbacv1.RoleBinding {
-	return buildRoleBinding(commonResourceName, namespace, commonResourceName, sa)
+func desiredRoleBinding(ctx context.Context, name, namespace string, sa *corev1.ServiceAccount) *rbacv1.RoleBinding {
+	return buildRoleBinding(name, namespace, name, sa)
 }
 
 func buildRoleBinding(name, namespace, role string, sa *corev1.ServiceAccount) *rbacv1.RoleBinding {

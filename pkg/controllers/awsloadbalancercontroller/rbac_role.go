@@ -19,7 +19,7 @@ import (
 func (r *AWSLoadBalancerControllerReconciler) ensureRole(ctx context.Context, controller *albo.AWSLoadBalancerController) error {
 	reqLogger := log.FromContext(ctx)
 
-	desired := desiredRole(ctx, r.Namespace)
+	desired := desiredRole(ctx, r.Namespace, fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name))
 	reqLogger.Info("ensuring roles", "roles", desired.Name)
 
 	if err := controllerutil.SetControllerReference(controller, desired, r.Scheme); err != nil {
@@ -93,8 +93,8 @@ func (r *AWSLoadBalancerControllerReconciler) currentRole(ctx context.Context, r
 	return true, obj, nil
 }
 
-func desiredRole(ctx context.Context, namespace string) *rbacv1.Role {
-	return buildRole(commonResourceName, namespace, getLeaderElectionRules())
+func desiredRole(ctx context.Context, namespace string, name string) *rbacv1.Role {
+	return buildRole(name, namespace, getLeaderElectionRules())
 }
 
 func buildRole(name, namespace string, rules []rbacv1.PolicyRule) *rbacv1.Role {

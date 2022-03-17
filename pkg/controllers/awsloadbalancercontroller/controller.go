@@ -51,8 +51,6 @@ const (
 	controllerResourcePrefix = "aws-load-balancer-controller"
 )
 
-var commonResourceName = fmt.Sprintf("%s-%s", controllerResourcePrefix, controllerName)
-
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
 	client.Client

@@ -44,7 +44,7 @@ func TestEnsureServiceAccount(t *testing.T) {
 					ObjType:   "serviceaccount",
 					NamespacedName: types.NamespacedName{
 						Namespace: test.OperatorNamespace,
-						Name:      commonResourceName,
+						Name:      "aws-load-balancer-controller-cluster",
 					},
 				},
 			},
@@ -110,7 +110,7 @@ func TestEnsureServiceAccount(t *testing.T) {
 func testServiceAccount() *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      commonResourceName,
+			Name:      "aws-load-balancer-controller-cluster",
 			Namespace: test.OperatorNamespace,
 		},
 	}
