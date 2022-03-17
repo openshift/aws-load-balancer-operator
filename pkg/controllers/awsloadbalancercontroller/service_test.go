@@ -19,9 +19,13 @@ import (
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
-func testControllerService(name, namespace string, selector map[string]string) *corev1.Service {
+func testControllerService(name, namespace string, selector, annotations map[string]string) *corev1.Service {
 	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: annotations,
+		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
@@ -63,7 +67,12 @@ func TestEnsureService(t *testing.T) {
 					},
 				},
 			},
-			expectedService: testControllerService("aws-load-balancer-controller-test", "test-namespace", map[string]string{"app": "controller"}),
+			expectedService: testControllerService(
+				"aws-load-balancer-controller-test",
+				"test-namespace",
+				map[string]string{"app": "controller"},
+				map[string]string{servingSecretAnnotationName: "serving-secret"},
+			),
 		},
 		{
 			name: "existing service, selector modified",
@@ -73,7 +82,12 @@ func TestEnsureService(t *testing.T) {
 				},
 			},
 			existingObjects: []client.Object{
-				testControllerService("aws-load-balancer-controller-test", "test-namespace", map[string]string{"app": "controller-old"}),
+				testControllerService(
+					"aws-load-balancer-controller-test",
+					"test-namespace",
+					map[string]string{"app": "controller-old"},
+					map[string]string{servingSecretAnnotationName: "serving-secret"},
+				),
 			},
 			deployment: &appsv1.Deployment{
 				Spec: appsv1.DeploymentSpec{
@@ -82,7 +96,12 @@ func TestEnsureService(t *testing.T) {
 					},
 				},
 			},
-			expectedService: testControllerService("aws-load-balancer-controller-test", "test-namespace", map[string]string{"app": "controller"}),
+			expectedService: testControllerService(
+				"aws-load-balancer-controller-test",
+				"test-namespace",
+				map[string]string{"app": "controller"},
+				map[string]string{servingSecretAnnotationName: "serving-secret"},
+			),
 		},
 		{
 			name: "existing service, ports modified",
@@ -119,7 +138,12 @@ func TestEnsureService(t *testing.T) {
 					},
 				},
 			},
-			expectedService: testControllerService("aws-load-balancer-controller-test", "test-namespace", map[string]string{"app": "controller"}),
+			expectedService: testControllerService(
+				"aws-load-balancer-controller-test",
+				"test-namespace",
+				map[string]string{"app": "controller"},
+				map[string]string{servingSecretAnnotationName: "serving-secret"},
+			),
 		},
 		{
 			name: "existing service, service type modified",
@@ -130,14 +154,17 @@ func TestEnsureService(t *testing.T) {
 			},
 			existingObjects: []client.Object{
 				&corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{Name: "aws-load-balancer-controller-test", Namespace: "test-namespace"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "aws-load-balancer-controller-test", Namespace: "test-namespace",
+						Annotations: map[string]string{servingSecretAnnotationName: ""},
+					},
 					Spec: corev1.ServiceSpec{
 						Type: corev1.ServiceTypeNodePort,
 						Ports: []corev1.ServicePort{
 							{
 								Name:       "webhook",
-								Port:       9440,
-								TargetPort: intstr.FromInt(9440),
+								Port:       controllerWebhookPort,
+								TargetPort: intstr.FromInt(controllerWebhookPort),
 							},
 							{
 								Name:       "metrics",
@@ -156,7 +183,44 @@ func TestEnsureService(t *testing.T) {
 					},
 				},
 			},
-			expectedService: testControllerService("aws-load-balancer-controller-test", "test-namespace", map[string]string{"app": "controller"}),
+			expectedService: testControllerService(
+				"aws-load-balancer-controller-test",
+				"test-namespace",
+				map[string]string{"app": "controller"},
+				map[string]string{servingSecretAnnotationName: "serving-secret"},
+			),
+		},
+		{
+			name: "existing service, extra annotations present",
+			controller: &v1alpha1.AWSLoadBalancerController{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			existingObjects: []client.Object{
+				testControllerService(
+					"aws-load-balancer-controller-test",
+					"test-namespace",
+					map[string]string{"app": "controller"},
+					map[string]string{"extra-annotation-key": "extra-annotation-value"},
+				),
+			},
+			deployment: &appsv1.Deployment{
+				Spec: appsv1.DeploymentSpec{
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{"app": "controller"},
+					},
+				},
+			},
+			expectedService: testControllerService(
+				"aws-load-balancer-controller-test",
+				"test-namespace",
+				map[string]string{"app": "controller"},
+				map[string]string{
+					servingSecretAnnotationName: "serving-secret",
+					"extra-annotation-key":      "extra-annotation-value",
+				},
+			),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -165,7 +229,7 @@ func TestEnsureService(t *testing.T) {
 				Client: testClient,
 				Scheme: test.Scheme,
 			}
-			_, err := r.ensureService(context.Background(), "test-namespace", tc.controller, tc.deployment)
+			_, err := r.ensureService(context.Background(), "test-namespace", tc.controller, "serving-secret", tc.deployment)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
@@ -176,6 +240,11 @@ func TestEnsureService(t *testing.T) {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
+
+			if diff := cmp.Diff(tc.expectedService.Annotations, s.Annotations); diff != "" {
+				t.Errorf("unexpected annotations\n%s", diff)
+			}
+
 			if !equality.Semantic.DeepEqual(s.Spec, tc.expectedService.Spec) {
 				t.Errorf("service has unexpected configuration:\n%s", cmp.Diff(s.Spec, tc.expectedService.Spec))
 			}

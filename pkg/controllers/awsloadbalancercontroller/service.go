@@ -19,13 +19,17 @@ import (
 	"github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureService(ctx context.Context, namespace string, controller *v1alpha1.AWSLoadBalancerController, deployment *appsv1.Deployment) (*corev1.Service, error) {
+const (
+	servingSecretAnnotationName = "service.beta.openshift.io/serving-cert-secret-name"
+)
+
+func (r *AWSLoadBalancerControllerReconciler) ensureService(ctx context.Context, namespace string, controller *v1alpha1.AWSLoadBalancerController, servingSecretName string, deployment *appsv1.Deployment) (*corev1.Service, error) {
 	serviceName := types.NamespacedName{
 		Name:      fmt.Sprintf("aws-load-balancer-controller-%s", controller.Name),
 		Namespace: namespace,
 	}
 
-	desired := desiredService(serviceName.Name, serviceName.Namespace, deployment.Spec.Selector.MatchLabels)
+	desired := desiredService(serviceName.Name, serviceName.Namespace, servingSecretName, deployment.Spec.Selector.MatchLabels)
 	err := controllerutil.SetOwnerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on desired service: %w", err)
@@ -42,11 +46,14 @@ func (r *AWSLoadBalancerControllerReconciler) ensureService(ctx context.Context,
 	return r.updateService(ctx, &service, desired)
 }
 
-func desiredService(name, namespace string, selector map[string]string) *corev1.Service {
+func desiredService(name, namespace string, servingSecretName string, selector map[string]string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				servingSecretAnnotationName: servingSecretName,
+			},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -82,6 +89,17 @@ func (r *AWSLoadBalancerControllerReconciler) updateService(ctx context.Context,
 
 	if updatedService.Spec.Type != desired.Spec.Type {
 		updatedService.Spec.Type = desired.Spec.Type
+		updated = true
+	}
+
+	if updatedService.Annotations == nil {
+		updatedService.Annotations = make(map[string]string)
+	}
+	for annotationKey, annotationValue := range desired.Annotations {
+		if currentAnnotationValue, ok := updatedService.Annotations[annotationKey]; !ok || currentAnnotationValue != annotationValue {
+			updatedService.Annotations[annotationKey] = annotationValue
+			updated = true
+		}
 	}
 
 	if updated {

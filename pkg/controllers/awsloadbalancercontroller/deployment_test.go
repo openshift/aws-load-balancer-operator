@@ -134,6 +134,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--cluster-name=test-cluster",
 				"--disable-ingress-class-annotation",
 				"--disable-ingress-group-name-annotation",
+				"--webhook-cert-dir=/tls",
 			)
 			expectedArgs := defaultArgs.Union(tc.expectedArgs)
 			if tc.controller.Spec.IngressClass == "" {
@@ -159,10 +160,11 @@ type testDeploymentBuilder struct {
 	containers     []corev1.Container
 	ownerReference []metav1.OwnerReference
 	volumes        []corev1.Volume
+	certsSecret    string
 }
 
-func testDeployment(name, namespace, serviceAccount string) *testDeploymentBuilder {
-	return &testDeploymentBuilder{name: name, namespace: namespace, serviceAccount: serviceAccount}
+func testDeployment(name, namespace, serviceAccount string, certsSecret string) *testDeploymentBuilder {
+	return &testDeploymentBuilder{name: name, namespace: namespace, serviceAccount: serviceAccount, certsSecret: certsSecret}
 }
 
 func (b *testDeploymentBuilder) withReplicas(replicas int32) *testDeploymentBuilder {
@@ -292,64 +294,64 @@ func TestUpdateDeployment(t *testing.T) {
 	}{
 		{
 			name: "image changed",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v2").build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v2").build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "replicas changed from value",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withReplicas(1).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withReplicas(2).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withReplicas(2).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "replicas changed from nil",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withReplicas(1).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withReplicas(1).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "container args changed",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg2", "--arg3").build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg2", "--arg3").build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "container environment variables changed",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withEnvs(
 					corev1.EnvVar{Name: "test-1", Value: "value-1"},
 				).build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withEnvs(
 					corev1.EnvVar{
 						Name: "test-1",
@@ -362,7 +364,7 @@ func TestUpdateDeployment(t *testing.T) {
 					corev1.EnvVar{Name: "test-2", Value: "value-2"},
 				).build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withEnvs(
 					corev1.EnvVar{
 						Name: "test-1",
@@ -379,47 +381,47 @@ func TestUpdateDeployment(t *testing.T) {
 		},
 		{
 			name: "container injected into current deployment",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "desired container removed from deployment",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
 			expectUpdate: true,
 		}, {
 			name: "no change in deployment",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
 					corev1.EnvVar{Name: "test-1", Value: "test-1"},
 					corev1.EnvVar{Name: "test-2", Value: "test-2"},
 				).build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
 					corev1.EnvVar{Name: "test-1", Value: "test-1"},
 					corev1.EnvVar{Name: "test-2", Value: "test-2"},
 				).build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
 					corev1.EnvVar{Name: "test-1", Value: "test-1"},
 					corev1.EnvVar{Name: "test-2", Value: "test-2"},
@@ -428,15 +430,15 @@ func TestUpdateDeployment(t *testing.T) {
 		},
 		{
 			name: "volume added",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withVolumes(
 				corev1.Volume{Name: "test-mount"},
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withVolumes(
 				corev1.Volume{Name: "test-mount"},
@@ -445,17 +447,17 @@ func TestUpdateDeployment(t *testing.T) {
 		},
 		{
 			name: "volume changed",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withVolumes(
 				corev1.Volume{Name: "test-mount-1"},
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withVolumes(
 				corev1.Volume{Name: "test-mount-2"},
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").build(),
 			).withVolumes(
 				corev1.Volume{Name: "test-mount-2"},
@@ -464,18 +466,18 @@ func TestUpdateDeployment(t *testing.T) {
 		},
 		{
 			name: "volume mount added",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withVolumeMounts(
 					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
 				).build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withVolumeMounts(
 					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
 					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
 				).build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withVolumeMounts(
 					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
 					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
@@ -485,19 +487,19 @@ func TestUpdateDeployment(t *testing.T) {
 		},
 		{
 			name: "volume mount changed",
-			existingDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withVolumeMounts(
 					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
 					corev1.VolumeMount{Name: "config", MountPath: "/opt/config"},
 				).build(),
 			).build(),
-			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withVolumeMounts(
 					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
 					corev1.VolumeMount{Name: "config", MountPath: "/var/config"},
 				).build(),
 			).build(),
-			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa").withContainers(
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withVolumeMounts(
 					corev1.VolumeMount{Name: "credentials", MountPath: "/opt/credentials"},
 					corev1.VolumeMount{Name: "config", MountPath: "/var/config"},
@@ -552,12 +554,14 @@ func TestEnsureDeployment(t *testing.T) {
 			expectedDeployment: testDeployment(
 				"cluster",
 				"test-namespace",
-				"test-sa").withContainers(
+				"test-sa", "test-serving").withContainers(
 				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
+					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
 				).build(),
 			).withOwnerReference("cluster").withVolumes(
-				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-secret"}}},
+				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
+				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 			).build(),
 		},
 		{
@@ -571,7 +575,8 @@ func TestEnsureDeployment(t *testing.T) {
 				testDeployment(
 					"cluster",
 					"test-namespace",
-					"test-sa").withContainers(
+					"test-sa",
+					"test-serving").withContainers(
 					testContainer("controller", "controller:v0.1").build(),
 				).build(),
 			},
@@ -579,12 +584,15 @@ func TestEnsureDeployment(t *testing.T) {
 				"cluster",
 				"test-namespace",
 				"test-sa",
+				"test-serving",
 			).withContainers(
 				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
+					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
 				).build(),
 			).withResourceVersion("2").withVolumes(
-				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-secret"}}},
+				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
+				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 			).build(),
 		},
 	} {
@@ -597,7 +605,7 @@ func TestEnsureDeployment(t *testing.T) {
 				VPCID:       "test-vpc",
 				AWSRegion:   testAWSRegion,
 			}
-			_, err := r.ensureDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, "test-secret", tc.controller)
+			_, err := r.ensureDeployment(context.Background(), "test-namespace", "test-image", tc.serviceAccount, "test-credentials", "test-serving", tc.controller)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
