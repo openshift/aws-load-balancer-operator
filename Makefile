@@ -288,3 +288,14 @@ verify:
 .PHONY: lint
 lint:
 	$(GOLANGCI_LINT) run --config .golangci.yaml
+
+.PHONY: test-e2e
+test-e2e:
+	go test \
+	$(GOBUILD_VERSION_ARGS) \
+	-timeout $(E2E_TIMEOUT) \
+	-count 1 \
+	-v \
+	-tags e2e \
+	-run "$(TEST)" \
+	./test/e2e
