@@ -7,42 +7,44 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
+	"time"
 
 	arv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	kscheme "k8s.io/client-go/kubernetes/scheme"
 
 	configv1 "github.com/openshift/api/config/v1"
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	networkingolmv1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
 var (
-	kubeClient  client.Client
-	scheme      = runtime.NewScheme()
-	infraConfig configv1.Infrastructure
+	kubeClient        client.Client
+	scheme            = kscheme.Scheme
+	infraConfig       configv1.Infrastructure
+	operatorName      = "aws-load-balancer-operator-controller-manager"
+	operatorNamespace = "aws-load-balancer-operator"
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(cco.Install(scheme))
-
 	utilruntime.Must(networkingolmv1alpha1.AddToScheme(scheme))
-
 	utilruntime.Must(cco.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
-
 	utilruntime.Must(configv1.Install(scheme))
 	utilruntime.Must(cco.Install(scheme))
 	utilruntime.Must(networkingv1.AddToScheme(scheme))
@@ -72,6 +74,43 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+func waitForOperatorDeploymentStatusCondition(t *testing.T, cl client.Client, conditions ...appsv1.DeploymentCondition) error {
+	t.Helper()
+	return wait.PollImmediate(1*time.Second, 5*time.Minute, func() (bool, error) {
+		dep := &appsv1.Deployment{}
+		depNamespacedName := types.NamespacedName{
+			Name:      operatorName,
+			Namespace: operatorNamespace,
+		}
+		if err := cl.Get(context.TODO(), depNamespacedName, dep); err != nil {
+			t.Logf("failed to get deployment %s: %v", depNamespacedName.Name, err)
+			return false, nil
+		}
+
+		expected := deploymentConditionMap(conditions...)
+		current := deploymentConditionMap(dep.Status.Conditions...)
+		return conditionsMatchExpected(expected, current), nil
+	})
+}
+
+func deploymentConditionMap(conditions ...appsv1.DeploymentCondition) map[string]string {
+	conds := map[string]string{}
+	for _, cond := range conditions {
+		conds[string(cond.Type)] = string(cond.Status)
+	}
+	return conds
+}
+
+func conditionsMatchExpected(expected, actual map[string]string) bool {
+	filtered := map[string]string{}
+	for k := range actual {
+		if _, comparable := expected[k]; comparable {
+			filtered[k] = actual[k]
+		}
+	}
+	return reflect.DeepEqual(expected, filtered)
 }
 
 func ensureCredentialsRequest() error {
@@ -106,19 +145,23 @@ func ensureCredentialsRequest() error {
 	cr := cco.CredentialsRequest{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "aws-load-balancer-operator",
-			Namespace: "aws-load-balancer-operator",
+			Namespace: operatorNamespace,
 		},
 		Spec: cco.CredentialsRequestSpec{
 			SecretRef: corev1.ObjectReference{
 				Name:      "aws-load-balancer-operator",
-				Namespace: "aws-load-balancer-operator",
+				Namespace: operatorNamespace,
 			},
-			ServiceAccountNames: []string{"aws-load-balancer-operator-controller-manager"},
+			ServiceAccountNames: []string{operatorName},
 			ProviderSpec:        providerSpec,
 		},
 	}
 
-	return kubeClient.Create(context.Background(), &cr)
+	if err = kubeClient.Create(context.Background(), &cr); err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
 }
 
 func TestOperatorAvailable(t *testing.T) {

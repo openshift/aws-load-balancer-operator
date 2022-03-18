@@ -57,6 +57,8 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+E2E_TIMEOUT ?= 1h
+
 # Use docker as the default container engine
 CONTAINER_ENGINE ?= docker
 
@@ -292,7 +294,6 @@ lint:
 .PHONY: test-e2e
 test-e2e:
 	go test \
-	$(GOBUILD_VERSION_ARGS) \
 	-timeout $(E2E_TIMEOUT) \
 	-count 1 \
 	-v \
