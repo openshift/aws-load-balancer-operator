@@ -40,7 +40,7 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 	clusterID := infra.Status.InfrastructureName
 
 	// list the subnets which are tagged as owned by the cluster
-	subnets, err := r.EC2Client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+	subnetsPaginator := ec2.NewDescribeSubnetsPaginator(r.EC2Client, &ec2.DescribeSubnetsInput{
 		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String(tagKeyFilterName),
@@ -48,11 +48,17 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 			},
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("failed to list subnets for cluster id %s: %w", clusterID, err)
+
+	var subnets []ec2types.Subnet
+	for subnetsPaginator.HasMorePages() {
+		response, err := subnetsPaginator.NextPage(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to list subnets for cluster id %s: %w", clusterID, err)
+		}
+		subnets = append(subnets, response.Subnets...)
 	}
 
-	if len(subnets.Subnets) == 0 {
+	if len(subnets) == 0 {
 		return fmt.Errorf("no subnets with tag %s found", fmt.Sprintf(clusterOwnedTagKey, clusterID))
 	}
 
@@ -63,7 +69,7 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 		taggedSubnets   sets.String
 	)
 
-	internalSubnets, publicSubnets, taggedSubnets, untaggedSubnets, err = classifySubnets(subnets.Subnets)
+	internalSubnets, publicSubnets, taggedSubnets, untaggedSubnets, err = classifySubnets(subnets)
 	if err != nil {
 		return fmt.Errorf("failed to classify subnets of cluster %s: %w", clusterID, err)
 	}
