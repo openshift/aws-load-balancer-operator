@@ -27,6 +27,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
@@ -79,67 +80,96 @@ type AWSLoadBalancerControllerReconciler struct {
 func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	lbController := &albo.AWSLoadBalancerController{}
-	if err := r.Client.Get(ctx, req.NamespacedName, lbController); err != nil {
-		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, fmt.Errorf("failed to get AWSLoadBalancerController %s: %w", req, err)
+	lbController, exists, err := r.getAWSLoadBalancerController(ctx, req.Name)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get AWSLoadBalancerController %q: %w", req.Name, err)
+	}
+	if !exists {
+		return ctrl.Result{}, nil
 	}
 
 	servingSecretName := fmt.Sprintf("%s-serving-%s", controllerResourcePrefix, lbController.Name)
 
 	// if the processed subnets have not yet been written into the status or if the tagging policy has changed then update the subnets
 	if lbController.Status.Subnets == nil || (lbController.Spec.SubnetTagging != lbController.Status.Subnets.SubnetTagging) {
-		err := r.tagSubnets(ctx, lbController)
+		internalSubnets, publicSubnets, taggedSubnets, untaggedSubnets, err := r.tagSubnets(ctx, lbController)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update subnets: %w", err)
+		}
+		err = r.updateStatusSubnets(ctx, lbController, internalSubnets, publicSubnets, untaggedSubnets, taggedSubnets, lbController.Spec.SubnetTagging)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update AWSLoadBalancerController %q status with subnets: %w", req.Name, err)
+		}
+		// reload the resource after updating the status
+		lbController, _, err = r.getAWSLoadBalancerController(ctx, req.Name)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get AWSLoadBalancerController %q: %w", req.Name, err)
 		}
 	}
 
 	if err := r.ensureIngressClass(ctx, lbController); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure default IngressClass for AWSLoadBalancerController %s: %v", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to ensure default IngressClass for AWSLoadBalancerController %q: %v", req.Name, err)
+	}
+	// if the ingress class in the status differs from what's in the spec update it
+	if lbController.Spec.IngressClass != lbController.Status.IngressClass {
+		err = r.updateStatusIngressClass(ctx, lbController, lbController.Spec.IngressClass)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update IngressClass in AWSLoadBalancerController %q Status: %w", req.Name, err)
+		}
+		// reload the resource after updating the status
+		lbController, _, err = r.getAWSLoadBalancerController(ctx, req.Name)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get AWSLoadBalancerController %q: %w", req.Name, err)
+		}
 	}
 
-	var (
-		credentialsRequestSecretName string
-		err                          error
-	)
-	if credentialsRequestSecretName, err = r.ensureCredentialsRequest(ctx, r.Namespace, lbController); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %s: %w", req, err)
+	var credentialsRequest *cco.CredentialsRequest
+	if credentialsRequest, err = r.ensureCredentialsRequest(ctx, r.Namespace, lbController); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	haveServiceAccount, sa, err := r.ensureControllerServiceAccount(ctx, r.Namespace, lbController)
+	sa, err := r.ensureControllerServiceAccount(ctx, r.Namespace, lbController)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController service account: %w", err)
-	} else if !haveServiceAccount {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure ServiceAccount for AWSLoadBalancerControler %s: %w", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController %q service account: %w", req.Name, err)
 	}
 
 	err = r.ensureClusterRoleAndBinding(ctx, sa, lbController)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %s: %w", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, credentialsRequestSecretName, servingSecretName, lbController)
+	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, credentialsRequest.Spec.SecretRef.Name, servingSecretName, lbController)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %s: %w", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %q: %w", req.Name, err)
 	}
 
 	service, err := r.ensureService(ctx, r.Namespace, lbController, servingSecretName, deployment)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure service for AWSLoadBalancerController %s: %w", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to ensure service for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
 	err = r.ensureWebhooks(ctx, lbController, service)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure webhooks for AWSLoadBalancerController %s: %w", req, err)
+		return ctrl.Result{}, fmt.Errorf("failed to ensure webhooks for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	if err := r.updateControllerStatus(ctx, lbController, deployment); err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %s: %w", req, err)
+	if err := r.updateControllerStatus(ctx, lbController, deployment, credentialsRequest); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r *AWSLoadBalancerControllerReconciler) getAWSLoadBalancerController(ctx context.Context, name string) (*albo.AWSLoadBalancerController, bool, error) {
+	var controller albo.AWSLoadBalancerController
+	controllerKey := types.NamespacedName{Name: name}
+	err := r.Get(ctx, controllerKey, &controller)
+	if err != nil && errors.IsNotFound(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return &controller, true, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

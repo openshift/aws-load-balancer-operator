@@ -24,7 +24,6 @@ const (
 // 2. If the name matches then do nothing.
 // 3. If the name does not match then delete the existing IngressClass. Ignore if it doesn't exist.
 // 4. Create the new IngresClass with the correct controller name. If there is an AlreadyExists error, ignore it.
-// 5. Finally, update the status with the new IngressClass name.
 func (r *AWSLoadBalancerControllerReconciler) ensureIngressClass(ctx context.Context, controller *albo.AWSLoadBalancerController) error {
 
 	// if the current ingress class is the same then do nothing.
@@ -50,7 +49,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureIngressClass(ctx context.Con
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create default IngressClass %s: %w", controller.Spec.IngressClass, err)
 	}
-	return r.updateStatusIngressClass(ctx, controller, controller.Spec.IngressClass)
+	return nil
 }
 
 func desiredIngressClass(name string) *networkingv1.IngressClass {

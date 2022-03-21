@@ -4,10 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	configv1 "github.com/openshift/api/config/v1"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -26,61 +23,55 @@ const (
 
 // tagSubnets will add detect the subnets of the cluster and then tag them appropriately. It then writes the detected
 // subnet IDs into the status along with their tagged roles.
-func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, controller *albo.AWSLoadBalancerController) error {
-	// fetch the Infrastructure for the cluster ID
-	infrastructureKey := types.NamespacedName{Name: "cluster"}
-	var infra configv1.Infrastructure
-	err := r.Get(ctx, infrastructureKey, &infra)
-	if err != nil {
-		return fmt.Errorf("failed to get Infrastructure '%s': %w", infrastructureKey, err)
-	}
-	if infra.Status.InfrastructureName == "" {
-		return fmt.Errorf("could not get cluster ID from Infrastructure %s status", infrastructureKey)
-	}
-	clusterID := infra.Status.InfrastructureName
-
+func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, controller *albo.AWSLoadBalancerController) (internalSubnets, publicSubnets, untaggedSubnets, taggedSubnets []string, err error) {
 	// list the subnets which are tagged as owned by the cluster
 	subnetsPaginator := ec2.NewDescribeSubnetsPaginator(r.EC2Client, &ec2.DescribeSubnetsInput{
 		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String(tagKeyFilterName),
-				Values: []string{fmt.Sprintf(clusterOwnedTagKey, clusterID)},
+				Values: []string{fmt.Sprintf(clusterOwnedTagKey, r.ClusterName)},
 			},
 		},
 	})
 
-	var subnets []ec2types.Subnet
+	var (
+		subnets  []ec2types.Subnet
+		response *ec2.DescribeSubnetsOutput
+	)
 	for subnetsPaginator.HasMorePages() {
-		response, err := subnetsPaginator.NextPage(ctx)
+		response, err = subnetsPaginator.NextPage(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to list subnets for cluster id %s: %w", clusterID, err)
+			err = fmt.Errorf("failed to list subnets for cluster id %s: %w", r.ClusterName, err)
+			return
 		}
 		subnets = append(subnets, response.Subnets...)
 	}
 
 	if len(subnets) == 0 {
-		return fmt.Errorf("no subnets with tag %s found", fmt.Sprintf(clusterOwnedTagKey, clusterID))
+		err = fmt.Errorf("no subnets with tag %s found", fmt.Sprintf(clusterOwnedTagKey, r.ClusterName))
+		return
 	}
 
 	var (
-		internalSubnets sets.String
-		publicSubnets   sets.String
-		untaggedSubnets sets.String
-		taggedSubnets   sets.String
+		internal sets.String
+		public   sets.String
+		untagged sets.String
+		tagged   sets.String
 	)
 
-	internalSubnets, publicSubnets, taggedSubnets, untaggedSubnets, err = classifySubnets(subnets)
+	internal, public, tagged, untagged, err = classifySubnets(subnets)
 	if err != nil {
-		return fmt.Errorf("failed to classify subnets of cluster %s: %w", clusterID, err)
+		err = fmt.Errorf("failed to classify subnets of cluster %s: %w", r.ClusterName, err)
+		return
 	}
 
 	switch controller.Spec.SubnetTagging {
 	case albo.AutoSubnetTaggingPolicy:
 		// in OpenShift all private subnets are tagged. So assume any untagged subnets are public
 		// TODO: process the subnets based on whether they have attached internet gateways
-		if untaggedSubnets.Len() > 0 {
+		if untagged.Len() > 0 {
 			_, err = r.EC2Client.CreateTags(ctx, &ec2.CreateTagsInput{
-				Resources: untaggedSubnets.List(),
+				Resources: untagged.List(),
 				Tags: []ec2types.Tag{
 					{
 						Key:   aws.String(publicELBTagKey),
@@ -93,21 +84,22 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("failed to tag subnets %v: %w", untaggedSubnets, err)
+				err = fmt.Errorf("failed to tag subnets %v: %w", untaggedSubnets, err)
+				return
 			}
 		}
 		// the untagged subnets are now public subnets
-		publicSubnets = publicSubnets.Union(untaggedSubnets)
+		public = public.Union(untagged)
 		// marked the untagged subnets as now tagged
-		taggedSubnets = taggedSubnets.Union(untaggedSubnets)
+		tagged = tagged.Union(untagged)
 		// there are no untagged subnets now
-		untaggedSubnets = sets.NewString()
+		untagged = sets.NewString()
 	case albo.ManualSubnetTaggingPolicy:
 		// if the tagging policy was changed to Manual then remove tags from previously tagged subnets
-		if taggedSubnets.Len() > 0 {
+		if tagged.Len() > 0 {
 			// when values are not specified with the tag name the tag value is not considered during tag removal
 			_, err = r.EC2Client.DeleteTags(ctx, &ec2.DeleteTagsInput{
-				Resources: taggedSubnets.List(),
+				Resources: tagged.List(),
 				Tags: []ec2types.Tag{
 					{
 						Key: aws.String(publicELBTagKey),
@@ -118,20 +110,25 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("failed to remove tags from currently tagged subnets %v: %w", taggedSubnets, err)
+				err = fmt.Errorf("failed to remove tags from currently tagged subnets %v: %w", taggedSubnets, err)
+				return
 			}
 		}
 		// the previously tagged subnets are now untagged
-		untaggedSubnets = untaggedSubnets.Union(taggedSubnets)
+		untagged = untagged.Union(tagged)
 		// removed the subnets which were untagged from the public subnets
-		publicSubnets = publicSubnets.Difference(taggedSubnets)
+		public = public.Difference(tagged)
 		// set the tagged subnets to empty
-		taggedSubnets = sets.NewString()
+		tagged = sets.NewString()
 	default:
-		return fmt.Errorf("unknown subnetTaggingPolicy %s", controller.Spec.SubnetTagging)
+		err = fmt.Errorf("unknown subnetTaggingPolicy %s", controller.Spec.SubnetTagging)
 	}
 
-	return r.updateStatusSubnets(ctx, controller, internalSubnets.List(), publicSubnets.List(), untaggedSubnets.List(), taggedSubnets.List(), controller.Spec.SubnetTagging)
+	untaggedSubnets = untagged.List()
+	taggedSubnets = tagged.List()
+	publicSubnets = public.List()
+	internalSubnets = internal.List()
+	return
 }
 
 func classifySubnets(subnets []ec2types.Subnet) (sets.String, sets.String, sets.String, sets.String, error) {

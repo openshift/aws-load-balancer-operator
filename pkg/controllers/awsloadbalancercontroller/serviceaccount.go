@@ -15,7 +15,7 @@ import (
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureControllerServiceAccount(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController) (bool, *corev1.ServiceAccount, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureControllerServiceAccount(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController) (*corev1.ServiceAccount, error) {
 	nsName := types.NamespacedName{Namespace: r.Namespace, Name: fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)}
 
 	reqLogger := log.FromContext(ctx).WithValues("serviceaccout", nsName)
@@ -23,23 +23,26 @@ func (r *AWSLoadBalancerControllerReconciler) ensureControllerServiceAccount(ctx
 	desired := desiredAWSLoadBalancerServiceAccount(namespace, controller)
 
 	if err := controllerutil.SetControllerReference(controller, desired, r.Scheme); err != nil {
-		return false, nil, fmt.Errorf("failed to set the controller reference for serviceaccount: %w", err)
+		return nil, fmt.Errorf("failed to set the controller reference for serviceaccount %q: %w", nsName.Name, err)
 	}
 
 	exist, current, err := r.currentAWSLoadBalancerServiceAccount(ctx, nsName)
 	if err != nil {
-		return false, nil, fmt.Errorf("failed to fetch current serviceaccount: %w", err)
+		return nil, fmt.Errorf("failed to fetch current serviceaccount %q: %w", nsName.Name, err)
 	}
 
 	if !exist {
 		if err := r.createAWSLoadBalancerServiceAccount(ctx, desired); err != nil {
-			return false, nil, fmt.Errorf("failed to fetch created serviceaccount: %w", err)
+			return nil, fmt.Errorf("failed to fetch created serviceaccount %q: %w", nsName.Name, err)
 		}
 		reqLogger.Info("successfully created serviceaccount")
-		return r.currentAWSLoadBalancerServiceAccount(ctx, nsName)
+		_, current, err = r.currentAWSLoadBalancerServiceAccount(ctx, nsName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch current serviceaccount %q: %w", nsName.Name, err)
+		}
 	}
 
-	return true, current, nil
+	return current, nil
 }
 
 // currentAWSLoadBalancerServiceAccount gets the current AWSLoadBalancer service account resource.

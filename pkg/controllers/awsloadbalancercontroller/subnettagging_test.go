@@ -8,10 +8,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	configv1 "github.com/openshift/api/config/v1"
 
 	awstypes "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -186,7 +183,6 @@ func TestTagSubnets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			controller := testALBC(tc.taggingPolicy)
 			client := fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(
-				testInfrastructure("test-cluster", "us-west-1"),
 				controller,
 			).Build()
 			ec2Client := &testEC2Client{
@@ -195,11 +191,12 @@ func TestTagSubnets(t *testing.T) {
 				clusterID: "test-cluster",
 			}
 			r := &AWSLoadBalancerControllerReconciler{
-				Client:    client,
-				EC2Client: ec2Client,
+				Client:      client,
+				EC2Client:   ec2Client,
+				ClusterName: "test-cluster",
 			}
 
-			err := r.tagSubnets(context.Background(), controller)
+			internal, public, untagged, tagged, err := r.tagSubnets(context.Background(), controller)
 			if err != nil {
 				t.Errorf("got unexpected error: %v", err)
 				return
@@ -213,47 +210,19 @@ func TestTagSubnets(t *testing.T) {
 				t.Errorf("expected subnets %v to have been untagged, instead got %v", tc.expectedRemoveTagOperations, ec2Client.untaggedResources)
 			}
 
-			var albc albo.AWSLoadBalancerController
-			controllerKey := types.NamespacedName{Name: controllerName}
-			err = client.Get(context.Background(), controllerKey, &albc)
-			if err != nil {
-				t.Errorf("unexpected error getting Infrastructure: %v", err)
-				return
+			if !equalStrings(tc.expectedPublicSubnets, public) {
+				t.Errorf("expected public subnets %v, got %v", tc.expectedPublicSubnets, public)
 			}
-
-			if albc.Status.Subnets.SubnetTagging != tc.taggingPolicy {
-				t.Errorf("tagging policy in status not updated")
-				return
+			if !equalStrings(tc.expectedInternalSubnets, internal) {
+				t.Errorf("expected internal subnets %v, got %v", tc.expectedInternalSubnets, internal)
 			}
-			if !equalStrings(tc.expectedPublicSubnets, albc.Status.Subnets.Public) {
-				t.Errorf("expected public subnets %v, got %v", tc.expectedPublicSubnets, albc.Status.Subnets.Public)
+			if !equalStrings(tc.expectedTaggedSubnets, tagged) {
+				t.Errorf("expected tagged subnets %v, got %v", tc.expectedTaggedSubnets, tagged)
 			}
-			if !equalStrings(tc.expectedInternalSubnets, albc.Status.Subnets.Internal) {
-				t.Errorf("expected internal subnets %v, got %v", tc.expectedInternalSubnets, albc.Status.Subnets.Internal)
-			}
-			if !equalStrings(tc.expectedTaggedSubnets, albc.Status.Subnets.Tagged) {
-				t.Errorf("expected tagged subnets %v, got %v", tc.expectedTaggedSubnets, albc.Status.Subnets.Tagged)
-			}
-			if !equalStrings(tc.expectedUntaggedSubnets, albc.Status.Subnets.Untagged) {
-				t.Errorf("expected untagged subnets %v, got %v", tc.expectedUntaggedSubnets, albc.Status.Subnets.Untagged)
+			if !equalStrings(tc.expectedUntaggedSubnets, untagged) {
+				t.Errorf("expected untagged subnets %v, got %v", tc.expectedUntaggedSubnets, untagged)
 			}
 		})
-	}
-}
-
-func testInfrastructure(clusterName, awsRegion string) *configv1.Infrastructure {
-	return &configv1.Infrastructure{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cluster",
-		},
-		Status: configv1.InfrastructureStatus{
-			InfrastructureName: clusterName,
-			PlatformStatus: &configv1.PlatformStatus{
-				AWS: &configv1.AWSPlatformStatus{
-					Region: awsRegion,
-				},
-			},
-		},
 	}
 }
 
