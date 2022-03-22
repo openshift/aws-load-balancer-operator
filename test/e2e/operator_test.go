@@ -35,7 +35,6 @@ import (
 var (
 	kubeClient        client.Client
 	scheme            = kscheme.Scheme
-	infraConfig       configv1.Infrastructure
 	operatorName      = "aws-load-balancer-operator-controller-manager"
 	operatorNamespace = "aws-load-balancer-operator"
 )
@@ -63,11 +62,6 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	kubeClient = cl
-
-	if err := kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &infraConfig); err != nil {
-		fmt.Printf("failed to get infrastructure config: %v\n", err)
-		os.Exit(1)
-	}
 
 	if err = ensureCredentialsRequest(); err != nil {
 		fmt.Printf("failed to create credentialsrequest for operator due to: %v\n", err)
