@@ -20,13 +20,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +kubebuilder:validation:Enum=AWSShield;AWSAddonWAFv1;AWSAddonWAFv2
+// +kubebuilder:validation:Enum=AWSShield;AWSWAFv1;AWSWAFv2
 type AWSAddon string
 
 const (
 	AWSAddonShield AWSAddon = "AWSShield"
-	AWSAddonWAFv1  AWSAddon = "AWSAddonWAFv1"
-	AWSAddonWAFv2  AWSAddon = "AWSAddonWAFv2"
+	AWSAddonWAFv1  AWSAddon = "AWSWAFv1"
+	AWSAddonWAFv2  AWSAddon = "AWSWAFv2"
 )
 
 // +kubebuilder:validation:Enum=Auto;Manual

@@ -59,8 +59,8 @@ spec:
                 items:
                   enum:
                   - AWSShield
-                  - AWSAddonWAFv1
-                  - AWSAddonWAFv2
+                  - AWSWAFv1
+                  - AWSWAFv2
                   type: string
                 type: array
               ingressClass:
