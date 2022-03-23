@@ -93,14 +93,6 @@ func TestEnsureIngressClass(t *testing.T) {
 					t.Errorf("existing ingress class %q was not deleted", tc.existingIngressClass.Name)
 				}
 			}
-			err = r.Get(context.Background(), types.NamespacedName{Name: "test"}, controller)
-			if err != nil {
-				t.Errorf("failed to get controller: %v", err)
-				return
-			}
-			if controller.Status.IngressClass != tc.ingressClassName {
-				t.Errorf("status of controller does not have correct ingress class, expected %q, got %q", tc.ingressClassName, controller.Status.IngressClass)
-			}
 		})
 	}
 }

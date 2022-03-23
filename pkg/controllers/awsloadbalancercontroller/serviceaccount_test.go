@@ -79,18 +79,13 @@ func TestEnsureServiceAccount(t *testing.T) {
 			c.Start(context.TODO())
 			defer c.Stop()
 
-			has, sa, err := r.ensureControllerServiceAccount(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: v1.ObjectMeta{Name: controllerName}})
+			_, err := r.ensureControllerServiceAccount(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: v1.ObjectMeta{Name: controllerName}})
 			// error check
-			if err != nil && !has {
-				if !tc.errExpected {
-					t.Fatalf("got unexpected error: %v", err)
-				}
-			} else if !has && err == nil {
-				if tc.hasServiceAccount {
-					t.Log(sa)
-					t.Fatalf("expected serviceaccount to be created")
-				}
-			} else if tc.errExpected {
+			if err != nil && !tc.errExpected {
+				t.Fatalf("got unexpected error: %v", err)
+			}
+
+			if err == nil && tc.errExpected {
 				t.Fatalf("error expected but not received")
 			}
 

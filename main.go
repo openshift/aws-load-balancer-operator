@@ -85,7 +85,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&namespace, "namespace", "aws-load-balancer-operator", "The namespace where operands should be installed")
-	flag.StringVar(&image, "image", "quay.io/anaik/aws-load-balancer-controller:v0.0.1", "The image to be used for the operand")
+	flag.StringVar(&image, "image", "docker.io/amazon/aws-alb-ingress-controller:v2.4.1", "The image to be used for the operand")
 	opts := zap.Options{
 		Development: true,
 	}
