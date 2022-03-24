@@ -27,3 +27,5 @@ in a OpenShift cluster.
     ```bash
     make deploy
     ```
+
+TEST
