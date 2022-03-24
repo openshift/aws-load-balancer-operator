@@ -109,7 +109,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 				t.Fatalf("error expected but not received")
 			}
 
-			expectedSecretName := fmt.Sprintf("%s-credentialsRequest-%s", controllerResourcePrefix, "cluster")
+			expectedSecretName := fmt.Sprintf("%s-credentialsrequest-%s", controllerResourcePrefix, "cluster")
 			if cr.Spec.SecretRef.Name != expectedSecretName {
 				t.Errorf("unexpected CredentialsRequest secret name, expected %q, got %q", expectedSecretName, cr.Spec.SecretRef.Name)
 			}
@@ -152,7 +152,7 @@ func testCompleteCredentialsRequest() *cco.CredentialsRequest {
 		},
 		Spec: cco.CredentialsRequestSpec{
 			ProviderSpec: cfg,
-			SecretRef:    createCredentialsSecretRef("aws-load-balancer-controller-credentialsRequest-cluster", test.OperatorNamespace),
+			SecretRef:    createCredentialsSecretRef("aws-load-balancer-controller-credentialsrequest-cluster", test.OperatorNamespace),
 		},
 	}
 }

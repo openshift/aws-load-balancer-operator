@@ -48,7 +48,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 		return nil, fmt.Errorf("failed to get existing credentials request %q: %w", credReq.Name, err)
 	}
 
-	credentialRequestSecretName := fmt.Sprintf("%s-credentialsRequest-%s", controllerResourcePrefix, controller.Name)
+	credentialRequestSecretName := fmt.Sprintf("%s-credentialsrequest-%s", controllerResourcePrefix, controller.Name)
 
 	// The secret created will be in the operator namespace.
 	secretRef := createCredentialsSecretRef(credentialRequestSecretName, namespace)
