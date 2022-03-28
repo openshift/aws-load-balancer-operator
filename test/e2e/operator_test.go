@@ -172,11 +172,6 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 	if err := kubeClient.Create(context.TODO(), &alb); err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
-	defer func() {
-		if err := kubeClient.Delete(context.TODO(), &alb); err != nil {
-			t.Fatalf("failed to delete aws load balancer controller %s: %v", name, err)
-		}
-	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
@@ -188,18 +183,13 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 
 	// TODO: verify aws resources subnets, etc.
 
-	testWorkloadNamespace := "aws-load-balancer-test"
+	testWorkloadNamespace := "aws-load-balancer-test-default"
 	t.Logf("Ensuring test workload namespace %s", testWorkloadNamespace)
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testWorkloadNamespace}}
 	err := kubeClient.Create(context.TODO(), ns)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("failed to ensure namespace %s: %v", testWorkloadNamespace, err)
 	}
-	defer func() {
-		if err := kubeClient.Delete(context.TODO(), ns); err != nil {
-			t.Fatalf("failed to delete namespace %s: %v", ns, err)
-		}
-	}()
 
 	echopod := buildEchoPod("echoserver", testWorkloadNamespace)
 	err = kubeClient.Create(context.TODO(), echopod)
@@ -219,7 +209,107 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
 		"alb.ingress.kubernetes.io/target-type": "instance",
 	}
-	echoIng := buildEchoIngress(ingName, ingAnnotations, echosvc)
+	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echosvc)
+	err = kubeClient.Create(context.TODO(), echoIng)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo service %s: %v", echoIng.Name, err)
+	}
+
+	var address string
+	if address, err = verifyIngress(t, kubeClient, defaultTimeout, ingName); err != nil {
+		t.Errorf("did not get expected available condition: %v", err)
+	}
+
+	t.Logf("Testing aws load balancer for ingress traffic at address %s", address)
+	for i, rule := range echoIng.Spec.Rules {
+		clientPod := buildCurlPod(fmt.Sprintf("clientpod-%d", i), testWorkloadNamespace, rule.Host, address)
+		if err := kubeClient.Create(context.TODO(), clientPod); err != nil {
+			t.Fatalf("failed to create pod %s/%s: %v", clientPod.Namespace, clientPod.Name, err)
+		}
+
+		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+			readCloser, err := kubeClientSet.CoreV1().Pods(clientPod.Namespace).GetLogs(clientPod.Name, &corev1.PodLogOptions{
+				Container: "curl",
+				Follow:    false,
+			}).Stream(context.TODO())
+			if err != nil {
+				t.Logf("failed to read output from pod %s: %v (retrying)", clientPod.Name, err)
+				return false, nil
+			}
+			scanner := bufio.NewScanner(readCloser)
+			defer func() {
+				if err := readCloser.Close(); err != nil {
+					t.Errorf("failed to close reader for pod %s: %v", clientPod.Name, err)
+				}
+			}()
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.Contains(line, "HTTP/1.1 200 OK") {
+					return true, nil
+				}
+			}
+			return false, nil
+		})
+		if err != nil {
+			t.Fatalf("failed to observe the expected log message: %v", err)
+		}
+	}
+}
+
+func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
+	t.Log("Creating a custom ingress class")
+	ingclassName := types.NamespacedName{Name: "custom-alb", Namespace: "aws-load-balancer-operator"}
+	ingclass := buildIngressClass(ingclassName, "ingress.k8s.aws/alb")
+	if err := kubeClient.Create(context.TODO(), ingclass); err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to custom ingress class %q: %v", ingclass.Name, err)
+	}
+
+	t.Log("Creating aws load balancer controller instance with default ingress class")
+
+	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
+	alb := newAWSLoadBalancerController(name)
+	if err := kubeClient.Create(context.TODO(), &alb); err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
+	}
+
+	expected := []appsv1.DeploymentCondition{
+		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+	}
+	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
+	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Errorf("did not get expected available condition: %v", err)
+	}
+
+	// TODO: verify aws resources subnets, etc.
+
+	testWorkloadNamespace := "aws-load-balancer-test-custom"
+	t.Logf("Ensuring test workload namespace %s", testWorkloadNamespace)
+	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testWorkloadNamespace}}
+	err := kubeClient.Create(context.TODO(), ns)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure namespace %s: %v", testWorkloadNamespace, err)
+	}
+
+	echopod := buildEchoPod("echoserver", testWorkloadNamespace)
+	err = kubeClient.Create(context.TODO(), echopod)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo pod %s: %v", echopod.Name, err)
+	}
+
+	echosvc := buildEchoService("echoserver", testWorkloadNamespace)
+	err = kubeClient.Create(context.TODO(), echosvc)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo service %s: %v", echosvc.Name, err)
+	}
+
+	t.Log("Creating Ingress Resource with custom ingress class")
+	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
+	ingAnnotations := map[string]string{
+		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
+		"alb.ingress.kubernetes.io/target-type": "instance",
+	}
+	t.Log(ingclass.Name)
+	echoIng := buildEchoIngress(ingName, ingclass.Name, ingAnnotations, echosvc)
 	err = kubeClient.Create(context.TODO(), echoIng)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("failed to ensure echo service %s: %v", echoIng.Name, err)

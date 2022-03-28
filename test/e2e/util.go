@@ -111,7 +111,7 @@ func buildCurlPod(name, namespace, host, address string, extraArgs ...string) *c
 		"-s",
 		"-v",
 		"--header", "HOST:" + host,
-		"--retry", "300", "--retry-delay", "1", "--max-time", "2",
+		"--retry", "300", "--retry-delay", "5", "--max-time", "2",
 	}
 	curlArgs = append(curlArgs, extraArgs...)
 	curlArgs = append(curlArgs, "http://"+address)
@@ -186,22 +186,77 @@ func buildIngressBackend(svc *corev1.Service) networkingv1.IngressBackend {
 	}
 }
 
-func buildEchoIngress(name types.NamespacedName, annotations map[string]string, backendSvc *corev1.Service) *networkingv1.Ingress {
+type ingressbuilder struct {
+	name         types.NamespacedName
+	annotations  map[string]string
+	ingressclass string
+	rules        []networkingv1.IngressRule
+}
+
+func newIngressBuilder() *ingressbuilder {
+	return &ingressbuilder{
+		annotations:  make(map[string]string),
+		ingressclass: "alb",
+	}
+}
+
+func (b *ingressbuilder) withName(name types.NamespacedName) *ingressbuilder {
+	b.name = name
+	return b
+}
+
+func (b *ingressbuilder) withAnnotations(annotations map[string]string) *ingressbuilder {
+	b.annotations = annotations
+	return b
+}
+
+func (b *ingressbuilder) withIngressClass(class string) *ingressbuilder {
+	b.ingressclass = class
+	return b
+}
+
+func (b *ingressbuilder) withRules(rules []networkingv1.IngressRule) *ingressbuilder {
+	b.rules = rules
+	return b
+}
+
+func (b ingressbuilder) build() *networkingv1.Ingress {
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name.Name,
-			Namespace:   name.Namespace,
-			Annotations: annotations,
+			Name:        b.name.Name,
+			Namespace:   b.name.Namespace,
+			Annotations: b.annotations,
 		},
 		Spec: networkingv1.IngressSpec{
-			IngressClassName: aws.String("alb"),
-			Rules: []networkingv1.IngressRule{
-				buildIngressRule("echoserver.example.com", &networkingv1.HTTPIngressRuleValue{
-					Paths: []networkingv1.HTTPIngressPath{
-						buildIngressPath("/", networkingv1.PathTypeExact, buildIngressBackend(backendSvc)),
-					},
-				}),
-			},
+			IngressClassName: aws.String(b.ingressclass),
+			Rules:            b.rules,
+		},
+	}
+}
+
+func buildEchoIngress(name types.NamespacedName, ingClass string, annotations map[string]string, backendSvc *corev1.Service) *networkingv1.Ingress {
+	return newIngressBuilder().
+		withName(name).
+		withAnnotations(annotations).
+		withIngressClass(ingClass).
+		withRules([]networkingv1.IngressRule{
+			buildIngressRule("echoserver.example.com", &networkingv1.HTTPIngressRuleValue{
+				Paths: []networkingv1.HTTPIngressPath{
+					buildIngressPath("/", networkingv1.PathTypeExact, buildIngressBackend(backendSvc)),
+				},
+			}),
+		}).
+		build()
+}
+
+func buildIngressClass(name types.NamespacedName, controller string) *networkingv1.IngressClass {
+	return &networkingv1.IngressClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name.Name,
+			Namespace: name.Namespace,
+		},
+		Spec: networkingv1.IngressClassSpec{
+			Controller: controller,
 		},
 	}
 }
