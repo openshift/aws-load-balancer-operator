@@ -300,3 +300,7 @@ test-e2e:
 	-tags e2e \
 	-run "$(TEST)" \
 	./test/e2e
+
+.PHONY: test-env
+test-env:
+        oc apply -f hack/operator-credentials-request.yaml
