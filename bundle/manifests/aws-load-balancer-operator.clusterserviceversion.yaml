@@ -137,14 +137,6 @@ spec:
         - apiGroups:
           - ""
           resources:
-          - secrets
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resources:
           - services
           verbs:
           - get
@@ -424,6 +416,8 @@ spec:
                 env:
                 - name: AWS_SHARED_CREDENTIALS_FILE
                   value: /etc/aws-credentials/credentials
+                - name: RELATED_IMAGE_CONTROLLER
+                  value: docker.io/amazon/aws-alb-ingress-controller:v2.4.1
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
