@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -18,11 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func waitForDeploymentStatusCondition(t *testing.T, cl client.Client, timeout time.Duration, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
+func waitForDeploymentStatusConditionUntilN(t *testing.T, cl client.Client, timeout time.Duration, count int, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
 	t.Helper()
+	ctr := 0
 	return wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
 		dep := &appsv1.Deployment{}
 		if err := cl.Get(context.TODO(), deploymentName, dep); err != nil {
@@ -32,11 +33,17 @@ func waitForDeploymentStatusCondition(t *testing.T, cl client.Client, timeout ti
 
 		expected := deploymentConditionMap(conditions...)
 		current := deploymentConditionMap(dep.Status.Conditions...)
-		return conditionsMatchExpected(expected, current), nil
+		if conditionsMatchExpected(expected, current) {
+			ctr++
+		} else {
+			return false, nil
+		}
+
+		return ctr >= count, nil
 	})
 }
 
-func verifyIngress(t *testing.T, cl client.Client, timeout time.Duration, ingressName types.NamespacedName) (string, error) {
+func getIngress(t *testing.T, cl client.Client, timeout time.Duration, ingressName types.NamespacedName) (string, error) {
 	t.Helper()
 	var address string
 	return address, wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
