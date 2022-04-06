@@ -188,14 +188,6 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 
-	defer func() {
-		err := kubeClient.Delete(context.TODO(), &alb, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete aws load balancer controller %q: %v", name, err)
-		}
-		t.Logf("deleted aws load balancer controller: %s", name)
-	}()
-
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
@@ -321,13 +313,6 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		}
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
-	defer func() {
-		err := kubeClient.Delete(context.TODO(), &alb, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete aws load balancer controller %q: %v", name, err)
-		}
-		t.Logf("deleted aws load balancer controller: %s", name)
-	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
