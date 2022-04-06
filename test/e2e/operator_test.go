@@ -41,7 +41,7 @@ var (
 	operatorName      = "aws-load-balancer-operator-controller-manager"
 	operatorNamespace = "aws-load-balancer-operator"
 	defaultTimeout    = 15 * time.Minute
-	defaultCount      = 10
+	defaultCount      = 15
 	deletetionPolicy  = v1.DeletePropagationForeground
 )
 
@@ -180,6 +180,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to delete aws load balancer controller %q: %v", name, err)
 		}
+		t.Logf("deleted aws load balancer controller: %s", name)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
@@ -226,6 +227,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to delete echo ingress %s: %v", echoIng.Name, err)
 		}
+		t.Logf("deleted echo ingress %s", echoIng.Name)
 	}()
 
 	var address string
@@ -281,6 +283,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to delete custom ingress class %q: %v", ingclass.Name, err)
 		}
+		t.Logf("deleted custom ingress class: %s", ingclass.Name)
 	}()
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
@@ -295,13 +298,14 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to delete aws load balancer controller %q: %v", name, err)
 		}
+		t.Logf("deleted aws load balancer controller: %s", name)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, defaultTimeout, defaultCount, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, time.Second*20, defaultCount, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
@@ -341,6 +345,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to delete echo ingress %s: %v", echoIng.Name, err)
 		}
+		t.Logf("deleted echo ingress %s", echoIng.Name)
 	}()
 
 	var address string
