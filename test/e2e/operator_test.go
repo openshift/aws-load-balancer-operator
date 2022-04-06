@@ -181,11 +181,17 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 	alb := newAWSLoadBalancerController(name, "alb", []albo.AWSAddon{})
 	if err := kubeClient.Create(context.TODO(), &alb); err != nil {
 		if errors.IsAlreadyExists(err) {
-			if err = kubeClient.Update(context.TODO(), &alb); err != nil {
+			currentAlb := albo.AWSLoadBalancerController{}
+			if err := kubeClient.Get(context.TODO(), name, &currentAlb); err != nil {
+				t.Fatalf("failed to get aws load balancer controller %q: %v", name, err)
+			}
+			currentAlb.Spec.IngressClass = "alb"
+			if err = kubeClient.Update(context.TODO(), &currentAlb); err != nil {
 				t.Fatalf("failed to update aws load balancer controller %q: %v", name, err)
 			}
+		} else {
+			t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 		}
-		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 
 	expected := []appsv1.DeploymentCondition{
@@ -307,11 +313,17 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 	alb := newAWSLoadBalancerController(name, ingclassName.Name, []albo.AWSAddon{})
 	if err := kubeClient.Create(context.TODO(), &alb); err != nil {
 		if errors.IsAlreadyExists(err) {
-			if err = kubeClient.Update(context.TODO(), &alb); err != nil {
+			currentAlb := albo.AWSLoadBalancerController{}
+			if err := kubeClient.Get(context.TODO(), name, &currentAlb); err != nil {
+				t.Fatalf("failed to get aws load balancer controller %q: %v", name, err)
+			}
+			currentAlb.Spec.IngressClass = ingclassName.Name
+			if err = kubeClient.Update(context.TODO(), &currentAlb); err != nil {
 				t.Fatalf("failed to update aws load balancer controller %q: %v", name, err)
 			}
+		} else {
+			t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 		}
-		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 
 	expected := []appsv1.DeploymentCondition{
