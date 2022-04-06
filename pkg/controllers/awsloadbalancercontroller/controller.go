@@ -78,7 +78,7 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=validatingwebhookconfigurations;mutatingwebhookconfigurations,verbs=get;list;watch;create;update;patch;delete
 
 func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	lbController, exists, err := r.getAWSLoadBalancerController(ctx, req.Name)
 	if err != nil {
@@ -86,6 +86,12 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 	}
 	if !exists {
 		return ctrl.Result{}, nil
+	}
+
+	if lbController.DeletionTimestamp != nil {
+		logger.Info("AWSLoadBalancerController is going to be deleted. Skipping Reconcile")
+		return ctrl.Result{}, nil
+
 	}
 
 	servingSecretName := fmt.Sprintf("%s-serving-%s", controllerResourcePrefix, lbController.Name)

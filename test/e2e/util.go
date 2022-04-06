@@ -21,10 +21,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func waitForDeploymentStatusConditionUntilN(t *testing.T, cl client.Client, timeout time.Duration, count int, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
+func waitForDeploymentStatusCondition(t *testing.T, cl client.Client, timeout time.Duration, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
 	t.Helper()
-	ctr := 0
-	return wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
+
+	return wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
 		dep := &appsv1.Deployment{}
 		if err := cl.Get(context.TODO(), deploymentName, dep); err != nil {
 			t.Logf("failed to get deployment %s: %v (retrying)", deploymentName.Name, err)
@@ -33,20 +33,14 @@ func waitForDeploymentStatusConditionUntilN(t *testing.T, cl client.Client, time
 
 		expected := deploymentConditionMap(conditions...)
 		current := deploymentConditionMap(dep.Status.Conditions...)
-		if conditionsMatchExpected(expected, current) {
-			ctr++
-		} else {
-			return false, nil
-		}
-
-		return ctr >= count, nil
+		return conditionsMatchExpected(expected, current), nil
 	})
 }
 
 func getIngress(t *testing.T, cl client.Client, timeout time.Duration, ingressName types.NamespacedName) (string, error) {
 	t.Helper()
 	var address string
-	return address, wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
+	return address, wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
 		ing := &networkingv1.Ingress{}
 		if err := cl.Get(context.TODO(), ingressName, ing); err != nil {
 			t.Logf("failed to get deployment %s: %v (retrying)", ingressName.Name, err)
@@ -202,8 +196,10 @@ type ingressbuilder struct {
 
 func newIngressBuilder() *ingressbuilder {
 	return &ingressbuilder{
+		name:         types.NamespacedName{Name: "sample", Namespace: "aws-load-balancer-operator"},
 		annotations:  make(map[string]string),
 		ingressclass: "alb",
+		rules:        []networkingv1.IngressRule{},
 	}
 }
 
