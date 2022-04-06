@@ -40,7 +40,7 @@ var (
 	infraConfig       configv1.Infrastructure
 	operatorName      = "aws-load-balancer-operator-controller-manager"
 	operatorNamespace = "aws-load-balancer-operator"
-	defaultTimeout    = 5 * time.Minute
+	defaultTimeout    = 15 * time.Minute
 	defaultCount      = 10
 	deletetionPolicy  = v1.DeletePropagationForeground
 )
@@ -161,7 +161,7 @@ func TestOperatorAvailable(t *testing.T) {
 		Namespace: operatorNamespace,
 	}
 	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, defaultTimeout, defaultCount, name, expected...); err != nil {
-		t.Errorf("Did not get expected available condition: %v", err)
+		t.Fatalf("Did not get expected available condition: %v", err)
 	}
 }
 
@@ -187,7 +187,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
 	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, defaultTimeout, defaultCount, deploymentName, expected...); err != nil {
-		t.Errorf("did not get expected available condition: %v", err)
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
@@ -230,7 +230,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 
 	var address string
 	if address, err = getIngress(t, kubeClient, defaultTimeout, ingName); err != nil {
-		t.Errorf("did not get expected available condition: %v", err)
+		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
 
 	t.Logf("Testing aws load balancer for ingress traffic at address %s", address)
@@ -252,7 +252,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 			scanner := bufio.NewScanner(readCloser)
 			defer func() {
 				if err := readCloser.Close(); err != nil {
-					t.Errorf("failed to close reader for pod %s: %v", clientPod.Name, err)
+					t.Fatalf("failed to close reader for pod %s: %v", clientPod.Name, err)
 				}
 			}()
 			for scanner.Scan() {
@@ -302,7 +302,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
 	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, defaultTimeout, defaultCount, deploymentName, expected...); err != nil {
-		t.Errorf("did not get expected available condition: %v", err)
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
@@ -331,7 +331,6 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
 		"alb.ingress.kubernetes.io/target-type": "instance",
 	}
-	t.Log(ingclass.Name)
 	echoIng := buildEchoIngress(ingName, ingclass.Name, ingAnnotations, echosvc)
 	err = kubeClient.Create(context.TODO(), echoIng)
 	if err != nil && !errors.IsAlreadyExists(err) {
@@ -346,7 +345,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 
 	var address string
 	if address, err = getIngress(t, kubeClient, defaultTimeout, ingName); err != nil {
-		t.Errorf("did not get expected available condition: %v", err)
+		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
 
 	t.Logf("Testing aws load balancer for ingress traffic at address %s", address)
@@ -368,7 +367,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 			scanner := bufio.NewScanner(readCloser)
 			defer func() {
 				if err := readCloser.Close(); err != nil {
-					t.Errorf("failed to close reader for pod %s: %v", clientPod.Name, err)
+					t.Fatalf("failed to close reader for pod %s: %v", clientPod.Name, err)
 				}
 			}()
 			for scanner.Scan() {
