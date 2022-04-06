@@ -152,7 +152,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestOperatorAvailable(t *testing.T) {
+func getOperator(t *testing.T) {
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
@@ -165,16 +165,29 @@ func TestOperatorAvailable(t *testing.T) {
 	}
 }
 
+func TestOperatorAvailable(t *testing.T) {
+	getOperator(t)
+}
+
 // TestAWSLoadBalancerControllerWithDefaultIngressClass tests the basic happy flow for the operator, mostly
 // using the default values.
 func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
+	t.Log("Verifying operator availability due to restarts caused by deletion of resources")
+	getOperator(t)
+
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
 	alb := newAWSLoadBalancerController(name, "alb", []albo.AWSAddon{})
-	if err := kubeClient.Create(context.TODO(), &alb); err != nil && !errors.IsAlreadyExists(err) {
+	if err := kubeClient.Create(context.TODO(), &alb); err != nil {
+		if errors.IsAlreadyExists(err) {
+			if err = kubeClient.Update(context.TODO(), &alb); err != nil {
+				t.Fatalf("failed to update aws load balancer controller %q: %v", name, err)
+			}
+		}
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
+
 	defer func() {
 		err := kubeClient.Delete(context.TODO(), &alb, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
 		if err != nil {
@@ -268,10 +281,20 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to observe the expected log message: %v", err)
 		}
+		defer func() {
+			err = kubeClient.Delete(context.TODO(), clientPod, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
+			if err != nil {
+				t.Fatalf("failed to delete clientpod %s: %v", clientPod.Name, err)
+			}
+			t.Logf("deleted echo clientpod %s", clientPod.Name)
+		}()
 	}
 }
 
 func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
+	t.Log("Verifying operator availability due to restarts caused by deletion of resources")
+	getOperator(t)
+
 	t.Log("Creating a custom ingress class")
 	ingclassName := types.NamespacedName{Name: "custom-alb", Namespace: "aws-load-balancer-operator"}
 	ingclass := buildIngressClass(ingclassName, "ingress.k8s.aws/alb")
@@ -290,7 +313,12 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
 	alb := newAWSLoadBalancerController(name, ingclassName.Name, []albo.AWSAddon{})
-	if err := kubeClient.Create(context.TODO(), &alb); err != nil && !errors.IsAlreadyExists(err) {
+	if err := kubeClient.Create(context.TODO(), &alb); err != nil {
+		if errors.IsAlreadyExists(err) {
+			if err = kubeClient.Update(context.TODO(), &alb); err != nil {
+				t.Fatalf("failed to update aws load balancer controller %q: %v", name, err)
+			}
+		}
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
@@ -386,5 +414,12 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to observe the expected log message: %v", err)
 		}
+		defer func() {
+			err = kubeClient.Delete(context.TODO(), clientPod, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
+			if err != nil {
+				t.Fatalf("failed to delete clientpod %s: %v", clientPod.Name, err)
+			}
+			t.Logf("deleted echo clientpod %s", clientPod.Name)
+		}()
 	}
 }
