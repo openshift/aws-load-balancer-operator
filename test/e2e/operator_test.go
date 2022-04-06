@@ -305,7 +305,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, time.Second*20, defaultCount, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusConditionUntilN(t, kubeClient, time.Minute*30, 20, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
