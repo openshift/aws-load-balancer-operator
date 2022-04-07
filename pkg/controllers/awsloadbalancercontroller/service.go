@@ -30,7 +30,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureService(ctx context.Context,
 	}
 
 	desired := desiredService(serviceName.Name, serviceName.Namespace, servingSecretName, deployment.Spec.Selector.MatchLabels)
-	err := controllerutil.SetOwnerReference(controller, desired, r.Scheme)
+	err := controllerutil.SetControllerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on desired service: %w", err)
 	}

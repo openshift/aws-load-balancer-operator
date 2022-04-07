@@ -58,7 +58,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 		return nil, fmt.Errorf("failed to build desired credentials request: %w", err)
 	}
 
-	err = controllerutil.SetOwnerReference(controller, desired, r.Scheme)
+	err = controllerutil.SetControllerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on desired credentials request: %w", err)
 	}
