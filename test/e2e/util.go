@@ -12,7 +12,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -50,6 +52,23 @@ func getIngress(t *testing.T, cl client.Client, timeout time.Duration, ingressNa
 			return false, nil
 		}
 		address = ing.Status.LoadBalancer.Ingress[0].Hostname
+		return true, nil
+	})
+}
+
+func waitForDeletion(t *testing.T, cl client.Client, obj client.Object, timeout time.Duration) {
+	t.Helper()
+	deletionPolicy := v1.DeletePropagationForeground
+	_ = wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
+		err := cl.Delete(context.TODO(), obj, &client.DeleteOptions{PropagationPolicy: &deletionPolicy})
+		if err != nil && !errors.IsNotFound(err) {
+			t.Logf("failed to delete resource %s/%s: %v", obj.GetName(), obj.GetNamespace(), err)
+			return false, nil
+		} else if err == nil {
+			t.Logf("retrying deletion of resource %q/%q", obj.GetName(), obj.GetNamespace())
+			return false, nil
+		}
+		t.Logf("deleted resource %s/%s", obj.GetName(), obj.GetNamespace())
 		return true, nil
 	})
 }

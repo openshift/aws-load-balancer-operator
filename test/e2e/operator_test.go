@@ -131,11 +131,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		err := kubeClient.Delete(context.TODO(), &alb, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete aws load balancer controller %q: %v", name, err)
-		}
-		t.Logf("deleted aws load balancer controller %q", name)
+		waitForDeletion(t, kubeClient, &alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
@@ -183,11 +179,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		err = kubeClient.Delete(context.TODO(), echoIng, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete echo ingress %s: %v", echoIng.Name, err)
-		}
-		t.Logf("deleted echo ingress %s", echoIng.Name)
+		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
 	}()
 
 	var address string
@@ -246,11 +238,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("failed to ensure custom ingress class %q: %v", ingclass.Name, err)
 	}
 	defer func() {
-		err := kubeClient.Delete(context.TODO(), ingclass, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete custom ingress class %q: %v", ingclass.Name, err)
-		}
-		t.Logf("deleted custom ingress class: %s", ingclass.Name)
+		waitForDeletion(t, kubeClient, ingclass, defaultTimeout)
 	}()
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
@@ -261,11 +249,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		err := kubeClient.Delete(context.TODO(), &alb, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete aws load balancer controller %q: %v", name, err)
-		}
-		t.Logf("deleted aws load balancer controller %q", name)
+		waitForDeletion(t, kubeClient, &alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
@@ -313,11 +297,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		err = kubeClient.Delete(context.TODO(), echoIng, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-		if err != nil {
-			t.Fatalf("failed to delete echo ingress %s: %v", echoIng.Name, err)
-		}
-		t.Logf("deleted echo ingress %s", echoIng.Name)
+		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
 	}()
 
 	var address string
@@ -359,11 +339,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 			t.Fatalf("failed to observe the expected log message: %v", err)
 		}
 		defer func() {
-			err = kubeClient.Delete(context.TODO(), clientPod, &client.DeleteOptions{PropagationPolicy: &deletetionPolicy})
-			if err != nil {
-				t.Fatalf("failed to delete clientpod %s: %v", clientPod.Name, err)
-			}
-			t.Logf("deleted echo clientpod %s", clientPod.Name)
+			waitForDeletion(t, kubeClient, clientPod, defaultTimeout)
 		}()
 	}
 }
