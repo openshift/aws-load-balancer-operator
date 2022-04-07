@@ -297,6 +297,7 @@ test-e2e:
 	-timeout $(E2E_TIMEOUT) \
 	-count 1 \
 	-v \
+	-p 1 \
 	-tags e2e \
 	-run "$(TEST)" \
 	./test/e2e

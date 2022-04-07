@@ -249,7 +249,6 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 					foundIndex = i
 					break
 				}
-
 			}
 			if foundIndex < 0 {
 				return false, fmt.Errorf("deployment %s does not have a container with the name %s", current.Name, desiredContainer.Name)

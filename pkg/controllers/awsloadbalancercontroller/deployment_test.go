@@ -259,6 +259,7 @@ func (b *testContainerBuilder) withEnvs(envs ...corev1.EnvVar) *testContainerBui
 	b.env = envs
 	return b
 }
+
 func (b *testContainerBuilder) withArgs(args ...string) *testContainerBuilder {
 	b.args = args
 	return b
@@ -407,7 +408,8 @@ func TestUpdateDeployment(t *testing.T) {
 				testContainer("sidecar", "sidecar:v1").build(),
 			).build(),
 			expectUpdate: true,
-		}, {
+		},
+		{
 			name: "no change in deployment",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withArgs("--arg1", "--arg2").withEnvs(
