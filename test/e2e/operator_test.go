@@ -35,14 +35,20 @@ import (
 )
 
 var (
-	kubeClient        client.Client
-	kubeClientSet     *kubernetes.Clientset
-	scheme            = kscheme.Scheme
-	infraConfig       configv1.Infrastructure
-	operatorName      = "aws-load-balancer-operator-controller-manager"
-	operatorNamespace = "aws-load-balancer-operator"
-	defaultTimeout    = 10 * time.Minute
-	deletetionPolicy  = v1.DeletePropagationForeground
+	kubeClient         client.Client
+	kubeClientSet      *kubernetes.Clientset
+	scheme             = kscheme.Scheme
+	infraConfig        configv1.Infrastructure
+	operatorName       = "aws-load-balancer-operator-controller-manager"
+	operatorNamespace  = "aws-load-balancer-operator"
+	defaultTimeout     = 10 * time.Minute
+	deletetionPolicy   = v1.DeletePropagationForeground
+	defaultRetryPolicy = wait.Backoff{
+		Duration: 5 * time.Second,
+		Factor:   1.0,
+		Jitter:   1.0,
+		Steps:    10,
+	}
 )
 
 func init() {
@@ -117,9 +123,6 @@ func TestOperatorAvailable(t *testing.T) {
 // TestAWSLoadBalancerControllerWithDefaultIngressClass tests the basic happy flow for the operator, mostly
 // using the default values.
 func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
-	// t.Log("Verifying operator availability due to restarts caused by deletion of resources")
-	// getOperator(t)
-
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
@@ -170,8 +173,11 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		"alb.ingress.kubernetes.io/target-type": "instance",
 	}
 	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echosvc)
-	err = retry.OnError(retry.DefaultRetry,
-		func(err error) bool { return !errors.IsAlreadyExists(err) },
+	err = retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return !errors.IsAlreadyExists(err)
+		},
 		func() error { return kubeClient.Create(context.TODO(), echoIng) })
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
@@ -233,9 +239,6 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
-	// t.Log("Verifying operator availability due to restarts caused by deletion of resources")
-	// getOperator(t)
-
 	t.Log("Creating a custom ingress class")
 	ingclassName := types.NamespacedName{Name: "custom-alb", Namespace: "aws-load-balancer-operator"}
 	ingclass := buildIngressClass(ingclassName, "ingress.k8s.aws/alb")
@@ -300,8 +303,11 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		"alb.ingress.kubernetes.io/target-type": "instance",
 	}
 	echoIng := buildEchoIngress(ingName, ingclass.Name, ingAnnotations, echosvc)
-	err = retry.OnError(retry.DefaultRetry,
-		func(err error) bool { return !errors.IsAlreadyExists(err) },
+	err = retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return !errors.IsAlreadyExists(err)
+		},
 		func() error { return kubeClient.Create(context.TODO(), echoIng) })
 	if err != nil && !errors.IsAlreadyExists(err) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
