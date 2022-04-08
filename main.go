@@ -106,6 +106,7 @@ func main() {
 		NewClient: func(_ cache.Cache, config *rest.Config, options client.Options, _ ...client.Object) (client.Client, error) {
 			return client.New(config, options)
 		},
+		Namespace: namespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

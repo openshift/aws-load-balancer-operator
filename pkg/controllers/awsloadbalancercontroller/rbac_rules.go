@@ -37,11 +37,6 @@ func getControllerRules() []rbacv1.PolicyRule {
 		},
 		{
 			APIGroups: []string{""},
-			Resources: []string{"secrets"},
-			Verbs:     []string{"get", "list", "watch"},
-		},
-		{
-			APIGroups: []string{""},
 			Resources: []string{"services"},
 			Verbs:     []string{"get", "list", "patch", "update", "watch"},
 		},

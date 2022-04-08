@@ -229,54 +229,10 @@ spec:
           - patch
           - update
         - apiGroups:
-          - ""
-          resources:
-          - secrets
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - serviceaccounts
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - services
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
           - admissionregistration.k8s.io
           resources:
           - mutatingwebhookconfigurations
           - validatingwebhookconfigurations
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - apps
-          resources:
-          - deployments
           verbs:
           - create
           - delete
@@ -350,8 +306,6 @@ spec:
           resources:
           - clusterrolebindings
           - clusterroles
-          - rolebindings
-          - roles
           verbs:
           - create
           - delete
@@ -412,6 +366,7 @@ spec:
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
                 - --image=$(RELATED_IMAGE_CONTROLLER)
+                - --namespace=$(TARGET_NAMESPACE)
                 command:
                 - /manager
                 env:
@@ -419,6 +374,10 @@ spec:
                   value: /etc/aws-credentials/credentials
                 - name: RELATED_IMAGE_CONTROLLER
                   value: docker.io/amazon/aws-alb-ingress-controller:v2.4.1
+                - name: TARGET_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
@@ -489,6 +448,56 @@ spec:
           verbs:
           - create
           - patch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - rolebindings
+          - roles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: aws-load-balancer-operator-controller-manager
     strategy: deployment
   installModes:

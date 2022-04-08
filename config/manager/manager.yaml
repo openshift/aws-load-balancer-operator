@@ -34,6 +34,7 @@ spec:
         - "--metrics-bind-address=127.0.0.1:8080"
         - "--leader-elect"
         - "--image=$(RELATED_IMAGE_CONTROLLER)"
+        - "--namespace=$(TARGET_NAMESPACE)"
         image: controller:latest
         name: manager
         securityContext:
@@ -64,6 +65,10 @@ spec:
             value: /etc/aws-credentials/credentials
           - name: RELATED_IMAGE_CONTROLLER
             value: docker.io/amazon/aws-alb-ingress-controller:v2.4.1
+          - name: TARGET_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.annotations['olm.targetNamespaces']
         volumeMounts:
           - mountPath: /etc/aws-credentials
             name: aws-credentials
