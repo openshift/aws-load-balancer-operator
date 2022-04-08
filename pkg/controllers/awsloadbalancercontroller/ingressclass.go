@@ -40,7 +40,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureIngressClass(ctx context.Con
 	}
 
 	ingressClass := desiredIngressClass(controller.Spec.IngressClass)
-	err := controllerutil.SetOwnerReference(controller, ingressClass, r.Scheme)
+	err := controllerutil.SetControllerReference(controller, ingressClass, r.Scheme)
 	if err != nil {
 		return fmt.Errorf("failed to set owner reference on new IngressClass %q: %w", ingressClass.Name, err)
 	}

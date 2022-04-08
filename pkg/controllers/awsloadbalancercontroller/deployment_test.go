@@ -182,12 +182,14 @@ func (b *testDeploymentBuilder) withContainers(containers ...corev1.Container) *
 	return b
 }
 
-func (b *testDeploymentBuilder) withOwnerReference(name string) *testDeploymentBuilder {
+func (b *testDeploymentBuilder) withControllerReference(name string) *testDeploymentBuilder {
 	b.ownerReference = []metav1.OwnerReference{
 		{
-			APIVersion: albo.GroupVersion.Identifier(),
-			Kind:       "AWSLoadBalancerController",
-			Name:       name,
+			APIVersion:         albo.GroupVersion.Identifier(),
+			Kind:               "AWSLoadBalancerController",
+			Name:               name,
+			Controller:         pointer.BoolPtr(true),
+			BlockOwnerDeletion: pointer.BoolPtr(true),
 		},
 	}
 	return b
@@ -561,7 +563,7 @@ func TestEnsureDeployment(t *testing.T) {
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
 					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
 				).build(),
-			).withOwnerReference("cluster").withVolumes(
+			).withControllerReference("cluster").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 			).build(),

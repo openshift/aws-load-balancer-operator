@@ -52,7 +52,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 	}
 
 	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, crSecretName, servingSecretName, controller, sa)
-	err = controllerutil.SetOwnerReference(controller, desired, r.Scheme)
+	err = controllerutil.SetControllerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on deployment %s: %w", deploymentName, err)
 	}

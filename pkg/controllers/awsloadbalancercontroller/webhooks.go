@@ -32,7 +32,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureWebhooks(ctx context.Context
 	reqLogger.Info("ensuring validating and mutating webhook configurations for aws-load-balancer-controller instance")
 
 	desiredVWC := desiredValidatingWebhookConfiguration(controller, service)
-	err := controllerutil.SetOwnerReference(controller, desiredVWC, r.Scheme)
+	err := controllerutil.SetControllerReference(controller, desiredVWC, r.Scheme)
 	if err != nil {
 		return fmt.Errorf("failed to set owner reference on desired ValidatingWebhookConfiguration %q: %w", desiredVWC.Name, err)
 	}
@@ -56,7 +56,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureWebhooks(ctx context.Context
 	}
 
 	desiredMWC := desiredMutatingWebhookConfiguration(controller, service)
-	err = controllerutil.SetOwnerReference(controller, desiredMWC, r.Scheme)
+	err = controllerutil.SetControllerReference(controller, desiredMWC, r.Scheme)
 	if err != nil {
 		return fmt.Errorf("failed to set owner reference on desired MutatingWebhookConfiguration %q: %w", desiredMWC.Name, err)
 	}
