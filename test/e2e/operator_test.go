@@ -400,8 +400,20 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
+	var infra configv1.Infrastructure
+	clusterInfrastructureName := types.NamespacedName{Name: "cluster"}
+	err := kubeClient.Get(context.TODO(), clusterInfrastructureName, &infra)
+	if err != nil {
+		t.Fatalf("failed to fetch infrastructure: %v", err)
+	}
+
+	if infra.Status.PlatformStatus == nil || infra.Status.PlatformStatus.AWS == nil || infra.Status.PlatformStatus.AWS.Region == "" {
+		err = fmt.Errorf("could not get AWS region from Infrastructure %q status", clusterInfrastructureName.Name)
+		return
+	}
+
 	t.Log("Loading aws config file")
-	cfg, err := awsconfig.LoadDefaultConfig(context.Background())
+	cfg, err := awsconfig.LoadDefaultConfig(context.Background(), awsconfig.WithRegion(infra.Status.PlatformStatus.AWS.Region))
 	if err != nil {
 		panic(err)
 	}
