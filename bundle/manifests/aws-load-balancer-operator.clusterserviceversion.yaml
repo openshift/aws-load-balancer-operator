@@ -411,6 +411,7 @@ spec:
                 - --health-probe-bind-address=:8081
                 - --metrics-bind-address=127.0.0.1:8080
                 - --leader-elect
+                - --image=$(RELATED_IMAGE_CONTROLLER)
                 command:
                 - /manager
                 env:

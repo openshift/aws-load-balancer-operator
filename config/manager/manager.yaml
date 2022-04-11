@@ -30,8 +30,10 @@ spec:
       - command:
         - /manager
         args:
-        - --leader-elect
-        - --image=$(RELATED_IMAGE_CONTROLLER)
+        - "--health-probe-bind-address=:8081"
+        - "--metrics-bind-address=127.0.0.1:8080"
+        - "--leader-elect"
+        - "--image=$(RELATED_IMAGE_CONTROLLER)"
         image: controller:latest
         name: manager
         securityContext:
