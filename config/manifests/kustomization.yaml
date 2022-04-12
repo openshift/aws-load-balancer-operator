@@ -24,3 +24,18 @@ resources:
 #    # Update the indices in this path if adding or removing volumes in the manager's Deployment.
 #    - op: remove
 #      path: /spec/template/spec/volumes/0
+
+# This patch sets the TARGET_NAMESPACE environment variable to the annotation which is added by the OLM.
+patchesJson6902:
+  - target:
+      kind: Deployment
+      name: controller-manager
+      version: v1
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/1/env/2
+        value: 
+          name: TARGET_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['olm.targetNamespaces']
