@@ -41,9 +41,6 @@ IMG_VERSION ?= latest
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(IMG_VERSION)
 
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.23
-
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -106,13 +103,13 @@ help: ## Display this help.
 ##@ Development
 
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+manifests: ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	hack/sync-upstream-crds.sh
 	hack/sync-upstream-rbac.sh
 
 .PHONY: generate
-generate: controller-gen iamctl-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
+generate: iamctl-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 .PHONY: fmt
@@ -132,7 +129,7 @@ iamctl-gen: iamctl-build
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
 .PHONY: test
-test: manifests generate lint fmt vet envtest ## Run tests.
+test: manifests generate lint fmt vet ## Run tests.
 	mkdir -p "$(ENVTEST_ASSETS_DIR)"
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)")" go test -race ./... -coverprofile cover.out -covermode=atomic
 
@@ -147,7 +144,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run -mod=vendor ./main.go
 
 .PHONY: image-build
-image-build: test ## Build container image with the manager.
+image-build: build test ## Build container image with the manager.
 	${CONTAINER_ENGINE} build -t ${IMG} .
 
 .PHONY: image-push
@@ -156,6 +153,7 @@ image-push: ## Push container image with the manager.
 
 .PHONY: iamctl-build
 iamctl-build: fmt vet ## Build iamctl binary.
+	mkdir -p ./bin
 	cd ./cmd/iamctl && go build -mod=vendor -o $(IAMCTL_BINARY) . 
 	mv ./cmd/iamctl/$(IAMCTL_BINARY) ./bin/
 
@@ -166,15 +164,15 @@ ifndef ignore-not-found
 endif
 
 .PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+uninstall: manifests ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: manifests ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
@@ -195,37 +193,14 @@ else
 OPERATOR_SDK=$(shell which operator-sdk)
 endif
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-.PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0)
+CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen
 
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-.PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+KUSTOMIZE ?= go run sigs.k8s.io/kustomize/kustomize/v4
 
-ENVTEST = $(shell pwd)/bin/setup-envtest
-.PHONY: envtest
-envtest: ## Download envtest-setup locally if necessary.
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
-
-# go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
+ENVTEST ?= go run sigs.k8s.io/controller-runtime/tools/setup-envtest
 
 .PHONY: bundle
-bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
+bundle: operator-sdk manifests ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite=false --version $(BUNDLE_VERSION) $(BUNDLE_METADATA_OPTS)
