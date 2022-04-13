@@ -1,12 +1,8 @@
 package main
 
 const (
-	policycondition = "PolicyCondition"
-	resource        = "Resource"
-	effect          = "Effect"
-	action          = "Action"
-	filetemplate    = `
-package {{.}}
+	filetemplate = `
+package {{.Package}}
 
 import cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
@@ -16,7 +12,20 @@ type IAMPolicy struct {
 }
 
 func GetIAMPolicy() IAMPolicy {
-    return IAMPolicy{}
-}
+	return IAMPolicy{
+		Statement: []cco.StatementEntry{
+			{
+				Effect: {{.Statement.Effect|printf "%q"}},
+				Resource: {{range .Statement.Resource}}{{printf "%q" .}}{{end}},
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					{{range $index, $element := .Statement.Action -}}
+					{{.|printf "%q"}},{{printf "\n"}}
+					{{- end}}
+				},
+			},
+		},
+	}
+}	
 `
 )
