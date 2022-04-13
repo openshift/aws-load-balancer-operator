@@ -26,8 +26,8 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/waf"
-	waftypes "github.com/aws/aws-sdk-go-v2/service/waf/types"
+	waf "github.com/aws/aws-sdk-go-v2/service/wafregional"
+	waftypes "github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	configv1 "github.com/openshift/api/config/v1"
@@ -439,7 +439,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	}
 }
 
-func TestAWSLoadBalancerControllerWithWAFv1(t *testing.T) {
+func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
@@ -459,7 +459,7 @@ func TestAWSLoadBalancerControllerWithWAFv1(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-wafv2"
+	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
 	t.Logf("Ensuring test workload namespace %s", testWorkloadNamespace)
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: testWorkloadNamespace}}
 	err := kubeClient.Create(context.TODO(), ns)
@@ -483,7 +483,7 @@ func TestAWSLoadBalancerControllerWithWAFv1(t *testing.T) {
 
 	token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
 	if err != nil {
-		t.Fatalf("failed to get change token for waf classic %v", err)
+		t.Fatalf("failed to get change token for waf regional classic %v", err)
 	}
 	acl, err := wafClient.CreateWebACL(context.TODO(), &waf.CreateWebACLInput{
 		DefaultAction: &waftypes.WafAction{Type: waftypes.WafActionTypeBlock},
@@ -492,12 +492,12 @@ func TestAWSLoadBalancerControllerWithWAFv1(t *testing.T) {
 		ChangeToken:   token.ChangeToken,
 	})
 	if err != nil {
-		t.Fatalf("failed to create aws wafv2 acl due to %v", err)
+		t.Fatalf("failed to create aws waf regional acl due to %v", err)
 	}
 	defer func() {
 		token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
 		if err != nil {
-			t.Fatalf("failed to get change token for waf classic %v", err)
+			t.Fatalf("failed to get change token for waf regional classic %v", err)
 		}
 
 		_, err = wafClient.DeleteWebACL(context.TODO(), &waf.DeleteWebACLInput{
@@ -505,7 +505,7 @@ func TestAWSLoadBalancerControllerWithWAFv1(t *testing.T) {
 			WebACLId:    acl.WebACL.WebACLId,
 		})
 		if err != nil {
-			t.Fatalf("failed to delete aws wafv2 acl due to %v", err)
+			t.Fatalf("failed to delete aws waf regional acl due to %v", err)
 		}
 	}()
 
@@ -566,7 +566,7 @@ func ensureCredentialsRequest() error {
 				Resource: "*",
 			},
 			{
-				Action:   []string{"waf:GetChangeToken", "waf:CreateWebACL", "waf:DeleteWebACL"},
+				Action:   []string{"waf-regional:GetChangeToken", "waf-regional:CreateWebACL", "waf-regional:DeleteWebACL"},
 				Effect:   "Allow",
 				Resource: "*",
 			},
