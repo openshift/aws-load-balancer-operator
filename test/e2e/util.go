@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"context"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -124,34 +125,16 @@ func buildEchoPod(name, namespace string) *corev1.Pod {
 	}
 }
 
-// buildCurlPod returns a pod definition for a pod with the given name and image
-// and in the given namespace that curls the specified host and address.
-func buildCurlPod(name, namespace, host, address string, extraArgs ...string) *corev1.Pod {
-	curlArgs := []string{
-		"-s",
-		"-v",
-		"--header", "HOST:" + host,
-		"--retry", "300", "--retry-delay", "5", "--max-time", "2",
-	}
-	curlArgs = append(curlArgs, extraArgs...)
-	curlArgs = append(curlArgs, "http://"+address)
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "curl",
-					Image:   "openshift/origin-node",
-					Command: []string{"/bin/curl"},
-					Args:    curlArgs,
-				},
-			},
-			RestartPolicy: corev1.RestartPolicyNever,
-		},
-	}
+func waitForHTTPClientCondition(t *testing.T, httpClient *http.Client, req *http.Request, interval, timeout time.Duration, compareFunc func(*http.Response) bool) error {
+	return wait.PollImmediate(interval, timeout, func() (done bool, err error) {
+		resp, err := httpClient.Do(req)
+		if err == nil {
+			return compareFunc(resp), nil
+		} else {
+			t.Logf("retrying client call due to: %+v", err)
+			return false, nil
+		}
+	})
 }
 
 // buildEchoService returns a service definition for an HTTP service.
