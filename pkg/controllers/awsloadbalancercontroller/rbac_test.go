@@ -24,7 +24,6 @@ var testResourceName = "aws-load-balancer-controller-cluster"
 
 func TestEnsureClusterRolesAndBinding(t *testing.T) {
 	managedTypesList := []client.ObjectList{
-		&rbacv1.ClusterRoleList{},
 		&rbacv1.RoleList{},
 		&rbacv1.ClusterRoleBindingList{},
 		&rbacv1.RoleBindingList{},
@@ -39,44 +38,7 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 		errExpected     bool
 	}{
 		{
-			name:            "Initial bootstrap, creation of all roles/clusterroles and their bindings",
-			existingObjects: make([]runtime.Object, 0),
-			errExpected:     false,
-			expectedEvents: []test.Event{
-				{
-					EventType: watch.Added,
-					ObjType:   "clusterrole",
-					NamespacedName: types.NamespacedName{
-						Name: testResourceName,
-					},
-				},
-				{
-					EventType: watch.Added,
-					ObjType:   "clusterrolebinding",
-					NamespacedName: types.NamespacedName{
-						Name: testResourceName,
-					},
-				},
-				{
-					EventType: watch.Added,
-					ObjType:   "role",
-					NamespacedName: types.NamespacedName{
-						Name:      testResourceName,
-						Namespace: test.OperatorNamespace,
-					},
-				},
-				{
-					EventType: watch.Added,
-					ObjType:   "rolebinding",
-					NamespacedName: types.NamespacedName{
-						Name:      testResourceName,
-						Namespace: test.OperatorNamespace,
-					},
-				},
-			},
-		},
-		{
-			name: "Some clusterroles pre-exist",
+			name: "Initial bootstrap, creation of all roles/clusterroles and their bindings",
 			existingObjects: []runtime.Object{
 				testPreExistingClusterRole(),
 			},
@@ -110,61 +72,16 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 		{
 			name: "Some roles pre-exist",
 			existingObjects: []runtime.Object{
+				testPreExistingClusterRole(),
 				testPreExistingRole(),
 			},
 			errExpected: false,
 			expectedEvents: []test.Event{
 				{
 					EventType: watch.Added,
-					ObjType:   "clusterrole",
-					NamespacedName: types.NamespacedName{
-						Name: testResourceName,
-					},
-				},
-				{
-					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
 					NamespacedName: types.NamespacedName{
 						Name: testResourceName,
-					},
-				},
-				{
-					EventType: watch.Added,
-					ObjType:   "rolebinding",
-					NamespacedName: types.NamespacedName{
-						Name:      testResourceName,
-						Namespace: test.OperatorNamespace,
-					},
-				},
-			},
-		},
-		{
-			name: "Some clusterroles pre-exist but contain old policies",
-			existingObjects: []runtime.Object{
-				testOutDatedPreExistingClusterRole(),
-			},
-			errExpected: false,
-			expectedEvents: []test.Event{
-				{
-					EventType: watch.Modified,
-					ObjType:   "clusterrole",
-					NamespacedName: types.NamespacedName{
-						Name: testResourceName,
-					},
-				},
-				{
-					EventType: watch.Added,
-					ObjType:   "clusterrolebinding",
-					NamespacedName: types.NamespacedName{
-						Name: testResourceName,
-					},
-				},
-				{
-					EventType: watch.Added,
-					ObjType:   "role",
-					NamespacedName: types.NamespacedName{
-						Name:      testResourceName,
-						Namespace: test.OperatorNamespace,
 					},
 				},
 				{
@@ -180,17 +97,11 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 		{
 			name: "Some roles pre-exist but contain old policies",
 			existingObjects: []runtime.Object{
+				testPreExistingClusterRole(),
 				testOutDatedPreExistingRole(),
 			},
 			errExpected: false,
 			expectedEvents: []test.Event{
-				{
-					EventType: watch.Added,
-					ObjType:   "clusterrole",
-					NamespacedName: types.NamespacedName{
-						Name: testResourceName,
-					},
-				},
 				{
 					EventType: watch.Added,
 					ObjType:   "clusterrolebinding",
@@ -215,6 +126,11 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name:            "No controller cluster role pre-exist",
+			existingObjects: []runtime.Object{},
+			errExpected:     true,
 		},
 	}
 
@@ -265,11 +181,11 @@ func TestEnsureClusterRolesAndBinding(t *testing.T) {
 }
 
 func testPreExistingClusterRole() *rbacv1.ClusterRole {
-	return buildClusterRole(testResourceName, getControllerRules())
-}
-
-func testOutDatedPreExistingClusterRole() *rbacv1.ClusterRole {
-	return buildClusterRole(testResourceName, []rbacv1.PolicyRule{})
+	return &rbacv1.ClusterRole{
+		ObjectMeta: v1.ObjectMeta{
+			Name: controllerClusterRoleName,
+		},
+	}
 }
 
 func testPreExistingRole() *rbacv1.Role {

@@ -82,7 +82,6 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
-  - clusterroles
   verbs:
   - create
   - delete
@@ -91,6 +90,15 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resourceNames:
+  - aws-load-balancer-operator-controller-role
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

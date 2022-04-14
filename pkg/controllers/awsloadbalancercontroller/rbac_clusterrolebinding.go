@@ -101,7 +101,7 @@ func (r *AWSLoadBalancerControllerReconciler) currentClusterRoleBinding(ctx cont
 }
 
 func desiredClusterRoleBinding(ctx context.Context, sa *corev1.ServiceAccount, name string) *rbacv1.ClusterRoleBinding {
-	return buildClusterRoleBinding(name, name, sa)
+	return buildClusterRoleBinding(name, controllerClusterRoleName, sa)
 }
 
 func buildClusterRoleBinding(name, clusterrole string, sa *corev1.ServiceAccount) *rbacv1.ClusterRoleBinding {

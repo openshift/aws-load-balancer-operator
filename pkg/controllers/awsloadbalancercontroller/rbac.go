@@ -2,16 +2,24 @@ package awsloadbalancercontroller
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
+const (
+	controllerClusterRoleName = "aws-load-balancer-operator-controller-role"
+)
+
 func (r *AWSLoadBalancerControllerReconciler) ensureClusterRoleAndBinding(ctx context.Context, sa *corev1.ServiceAccount, controller *albo.AWSLoadBalancerController) error {
-	err := r.ensureClusterRole(ctx, controller)
+	exists, err := r.verifyClusterRole(ctx, controllerClusterRoleName)
 	if err != nil {
 		return err
+	}
+	if !exists {
+		return fmt.Errorf("cluster role %q doesn't exist", controllerClusterRoleName)
 	}
 
 	err = r.ensureClusterRoleBinding(ctx, sa, controller)
