@@ -24,6 +24,9 @@ const (
 	appLabelName    = "app.kubernetes.io/name"
 	appName         = "aws-load-balancer-operator"
 	appInstanceName = "app.kubernetes.io/instance"
+	// awsSDKLoadConfigName is the name of the environment variable which enables shared configs.
+	// Without which certian fields in the config aren't set. Eg: role_arn.
+	awsSDKLoadConfigName = "AWS_SDK_LOAD_CONFIG"
 	// awsRegionEnvVarName is the name of the environment variable which hold the AWS region for the controller
 	awsRegionEnvVarName = "AWS_DEFAULT_REGION"
 	// awsCredentialsEnvVarName is the name of the environment varible whose value points to the AWS credentials file
@@ -115,6 +118,10 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 								{
 									Name:  awsCredentialEnvVarName,
 									Value: awsCredentialsPath,
+								},
+								{
+									Name:  awsSDKLoadConfigName,
+									Value: "1",
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

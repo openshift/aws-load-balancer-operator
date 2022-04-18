@@ -78,6 +78,17 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 	return current, nil
 }
 
+func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequestSecret(ctx context.Context, cr *cco.CredentialsRequest) (bool, error) {
+	name := types.NamespacedName{Name: cr.Spec.SecretRef.Name, Namespace: cr.Spec.SecretRef.Namespace}
+	var secret corev1.Secret
+
+	err := r.Client.Get(context.TODO(), name, &secret)
+	if err == nil || errors.IsNotFound(err) {
+		return true, err
+	}
+	return false, fmt.Errorf("failed to get secret %q associated with credentials request %q: %w", name.Name, cr.Name, err)
+}
+
 func (r *AWSLoadBalancerControllerReconciler) createCredentialsRequest(ctx context.Context, desired *cco.CredentialsRequest) error {
 	if err := r.Client.Create(ctx, desired); err != nil {
 		return err

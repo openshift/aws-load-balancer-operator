@@ -160,6 +160,7 @@ func TestUpdateStatus(t *testing.T) {
 		controller         *albo.AWSLoadBalancerController
 		deployment         *appsv1.Deployment
 		credentialsRequest *cco.CredentialsRequest
+		secretProvisioned  bool
 		conditions         []metav1.Condition
 	}{
 		{
@@ -173,22 +174,16 @@ func TestUpdateStatus(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
 				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
 			},
+			secretProvisioned: true,
 			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
 			},
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailableCondition,
+					Type:               CredentialsRequestAvailable,
 					Status:             metav1.ConditionTrue,
 					Reason:             "CredentialsRequestProvisioned",
 					Message:            `CredentialsRequest "test" has been provisioned`,
-					ObservedGeneration: 5,
-				},
-				{
-					Type:               CredentialsRequestUpdatingCondition,
-					Status:             metav1.ConditionFalse,
-					Reason:             "CredentialsRequestSyncGenerationMatch",
-					Message:            `CredentialsRequest "test" is up-to-date`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -221,19 +216,13 @@ func TestUpdateStatus(t *testing.T) {
 					Provisioned: true, LastSyncGeneration: 3,
 				},
 			},
+			secretProvisioned: true,
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailableCondition,
+					Type:               CredentialsRequestAvailable,
 					Status:             metav1.ConditionTrue,
 					Reason:             "CredentialsRequestProvisioned",
 					Message:            `CredentialsRequest "test" has been provisioned`,
-					ObservedGeneration: 5,
-				},
-				{
-					Type:               CredentialsRequestUpdatingCondition,
-					Status:             metav1.ConditionFalse,
-					Reason:             "CredentialsRequestSyncGenerationMatch",
-					Message:            `CredentialsRequest "test" is up-to-date`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -251,7 +240,8 @@ func TestUpdateStatus(t *testing.T) {
 					Status:             metav1.ConditionTrue,
 				},
 			},
-		}, {
+		},
+		{
 			name: "deployment is not available",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
@@ -262,22 +252,16 @@ func TestUpdateStatus(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
 				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
 			},
+			secretProvisioned: true,
 			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
 			},
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailableCondition,
+					Type:               CredentialsRequestAvailable,
 					Status:             metav1.ConditionTrue,
 					Reason:             "CredentialsRequestProvisioned",
 					Message:            `CredentialsRequest "test" has been provisioned`,
-					ObservedGeneration: 5,
-				},
-				{
-					Type:               CredentialsRequestUpdatingCondition,
-					Status:             metav1.ConditionFalse,
-					Reason:             "CredentialsRequestSyncGenerationMatch",
-					Message:            `CredentialsRequest "test" is up-to-date`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -307,67 +291,16 @@ func TestUpdateStatus(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
 				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: false},
 			},
+			secretProvisioned: false,
 			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
 			},
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailableCondition,
+					Type:               CredentialsRequestAvailable,
 					Status:             metav1.ConditionFalse,
 					Reason:             "CredentialsRequestNotProvisioned",
 					Message:            `CredentialsRequest "test" has not yet been provisioned`,
-					ObservedGeneration: 5,
-				},
-				{
-					Type:               CredentialsRequestUpdatingCondition,
-					Status:             metav1.ConditionFalse,
-					Reason:             "CredentialsRequestSyncGenerationMatch",
-					Message:            `CredentialsRequest "test" is up-to-date`,
-					ObservedGeneration: 5,
-				},
-				{
-					Type:               DeploymentAvailableCondition,
-					Reason:             "AllDeploymentReplicasAvailable",
-					Message:            `Number of desired and available replicas of deployment "test" are equal`,
-					ObservedGeneration: 5,
-					Status:             metav1.ConditionTrue,
-				},
-				{
-					Type:               DeploymentUpgradingCondition,
-					Reason:             "AllDeploymentReplicasUpdated",
-					Message:            `Number of desired and updated replicas of deployment "test" are equal`,
-					ObservedGeneration: 5,
-					Status:             metav1.ConditionFalse,
-				},
-			},
-		},
-		{
-			name: "credentials request is upgrading",
-			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "test"},
-				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
-				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 1},
-			},
-			credentialsRequest: &cco.CredentialsRequest{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 2},
-				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
-			},
-			controller: &albo.AWSLoadBalancerController{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
-			},
-			conditions: []metav1.Condition{
-				{
-					Type:               CredentialsRequestAvailableCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "CredentialsRequestProvisioned",
-					Message:            `CredentialsRequest "test" has been provisioned`,
-					ObservedGeneration: 5,
-				},
-				{
-					Type:               CredentialsRequestUpdatingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "CredentialsRequestSyncGenerationMismatch",
-					Message:            `CredentialsRequest "test" is updating`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -391,7 +324,7 @@ func TestUpdateStatus(t *testing.T) {
 			r := AWSLoadBalancerControllerReconciler{
 				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(tc.controller).Build(),
 			}
-			err := r.updateControllerStatus(context.Background(), tc.controller, tc.deployment, tc.credentialsRequest)
+			err := r.updateControllerStatus(context.Background(), tc.controller, tc.deployment, tc.credentialsRequest, tc.secretProvisioned)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

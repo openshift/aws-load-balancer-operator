@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	arv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -135,6 +136,13 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
+	secretProvisioned, err := r.ensureCredentialsRequestSecret(ctx, credentialsRequest)
+	if err != nil && errors.IsNotFound(err) {
+		return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("failed to ensure secret in CredentialsRequest for AWSLoadBalancerController %q: %w (Retrying)", req.Name, err)
+	} else if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController %q service account: %w", req.Name, err)
+	}
+
 	sa, err := r.ensureControllerServiceAccount(ctx, r.Namespace, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController %q service account: %w", req.Name, err)
@@ -160,7 +168,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure webhooks for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	if err := r.updateControllerStatus(ctx, lbController, deployment, credentialsRequest); err != nil {
+	if err := r.updateControllerStatus(ctx, lbController, deployment, credentialsRequest, secretProvisioned); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 	return ctrl.Result{}, nil
