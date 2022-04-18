@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -25,7 +26,7 @@ const (
 	appName         = "aws-load-balancer-operator"
 	appInstanceName = "app.kubernetes.io/instance"
 	// awsSDKLoadConfigName is the name of the environment variable which enables shared configs.
-	// Without which certian fields in the config aren't set. Eg: role_arn.
+	// Without which certain fields in the config aren't set. Eg: role_arn.
 	awsSDKLoadConfigName = "AWS_SDK_LOAD_CONFIG"
 	// awsRegionEnvVarName is the name of the environment variable which hold the AWS region for the controller
 	awsRegionEnvVarName = "AWS_DEFAULT_REGION"
@@ -41,6 +42,10 @@ const (
 	webhookTLSDir = "/tls"
 	// the name of the volume mount with the webhook tls config
 	webhookTLSVolumeName = "tls"
+	// boundSATokenVolumeName is the volume name for the sa token
+	boundSATokenVolumeName = "bound-sa-token"
+	// boundSATokenDir is the sa token directory
+	boundSATokenDir = "/var/run/secrets/openshift/serviceaccount"
 )
 
 func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace, image string, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
@@ -133,6 +138,11 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 									Name:      webhookTLSVolumeName,
 									MountPath: webhookTLSDir,
 								},
+								{
+									Name:      boundSATokenVolumeName,
+									MountPath: boundSATokenDir,
+									ReadOnly:  true,
+								},
 							},
 						},
 					},
@@ -151,6 +161,21 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: servingSecret,
+								},
+							},
+						},
+						{
+							Name: boundSATokenVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Projected: &corev1.ProjectedVolumeSource{
+									DefaultMode: aws.Int32(420),
+									Sources: []corev1.VolumeProjection{{
+										ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+											Audience:          "openshift",
+											ExpirationSeconds: aws.Int64(3600),
+											Path:              "token",
+										},
+									}},
 								},
 							},
 						},

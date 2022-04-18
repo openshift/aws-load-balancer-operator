@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -63,6 +64,7 @@ func desiredAWSLoadBalancerServiceAccount(namespace string, controller *albo.AWS
 			Namespace: namespace,
 			Name:      fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name),
 		},
+		AutomountServiceAccountToken: aws.Bool(true),
 	}
 }
 

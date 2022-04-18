@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/pointer"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -268,7 +269,7 @@ func (b *testContainerBuilder) withArgs(args ...string) *testContainerBuilder {
 }
 
 func (b *testContainerBuilder) withDefaultEnvs() *testContainerBuilder {
-	b.env = append(b.env, corev1.EnvVar{Name: awsRegionEnvVarName, Value: testAWSRegion}, corev1.EnvVar{Name: awsCredentialEnvVarName, Value: awsCredentialsPath})
+	b.env = append(b.env, corev1.EnvVar{Name: awsRegionEnvVarName, Value: testAWSRegion}, corev1.EnvVar{Name: awsCredentialEnvVarName, Value: awsCredentialsPath}, corev1.EnvVar{Name: awsSDKLoadConfigName, Value: "1"})
 	return b
 }
 
@@ -562,10 +563,21 @@ func TestEnsureDeployment(t *testing.T) {
 				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
 					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
+					corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
 				).build(),
 			).withControllerReference("cluster").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
+				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
+					DefaultMode: aws.Int32(420),
+					Sources: []corev1.VolumeProjection{{
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Audience:          "openshift",
+							ExpirationSeconds: aws.Int64(3600),
+							Path:              "token",
+						},
+					}},
+				}}},
 			).build(),
 		},
 		{
@@ -593,10 +605,21 @@ func TestEnsureDeployment(t *testing.T) {
 				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
 					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
+					corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
 				).build(),
 			).withResourceVersion("2").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
+				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
+					DefaultMode: aws.Int32(420),
+					Sources: []corev1.VolumeProjection{{
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Audience:          "openshift",
+							ExpirationSeconds: aws.Int64(3600),
+							Path:              "token",
+						},
+					}},
+				}}},
 			).build(),
 		},
 	} {
