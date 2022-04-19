@@ -139,17 +139,20 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 	}
 
 	secretProvisioned, err := r.credentialsSecretProvisioned(ctx, credentialsRequest)
-	if err != nil && errors.IsNotFound(err) {
-		// updating CR status
-		if err := r.updateControllerStatus(ctx, lbController, nil, credentialsRequest, secretProvisioned); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
-		}
-		logger.Info("(Retrying) failed to ensure secret from credentials request", "secret", credentialsRequest.Spec.SecretRef.Name)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to verify credentials secret %q for AWSLoadBalancerController %q has been provisioned: %w", credentialsRequest.Spec.SecretRef.Name, req.Name, err)
+	}
 
+	// updating CR status
+	if err := r.updateControllerStatus(ctx, lbController, nil, credentialsRequest, secretProvisioned); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
+	}
+
+	// re-enqueue if secret is not provisioned
+	if !secretProvisioned {
 		// retrying after delay to ensure secret provisioning.
+		logger.Info("(Retrying) failed to ensure secret from credentials request", "secret", credentialsRequest.Spec.SecretRef.Name)
 		return ctrl.Result{RequeueAfter: secretMissingReEnqueueDuration}, nil
-	} else if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to ensure credentialsrequest secret %q for AWSLoadBalancerController %q: %w", credentialsRequest.Spec.SecretRef.Name, req.Name, err)
 	}
 
 	sa, err := r.ensureControllerServiceAccount(ctx, r.Namespace, lbController)
