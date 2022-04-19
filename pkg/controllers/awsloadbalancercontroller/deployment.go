@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -168,11 +167,11 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 							Name: boundSATokenVolumeName,
 							VolumeSource: corev1.VolumeSource{
 								Projected: &corev1.ProjectedVolumeSource{
-									DefaultMode: aws.Int32(420),
+									DefaultMode: pointer.Int32(420),
 									Sources: []corev1.VolumeProjection{{
 										ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 											Audience:          "openshift",
-											ExpirationSeconds: aws.Int64(3600),
+											ExpirationSeconds: pointer.Int64(3600),
 											Path:              "token",
 										},
 									}},

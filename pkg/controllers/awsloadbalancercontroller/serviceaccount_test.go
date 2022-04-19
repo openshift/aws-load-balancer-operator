@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/utils/pointer"
 
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,6 +59,42 @@ func TestEnsureServiceAccount(t *testing.T) {
 			hasServiceAccount: true,
 			expectedEvents:    []test.Event{},
 		},
+		{
+			name: "Pre-existing outdated serviceaccount",
+			existingObjects: []runtime.Object{
+				testOutdatedServiceAccount(),
+			},
+			errExpected:       false,
+			hasServiceAccount: true,
+			expectedEvents: []test.Event{
+				{
+					EventType: watch.Modified,
+					ObjType:   "serviceaccount",
+					NamespacedName: types.NamespacedName{
+						Namespace: test.OperatorNamespace,
+						Name:      "aws-load-balancer-controller-cluster",
+					},
+				},
+			},
+		},
+		{
+			name: "Pre-existing incorrect serviceaccount",
+			existingObjects: []runtime.Object{
+				testIncorrectServiceAccount(),
+			},
+			errExpected:       false,
+			hasServiceAccount: true,
+			expectedEvents: []test.Event{
+				{
+					EventType: watch.Modified,
+					ObjType:   "serviceaccount",
+					NamespacedName: types.NamespacedName{
+						Namespace: test.OperatorNamespace,
+						Name:      "aws-load-balancer-controller-cluster",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -79,7 +116,7 @@ func TestEnsureServiceAccount(t *testing.T) {
 			c.Start(context.TODO())
 			defer c.Stop()
 
-			_, err := r.ensureControllerServiceAccount(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: v1.ObjectMeta{Name: controllerName}})
+			sa, err := r.ensureControllerServiceAccount(context.TODO(), r.Namespace, &albo.AWSLoadBalancerController{ObjectMeta: v1.ObjectMeta{Name: controllerName}})
 			// error check
 			if err != nil && !tc.errExpected {
 				t.Fatalf("got unexpected error: %v", err)
@@ -87,6 +124,10 @@ func TestEnsureServiceAccount(t *testing.T) {
 
 			if err == nil && tc.errExpected {
 				t.Fatalf("error expected but not received")
+			}
+
+			if sa.AutomountServiceAccountToken != nil && *sa.AutomountServiceAccountToken != true {
+				t.Fatalf("sa expected to have AutomountServiceAccountToken=true")
 			}
 
 			// collect the events received from Reconcile()
@@ -108,5 +149,26 @@ func testServiceAccount() *corev1.ServiceAccount {
 			Name:      "aws-load-balancer-controller-cluster",
 			Namespace: test.OperatorNamespace,
 		},
+		AutomountServiceAccountToken: pointer.Bool(true),
+	}
+}
+
+func testOutdatedServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "aws-load-balancer-controller-cluster",
+			Namespace: test.OperatorNamespace,
+		},
+		AutomountServiceAccountToken: nil,
+	}
+}
+
+func testIncorrectServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "aws-load-balancer-controller-cluster",
+			Namespace: test.OperatorNamespace,
+		},
+		AutomountServiceAccountToken: pointer.Bool(false),
 	}
 }

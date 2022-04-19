@@ -5,12 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
@@ -164,7 +166,7 @@ func TestUpdateStatus(t *testing.T) {
 		conditions         []metav1.Condition
 	}{
 		{
-			name: "deployment and credentialsrequest available and up-to-date",
+			name: "deployment and credentials secret available and up-to-date",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
 				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
@@ -172,7 +174,13 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			credentialsRequest: &cco.CredentialsRequest{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
-				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
+				Spec: cco.CredentialsRequestSpec{
+					SecretRef: corev1.ObjectReference{
+						Name:      "test",
+						Namespace: test.OperatorNamespace,
+					},
+				},
+				Status: cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
 			},
 			secretProvisioned: true,
 			controller: &albo.AWSLoadBalancerController{
@@ -180,10 +188,10 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailable,
+					Type:               CredentialsSecretAvailableCondition,
 					Status:             metav1.ConditionTrue,
-					Reason:             "CredentialsRequestProvisioned",
-					Message:            `CredentialsRequest "test" has been provisioned`,
+					Reason:             "CredentialsSecretsProvisioned",
+					Message:            `CredentialsSecret "test" has been provisioned`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -212,6 +220,12 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			credentialsRequest: &cco.CredentialsRequest{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 3},
+				Spec: cco.CredentialsRequestSpec{
+					SecretRef: corev1.ObjectReference{
+						Name:      "test",
+						Namespace: test.OperatorNamespace,
+					},
+				},
 				Status: cco.CredentialsRequestStatus{
 					Provisioned: true, LastSyncGeneration: 3,
 				},
@@ -219,10 +233,10 @@ func TestUpdateStatus(t *testing.T) {
 			secretProvisioned: true,
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailable,
+					Type:               CredentialsSecretAvailableCondition,
 					Status:             metav1.ConditionTrue,
-					Reason:             "CredentialsRequestProvisioned",
-					Message:            `CredentialsRequest "test" has been provisioned`,
+					Reason:             "CredentialsSecretsProvisioned",
+					Message:            `CredentialsSecret "test" has been provisioned`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -250,7 +264,13 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			credentialsRequest: &cco.CredentialsRequest{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
-				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
+				Spec: cco.CredentialsRequestSpec{
+					SecretRef: corev1.ObjectReference{
+						Name:      "test",
+						Namespace: test.OperatorNamespace,
+					},
+				},
+				Status: cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
 			},
 			secretProvisioned: true,
 			controller: &albo.AWSLoadBalancerController{
@@ -258,10 +278,10 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailable,
+					Type:               CredentialsSecretAvailableCondition,
 					Status:             metav1.ConditionTrue,
-					Reason:             "CredentialsRequestProvisioned",
-					Message:            `CredentialsRequest "test" has been provisioned`,
+					Reason:             "CredentialsSecretsProvisioned",
+					Message:            `CredentialsSecret "test" has been provisioned`,
 					ObservedGeneration: 5,
 				},
 				{
@@ -281,7 +301,7 @@ func TestUpdateStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "credential request is not available",
+			name: "credentials secret is not available",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
 				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
@@ -289,7 +309,13 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			credentialsRequest: &cco.CredentialsRequest{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
-				Status:     cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: false},
+				Spec: cco.CredentialsRequestSpec{
+					SecretRef: corev1.ObjectReference{
+						Name:      "test",
+						Namespace: test.OperatorNamespace,
+					},
+				},
+				Status: cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: false},
 			},
 			secretProvisioned: false,
 			controller: &albo.AWSLoadBalancerController{
@@ -297,10 +323,10 @@ func TestUpdateStatus(t *testing.T) {
 			},
 			conditions: []metav1.Condition{
 				{
-					Type:               CredentialsRequestAvailable,
+					Type:               CredentialsSecretAvailableCondition,
 					Status:             metav1.ConditionFalse,
-					Reason:             "CredentialsRequestNotProvisioned",
-					Message:            `CredentialsRequest "test" has not yet been provisioned`,
+					Reason:             "CredentialsSecretsNotProvisioned",
+					Message:            `CredentialsSecret "test" has not yet been provisioned`,
 					ObservedGeneration: 5,
 				},
 				{

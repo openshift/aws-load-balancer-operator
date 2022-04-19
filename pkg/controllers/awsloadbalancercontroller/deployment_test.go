@@ -611,11 +611,11 @@ func TestEnsureDeployment(t *testing.T) {
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: aws.Int32(420),
+					DefaultMode: pointer.Int32(420),
 					Sources: []corev1.VolumeProjection{{
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Audience:          "openshift",
-							ExpirationSeconds: aws.Int64(3600),
+							ExpirationSeconds: pointer.Int64(3600),
 							Path:              "token",
 						},
 					}},

@@ -16,16 +16,16 @@ import (
 )
 
 const (
-	DeploymentAvailableCondition = "DeploymentAvailable"
-	DeploymentUpgradingCondition = "DeploymentUpgrading"
-	CredentialsRequestAvailable  = "CredentialsRequestAvailable"
+	DeploymentAvailableCondition        = "DeploymentAvailable"
+	DeploymentUpgradingCondition        = "DeploymentUpgrading"
+	CredentialsSecretAvailableCondition = "CredentialsSecretAvailable"
 )
 
 func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context.Context, controller *albo.AWSLoadBalancerController, deployment *appsv1.Deployment, cr *cco.CredentialsRequest, secretProvisioned bool) error {
 	status := controller.Status.DeepCopy()
 
 	if cr != nil {
-		status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr, secretProvisioned, controller.Generation)...)
+		status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr.Spec.SecretRef.Name, secretProvisioned, controller.Generation)...)
 	}
 
 	if deployment != nil {
@@ -39,23 +39,23 @@ func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context
 	return nil
 }
 
-func credentialRequestsConditions(cr *cco.CredentialsRequest, secretProvisioned bool, generation int64) []metav1.Condition {
+func credentialRequestsConditions(secretName string, secretProvisioned bool, generation int64) []metav1.Condition {
 	var conditions []metav1.Condition
 	if secretProvisioned {
 		conditions = append(conditions, metav1.Condition{
-			Type:               CredentialsRequestAvailable,
+			Type:               CredentialsSecretAvailableCondition,
 			Status:             metav1.ConditionTrue,
 			ObservedGeneration: generation,
-			Reason:             "CredentialsRequestProvisioned",
-			Message:            fmt.Sprintf("CredentialsRequest %q has been provisioned", cr.Name),
+			Reason:             "CredentialsSecretsProvisioned",
+			Message:            fmt.Sprintf("CredentialsSecret %q has been provisioned", secretName),
 		})
 	} else {
 		conditions = append(conditions, metav1.Condition{
-			Type:               CredentialsRequestAvailable,
+			Type:               CredentialsSecretAvailableCondition,
 			Status:             metav1.ConditionFalse,
 			ObservedGeneration: generation,
-			Reason:             "CredentialsRequestNotProvisioned",
-			Message:            fmt.Sprintf("CredentialsRequest %q has not yet been provisioned", cr.Name),
+			Reason:             "CredentialsSecretsNotProvisioned",
+			Message:            fmt.Sprintf("CredentialsSecret %q has not yet been provisioned", secretName),
 		})
 	}
 	return conditions

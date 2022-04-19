@@ -78,7 +78,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 	return current, nil
 }
 
-func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequestSecret(ctx context.Context, cr *cco.CredentialsRequest) (bool, error) {
+func (r *AWSLoadBalancerControllerReconciler) credentialsSecretProvisioned(ctx context.Context, cr *cco.CredentialsRequest) (bool, error) {
 	name := types.NamespacedName{Name: cr.Spec.SecretRef.Name, Namespace: cr.Spec.SecretRef.Namespace}
 	var secret corev1.Secret
 
