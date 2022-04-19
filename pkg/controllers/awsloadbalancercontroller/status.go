@@ -23,8 +23,14 @@ const (
 
 func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context.Context, controller *albo.AWSLoadBalancerController, deployment *appsv1.Deployment, cr *cco.CredentialsRequest, secretProvisioned bool) error {
 	status := controller.Status.DeepCopy()
-	status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr, secretProvisioned, controller.Generation)...)
-	status.Conditions = mergeConditions(status.Conditions, deploymentConditions(deployment, controller.Generation)...)
+
+	if cr != nil {
+		status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr, secretProvisioned, controller.Generation)...)
+	}
+
+	if deployment != nil {
+		status.Conditions = mergeConditions(status.Conditions, deploymentConditions(deployment, controller.Generation)...)
+	}
 
 	if haveConditionsChanged(controller.Status.Conditions, status.Conditions) {
 		controller.Status.Conditions = status.Conditions

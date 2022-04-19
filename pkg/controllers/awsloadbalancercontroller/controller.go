@@ -51,6 +51,8 @@ const (
 	controllerWebhookPort = 9443
 	// common prefix for all resource of an operand
 	controllerResourcePrefix = "aws-load-balancer-controller"
+	// controllerReEnqueueDuration is the delay to re-enqueue.
+	controllerReEnqueueDuration = time.Second * 30
 )
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
@@ -138,7 +140,14 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 
 	secretProvisioned, err := r.ensureCredentialsRequestSecret(ctx, credentialsRequest)
 	if err != nil && errors.IsNotFound(err) {
-		return ctrl.Result{RequeueAfter: time.Second * 10}, fmt.Errorf("failed to ensure secret in CredentialsRequest for AWSLoadBalancerController %q: %w (Retrying)", req.Name, err)
+		// updating CR status
+		if err := r.updateControllerStatus(ctx, lbController, nil, credentialsRequest, secretProvisioned); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
+		}
+		logger.Info("(Retrying) failed to ensure secret from credentials request", "secret", credentialsRequest.Spec.SecretRef.Name)
+
+		// retrying after delay to ensure secret provisioning.
+		return ctrl.Result{RequeueAfter: controllerReEnqueueDuration}, nil
 	} else if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController %q service account: %w", req.Name, err)
 	}
