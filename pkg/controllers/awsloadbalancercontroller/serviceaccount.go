@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,7 +43,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureControllerServiceAccount(ctx
 		}
 	}
 
-	return current, nil
+	return r.updateServiceAccount(ctx, current, desired)
 }
 
 // currentAWSLoadBalancerServiceAccount gets the current AWSLoadBalancer service account resource.
@@ -57,12 +58,24 @@ func (r *AWSLoadBalancerControllerReconciler) currentAWSLoadBalancerServiceAccou
 	return true, sa, nil
 }
 
+func (r *AWSLoadBalancerControllerReconciler) updateServiceAccount(ctx context.Context, current, desired *corev1.ServiceAccount) (*corev1.ServiceAccount, error) {
+	updatedSA := current.DeepCopy()
+
+	if updatedSA.AutomountServiceAccountToken == nil || *updatedSA.AutomountServiceAccountToken != *desired.AutomountServiceAccountToken {
+		updatedSA.AutomountServiceAccountToken = desired.AutomountServiceAccountToken
+		return updatedSA, r.Update(ctx, updatedSA)
+	}
+
+	return updatedSA, nil
+}
+
 func desiredAWSLoadBalancerServiceAccount(namespace string, controller *albo.AWSLoadBalancerController) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name),
 		},
+		AutomountServiceAccountToken: pointer.Bool(true),
 	}
 }
 

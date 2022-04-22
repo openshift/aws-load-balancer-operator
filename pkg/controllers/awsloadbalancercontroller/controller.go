@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	arv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -50,6 +51,8 @@ const (
 	controllerWebhookPort = 9443
 	// common prefix for all resource of an operand
 	controllerResourcePrefix = "aws-load-balancer-controller"
+	// secretMissingReEnqueueDuration is the delay to re-enqueue.
+	secretMissingReEnqueueDuration = time.Second * 30
 )
 
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
@@ -135,6 +138,23 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure CredentialsRequest for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
+	secretProvisioned, err := r.credentialsSecretProvisioned(ctx, credentialsRequest)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to verify credentials secret %q for AWSLoadBalancerController %q has been provisioned: %w", credentialsRequest.Spec.SecretRef.Name, req.Name, err)
+	}
+
+	// updating CR status
+	if err := r.updateControllerStatus(ctx, lbController, nil, credentialsRequest, secretProvisioned); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
+	}
+
+	// re-enqueue if secret is not provisioned
+	if !secretProvisioned {
+		// retrying after delay to ensure secret provisioning.
+		logger.Info("(Retrying) failed to ensure secret from credentials request", "secret", credentialsRequest.Spec.SecretRef.Name)
+		return ctrl.Result{RequeueAfter: secretMissingReEnqueueDuration}, nil
+	}
+
 	sa, err := r.ensureControllerServiceAccount(ctx, r.Namespace, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController %q service account: %w", req.Name, err)
@@ -160,7 +180,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure webhooks for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	if err := r.updateControllerStatus(ctx, lbController, deployment, credentialsRequest); err != nil {
+	if err := r.updateControllerStatus(ctx, lbController, deployment, credentialsRequest, secretProvisioned); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to update status of AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 	return ctrl.Result{}, nil

@@ -24,6 +24,9 @@ const (
 	appLabelName    = "app.kubernetes.io/name"
 	appName         = "aws-load-balancer-operator"
 	appInstanceName = "app.kubernetes.io/instance"
+	// awsSDKLoadConfigName is the name of the environment variable which enables shared configs.
+	// Without which certain fields in the config aren't set. Eg: role_arn.
+	awsSDKLoadConfigName = "AWS_SDK_LOAD_CONFIG"
 	// awsRegionEnvVarName is the name of the environment variable which hold the AWS region for the controller
 	awsRegionEnvVarName = "AWS_DEFAULT_REGION"
 	// awsCredentialsEnvVarName is the name of the environment varible whose value points to the AWS credentials file
@@ -38,6 +41,10 @@ const (
 	webhookTLSDir = "/tls"
 	// the name of the volume mount with the webhook tls config
 	webhookTLSVolumeName = "tls"
+	// boundSATokenVolumeName is the volume name for the sa token
+	boundSATokenVolumeName = "bound-sa-token"
+	// boundSATokenDir is the sa token directory
+	boundSATokenDir = "/var/run/secrets/openshift/serviceaccount"
 )
 
 func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace, image string, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
@@ -116,6 +123,10 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 									Name:  awsCredentialEnvVarName,
 									Value: awsCredentialsPath,
 								},
+								{
+									Name:  awsSDKLoadConfigName,
+									Value: "1",
+								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
@@ -125,6 +136,11 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 								{
 									Name:      webhookTLSVolumeName,
 									MountPath: webhookTLSDir,
+								},
+								{
+									Name:      boundSATokenVolumeName,
+									MountPath: boundSATokenDir,
+									ReadOnly:  true,
 								},
 							},
 						},
@@ -144,6 +160,21 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: servingSecret,
+								},
+							},
+						},
+						{
+							Name: boundSATokenVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Projected: &corev1.ProjectedVolumeSource{
+									DefaultMode: pointer.Int32(420),
+									Sources: []corev1.VolumeProjection{{
+										ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+											Audience:          "openshift",
+											ExpirationSeconds: pointer.Int64(3600),
+											Path:              "token",
+										},
+									}},
 								},
 							},
 						},

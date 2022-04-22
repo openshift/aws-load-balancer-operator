@@ -16,16 +16,21 @@ import (
 )
 
 const (
-	DeploymentAvailableCondition         = "DeploymentAvailable"
-	DeploymentUpgradingCondition         = "DeploymentUpgrading"
-	CredentialsRequestUpdatingCondition  = "CredentialsRequestUpgrading"
-	CredentialsRequestAvailableCondition = "CredentialsRequestAvailable"
+	DeploymentAvailableCondition        = "DeploymentAvailable"
+	DeploymentUpgradingCondition        = "DeploymentUpgrading"
+	CredentialsSecretAvailableCondition = "CredentialsSecretAvailable"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context.Context, controller *albo.AWSLoadBalancerController, deployment *appsv1.Deployment, cr *cco.CredentialsRequest) error {
+func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context.Context, controller *albo.AWSLoadBalancerController, deployment *appsv1.Deployment, cr *cco.CredentialsRequest, secretProvisioned bool) error {
 	status := controller.Status.DeepCopy()
-	status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr, controller.Generation)...)
-	status.Conditions = mergeConditions(status.Conditions, deploymentConditions(deployment, controller.Generation)...)
+
+	if cr != nil {
+		status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr.Spec.SecretRef.Name, secretProvisioned, controller.Generation)...)
+	}
+
+	if deployment != nil {
+		status.Conditions = mergeConditions(status.Conditions, deploymentConditions(deployment, controller.Generation)...)
+	}
 
 	if haveConditionsChanged(controller.Status.Conditions, status.Conditions) {
 		controller.Status.Conditions = status.Conditions
@@ -34,40 +39,23 @@ func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context
 	return nil
 }
 
-func credentialRequestsConditions(cr *cco.CredentialsRequest, generation int64) []metav1.Condition {
+func credentialRequestsConditions(secretName string, secretProvisioned bool, generation int64) []metav1.Condition {
 	var conditions []metav1.Condition
-	if cr.Status.Provisioned {
+	if secretProvisioned {
 		conditions = append(conditions, metav1.Condition{
-			Type:               CredentialsRequestAvailableCondition,
+			Type:               CredentialsSecretAvailableCondition,
 			Status:             metav1.ConditionTrue,
 			ObservedGeneration: generation,
-			Reason:             "CredentialsRequestProvisioned",
-			Message:            fmt.Sprintf("CredentialsRequest %q has been provisioned", cr.Name),
+			Reason:             "CredentialsSecretsProvisioned",
+			Message:            fmt.Sprintf("CredentialsSecret %q has been provisioned", secretName),
 		})
 	} else {
 		conditions = append(conditions, metav1.Condition{
-			Type:               CredentialsRequestAvailableCondition,
+			Type:               CredentialsSecretAvailableCondition,
 			Status:             metav1.ConditionFalse,
 			ObservedGeneration: generation,
-			Reason:             "CredentialsRequestNotProvisioned",
-			Message:            fmt.Sprintf("CredentialsRequest %q has not yet been provisioned", cr.Name),
-		})
-	}
-	if cr.Status.LastSyncGeneration != cr.Generation {
-		conditions = append(conditions, metav1.Condition{
-			Type:               CredentialsRequestUpdatingCondition,
-			Status:             metav1.ConditionTrue,
-			ObservedGeneration: generation,
-			Reason:             "CredentialsRequestSyncGenerationMismatch",
-			Message:            fmt.Sprintf("CredentialsRequest %q is updating", cr.Name),
-		})
-	} else {
-		conditions = append(conditions, metav1.Condition{
-			Type:               CredentialsRequestUpdatingCondition,
-			Status:             metav1.ConditionFalse,
-			ObservedGeneration: generation,
-			Reason:             "CredentialsRequestSyncGenerationMatch",
-			Message:            fmt.Sprintf("CredentialsRequest %q is up-to-date", cr.Name),
+			Reason:             "CredentialsSecretsNotProvisioned",
+			Message:            fmt.Sprintf("CredentialsSecret %q has not yet been provisioned", secretName),
 		})
 	}
 	return conditions
