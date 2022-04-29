@@ -79,7 +79,55 @@ spec:
     - kind: TargetGroupBinding
       name: targetgroupbindings.elbv2.k8s.aws
       version: v1beta1
-  description: Operator to simplify management of aws-load-balancer-controller
+  description: |-
+    Operator to simplify management of aws-load-balancer-controller
+
+    ### Prerequisites for installation
+    The operator requires AWS credentials in the installation namespace before it can be installed.
+
+    1. Create the operator namespace with the following command:
+    ```bash
+    oc create namespace aws-load-balancer-operator
+    ```
+    2. Create the `CredentialsRequest` in the namespace with the following command:
+
+    ```
+    cat << EOF| kubectl create -f -
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: CredentialsRequest
+    metadata:
+      name: aws-load-balancer-operator
+    spec:
+      providerSpec:
+        apiVersion: cloudcredential.openshift.io/v1
+        kind: AWSProviderSpec
+        statementEntries:
+          - action:
+              - ec2:DescribeSubnets
+            effect: Allow
+            resource: "*"
+          - action:
+              - ec2:CreateTags
+              - ec2:DeleteTags
+            effect: Allow
+            resource: arn:aws:ec2:*:*:subnet/*
+          - action:
+              - ec2:DescribeVpcs
+            effect: Allow
+            resource: "*"
+      secretRef:
+        name: aws-load-balancer-operator
+        namespace: aws-load-balancer-operator
+      serviceAccountNames:
+        - aws-load-balancer-operator-controller-manager
+      EOF
+    ```
+    3. Ensure the credentials have been correctly provisioned
+    ```bash
+    oc get secret -n aws-load-balancer-operator aws-load-balancer-operator
+    ```
+
+    After this the operator can be installated through the console or through the command line.
   displayName: aws-load-balancer-operator
   icon:
   - base64data: |
