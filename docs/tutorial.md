@@ -173,6 +173,6 @@ spec:
 Wait for the status of the Ingress to show the host of the provisioned ALB.
 
 ```bash
-HOST=$(kubectl get ingress -n echoserver echoserver -o json | jq -r '.status.loadBalancer.ingress[0].hostname')
+HOST=$(oc get ingress -n echoserver echoserver -o json | jq -r '.status.loadBalancer.ingress[0].hostname')
 curl $HOST
 ```
