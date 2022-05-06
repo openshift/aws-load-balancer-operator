@@ -92,7 +92,7 @@ spec:
     2. Create the `CredentialsRequest` in the namespace with the following command:
 
     ```
-    cat << EOF| kubectl create -f -
+    cat << EOF| oc create -f -
     apiVersion: cloudcredential.openshift.io/v1
     kind: CredentialsRequest
     metadata:
