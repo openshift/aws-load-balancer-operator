@@ -1,14 +1,15 @@
 # Tagging Pre-requistes
 
 The `aws-load-balancer-operator` requires specific tags on some of the aws
-resources to function appropriately. These are documented as follows:
+resources to function correctly. They are as follows:
 
 ## VPC
 
-The operator requires the VPC ID during start up and this is fetched using
-`kubernetes.io/cluster/${CLUSTER_ID}` tag. This is automatically done
-when the cluster is installed in an Installer-Provisioned Infrastructure (IPI),
-but in a User-Provisioned Infrastructure (UPI) the user must tag the VPC as follows:
+The VPC of the cluster on which the operator is running should have the tag
+`kubernetes.io/cluster/${CLUSTER_ID}`. This is used by the operator to pass
+the VPC ID to the controller. When the cluster is provisioned with _Installer-Provisioned Infrastructure (IPI)_,
+the tag is added by the installer. But in a _User-Provisioned Infrastructure (UPI)_
+cluster the user must tag the VPC as follows:
 
 | Key                                     | Value                 |
 | --------------------------------------- | --------------------- |
@@ -18,8 +19,10 @@ but in a User-Provisioned Infrastructure (UPI) the user must tag the VPC as foll
 
 When `spec.subnetTagging` value is set to `Auto` the operator attempts to
 determine the subnets which belong to the cluster and tags them appropriately.
-To apply the logic mentioned in [subnettagging](/docs/tutorial.md#subnettagging)
-in UPI clusters, the subnets must be tagged as follows:
+When the cluster has been installed with _User Provisioned Infrastructure_ the subnets
+do not have the tags for the controller to function correctly. In this case the user should tag
+the subnets themselves and set the `spec.subnetTagging` field to `Manual`. The tags should
+have the following values:
 
 ### Public subnets
 
