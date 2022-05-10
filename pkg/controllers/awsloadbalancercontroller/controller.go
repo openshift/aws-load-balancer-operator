@@ -102,7 +102,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 
 	// if the processed subnets have not yet been written into the status or if the tagging policy has changed then update the subnets
 	if lbController.Status.Subnets == nil || (lbController.Spec.SubnetTagging != lbController.Status.Subnets.SubnetTagging) {
-		internalSubnets, publicSubnets, taggedSubnets, untaggedSubnets, err := r.tagSubnets(ctx, lbController)
+		internalSubnets, publicSubnets, untaggedSubnets, taggedSubnets, err := r.tagSubnets(ctx, lbController)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to update subnets: %w", err)
 		}
