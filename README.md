@@ -1,4 +1,4 @@
-# aws-load-balancer-operator
+# AWS LoadBalancer Operator
 
 This operator is used to install, manage and configure an instance of
 [aws-load-balancer-controller](https://github.com/kubernetes-sigs/aws-load-balancer-controller/)
@@ -6,6 +6,18 @@ in a OpenShift cluster.
 
 This [document](https://github.com/openshift/enhancements/blob/master/enhancements/ingress/aws-load-balancer-operator.md)
 describes the design and implementation of the operator in more detail.
+
+## Table of contents
+
+1. [Prerequisites](/docs/prerequisites.md)
+   1. [CredentialsRequest](/docs/prerequisites.md#credentialsrequest)
+   2. [VPC and Subnets](/docs/prerequisites.md#vpc-and-subnets)
+2. [Installation](/docs/install.md)
+   1. [STS Clusters](/docs/install.md#sts-clusters)
+3. [Tutorial](/docs/tutorial.md)
+4. [Local Development](#local-development)
+
+## Local Development
 
 ### Build the operand image
 

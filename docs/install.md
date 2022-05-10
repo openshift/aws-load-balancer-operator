@@ -1,4 +1,9 @@
-# Using manual mode with STS
+# Installation
+
+This documents any required information either during installation or
+post installation to ensure the operator is successfully installed.
+
+## STS Clusters
 
 In an STS Cluster, *CredentialsRequests* are not automatically provisioned by
 the `cloud-credential-operator` and requires manual intervention by the
@@ -9,11 +14,11 @@ to provision the secret for *CredentialsRequest*. And so in an STS Cluster the
 secret needs to be provisioned manually. The operator will wait until the required
 secrets are created and available.
 
-## Pre-Requisites
+### Pre-Requisites
 
 ### [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.10/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
 
-## Extract required `CredentialsRequests`
+### Extract required `CredentialsRequests`
 
 1. The **aws-load-balancer-operator** creates a *CredentialsRequest* named
 `aws-load-balancer-controller-<cr-name>` in the *openshift-cloud-credential-operator* namespace.
