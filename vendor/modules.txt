@@ -1361,6 +1361,9 @@ mvdan.cc/lint
 # mvdan.cc/unparam v0.0.0-20211214103731-d0ef000c54e5
 ## explicit; go 1.16
 mvdan.cc/unparam/check
+# sigs.k8s.io/aws-load-balancer-controller v0.0.0-20220316010148-c4471defda10
+## explicit; go 1.17
+sigs.k8s.io/aws-load-balancer-controller/apis/elbv2/v1beta1
 # sigs.k8s.io/controller-runtime v0.11.0
 ## explicit; go 1.17
 sigs.k8s.io/controller-runtime

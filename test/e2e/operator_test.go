@@ -26,6 +26,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/pointer"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	waf "github.com/aws/aws-sdk-go-v2/service/wafregional"
@@ -34,6 +35,7 @@ import (
 	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	configv1 "github.com/openshift/api/config/v1"
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+	elbv1beta1 "sigs.k8s.io/aws-load-balancer-controller/apis/elbv2/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
@@ -67,6 +69,7 @@ func init() {
 	utilruntime.Must(cco.Install(scheme))
 	utilruntime.Must(networkingv1.AddToScheme(scheme))
 	utilruntime.Must(arv1.AddToScheme(scheme))
+	utilruntime.Must(elbv1beta1.AddToScheme(scheme))
 }
 
 func newAWSLoadBalancerController(name types.NamespacedName, ingressClass string, addons []albo.AWSAddon) albo.AWSLoadBalancerController {
@@ -639,4 +642,130 @@ func createTestWorkload(t *testing.T, namespace string) *corev1.Service {
 	}
 
 	return echosvc
+}
+
+func TestIngressGroup(t *testing.T) {
+	ctx := context.TODO()
+	t.Logf("Creating a custom IngressClassParams")
+	ingressClassParams := &elbv1beta1.IngressClassParams{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "multi-ingress-params",
+		},
+		Spec: elbv1beta1.IngressClassParamsSpec{
+			Group: &elbv1beta1.IngressGroup{
+				Name: "multi-ingress",
+			},
+		},
+	}
+
+	if err := kubeClient.Create(ctx, ingressClassParams); err != nil {
+		t.Fatalf("failed to create IngressClassParams %s: %v", ingressClassParams.Name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, ingressClassParams, defaultTimeout)
+	}()
+
+	t.Log("Creating a custom ingress class")
+	ingressClassName := types.NamespacedName{Name: "multi-ingress", Namespace: "aws-load-balancer-operator"}
+	ingressClass := buildIngressClass(ingressClassName, "ingress.k8s.aws/alb")
+	ingressClass.Spec.Parameters = &networkingv1.IngressClassParametersReference{
+		APIGroup: pointer.String(elbv1beta1.GroupVersion.Group),
+		Kind:     "IngressClassParams",
+		Name:     ingressClassParams.Name,
+	}
+	if err := kubeClient.Create(context.TODO(), ingressClass); err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure custom ingress class %q: %v", ingressClass.Name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, ingressClass, defaultTimeout)
+	}()
+
+	t.Log("Creating aws load balancer controller instance with custom ingress class")
+
+	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
+	alb := newAWSLoadBalancerController(name, ingressClassName.Name, []albo.AWSAddon{})
+	if err := kubeClient.Create(context.TODO(), &alb); err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, &alb, defaultTimeout)
+	}()
+
+	expected := []appsv1.DeploymentCondition{
+		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+	}
+	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
+	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
+	}
+
+	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
+	ingAnnotations := map[string]string{
+		"alb.ingress.kubernetes.io/scheme": "internet-facing",
+	}
+
+	t.Log("Creating Ingress Resource 1 with custom ingress class")
+	ingName1 := types.NamespacedName{Name: "echoserver-1", Namespace: testWorkloadNamespace}
+	echoIng1 := buildEchoIngress(ingName1, ingressClass.Name, ingAnnotations, echoSvc)
+	err := retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return !errors.IsAlreadyExists(err)
+		},
+		func() error { return kubeClient.Create(context.TODO(), echoIng1) })
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng1.Name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, echoIng1, defaultTimeout)
+	}()
+
+	t.Log("Creating Ingress Resource 2 with custom ingress class")
+	ingName2 := types.NamespacedName{Name: "echoserver-2", Namespace: testWorkloadNamespace}
+	echoIng2 := buildEchoIngress(ingName2, ingressClass.Name, ingAnnotations, echoSvc)
+	err = retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return !errors.IsAlreadyExists(err)
+		},
+		func() error { return kubeClient.Create(context.TODO(), echoIng2) })
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng2.Name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, echoIng2, defaultTimeout)
+	}()
+
+	t.Log("Creating Ingress Resource 3 with custom ingress class")
+	ingName3 := types.NamespacedName{Name: "echoserver-3", Namespace: testWorkloadNamespace}
+	echoIng3 := buildEchoIngress(ingName3, ingressClass.Name, ingAnnotations, echoSvc)
+	err = retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return !errors.IsAlreadyExists(err)
+		},
+		func() error { return kubeClient.Create(context.TODO(), echoIng3) })
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng3.Name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, echoIng3, defaultTimeout)
+	}()
+
+	var firstAddress string
+	if firstAddress, err = getIngress(t, kubeClient, defaultTimeout, ingName1); err != nil {
+		t.Fatalf("did not get expected available condition for ingress: %v", err)
+	}
+
+	for _, ingressName := range []types.NamespacedName{ingName2, ingName3} {
+		var address string
+		if address, err = getIngress(t, kubeClient, defaultTimeout, ingressName); err != nil {
+			t.Fatalf("did not get expected available condition for ingress %s: %v", ingressName, err)
+		}
+		if address != firstAddress {
+			t.Errorf("ingress %s does not have the address %s, instead has %s", ingressName, firstAddress, address)
+		}
+	}
+
 }
