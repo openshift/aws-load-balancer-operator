@@ -41,16 +41,21 @@ logic.
 
 1. Fetch all the subnets that are tagged with the
    key `kubernetes.io/cluster/$CLUSTER_ID`.
-3. If the subnet has the tag `kubernetes.io/role/internal-elb` then it's an
+2. If the subnet has the tag `kubernetes.io/role/internal-elb` then it's an
    internal subnet.
-4. Any subnets without the internal subnet tag are automatically classified as
+3. Any subnets without the internal subnet tag are automatically classified as
    public subnets.
-5. The tag `kubernetes.io/role/elb` is added to the public subnets.
+4. The tag `kubernetes.io/role/elb` is added to the public subnets.
 
-__Note:__ The operator cannot determine the role correctly if the internal
+__Note:__
+
+* The operator cannot determine the role correctly if the internal
 subnet tags are not present on internal subnet. So if your cluster is installed
 on User-Provisioned Infrastructure then you should manually tag the subnets with
 the appropriate role tags and set the subnet tagging policy to `Manual`
+
+* Additional information for subnet tagging if your cluster is installed
+on User-Provisioned Infrastructure can be found in [tagging.md](/docs/tagging/tagging.md).
 
 ### additionalResourceTags
 
