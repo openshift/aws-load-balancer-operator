@@ -89,7 +89,8 @@ spec:
     ```bash
     oc create namespace aws-load-balancer-operator
     ```
-    2. Create the `CredentialsRequest` in the namespace with the following command:
+    2. Create the `CredentialsRequest` in the `openshift-cloud-credential-operator`
+       namespace with the following command:
 
     ```
     cat << EOF| oc create -f -
@@ -97,6 +98,7 @@ spec:
     kind: CredentialsRequest
     metadata:
       name: aws-load-balancer-operator
+      namespace: openshift-cloud-credential-operator
     spec:
       providerSpec:
         apiVersion: cloudcredential.openshift.io/v1
