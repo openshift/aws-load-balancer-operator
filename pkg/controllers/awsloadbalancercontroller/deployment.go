@@ -14,6 +14,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -45,6 +46,8 @@ const (
 	boundSATokenVolumeName = "bound-sa-token"
 	// boundSATokenDir is the sa token directory
 	boundSATokenDir = "/var/run/secrets/openshift/serviceaccount"
+	// all capabilities in the pod security context
+	allCapabilities = "ALL"
 )
 
 func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace, image string, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
@@ -141,6 +144,17 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 									Name:      boundSATokenVolumeName,
 									MountPath: boundSATokenDir,
 									ReadOnly:  true,
+								},
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{allCapabilities},
+								},
+								Privileged:               pointer.Bool(false),
+								RunAsNonRoot:             pointer.Bool(true),
+								AllowPrivilegeEscalation: pointer.Bool(false),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
 							},
 						},
@@ -285,8 +299,8 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 				return false, fmt.Errorf("deployment %s does not have a container with the name %s", current.Name, desiredContainer.Name)
 			}
 
-			if container, changed := hasContainerChanged(updated.Spec.Template.Spec.Containers[foundIndex], desiredContainer); changed {
-				updated.Spec.Template.Spec.Containers[foundIndex] = container
+			if changed := hasContainerChanged(updated.Spec.Template.Spec.Containers[foundIndex], desiredContainer); changed {
+				updated.Spec.Template.Spec.Containers[foundIndex] = desiredContainer
 				outdated = true
 			}
 		}
@@ -330,44 +344,43 @@ func haveVolumesChanged(current []corev1.Volume, desired []corev1.Volume) bool {
 	return false
 }
 
-func hasContainerChanged(current, desired corev1.Container) (corev1.Container, bool) {
-	var updated bool
+func hasContainerChanged(current, desired corev1.Container) bool {
 	if current.Image != desired.Image {
-		updated = true
+		return true
 	}
 	if !cmp.Equal(current.Args, desired.Args) {
-		updated = true
+		return true
 	}
 
-	if len(current.Env) == len(desired.Env) {
-		currentEnvs := indexedContainerEnv(current.Env)
-		for _, e := range desired.Env {
-			if ce, ok := currentEnvs[e.Name]; !ok {
-				updated = true
-				break
-			} else if !cmp.Equal(ce, e) {
-				updated = true
-				break
-			}
+	if hasSecurityContextChanged(current.SecurityContext, desired.SecurityContext) {
+		return true
+	}
+
+	if len(current.Env) != len(desired.Env) {
+		return true
+	}
+	currentEnvs := indexedContainerEnv(current.Env)
+	for _, e := range desired.Env {
+		if ce, ok := currentEnvs[e.Name]; !ok {
+			return true
+		} else if !cmp.Equal(ce, e) {
+			return true
 		}
-	} else {
-		updated = true
 	}
 
 	if len(current.VolumeMounts) != len(desired.VolumeMounts) {
-		updated = true
-	} else {
-		for i := 0; i < len(current.VolumeMounts); i++ {
-			cvm := current.VolumeMounts[i]
-			dvm := desired.VolumeMounts[i]
-			if cvm.Name != dvm.Name || cvm.MountPath != dvm.MountPath {
-				updated = true
-				break
-			}
+		return true
+	}
+
+	for i := 0; i < len(current.VolumeMounts); i++ {
+		cvm := current.VolumeMounts[i]
+		dvm := desired.VolumeMounts[i]
+		if cvm.Name != dvm.Name || cvm.MountPath != dvm.MountPath {
+			return true
 		}
 	}
 
-	return desired, updated
+	return false
 }
 
 func indexedContainerEnv(envs []corev1.EnvVar) map[string]corev1.EnvVar {
@@ -376,4 +389,64 @@ func indexedContainerEnv(envs []corev1.EnvVar) map[string]corev1.EnvVar {
 		indexed[e.Name] = e
 	}
 	return indexed
+}
+
+func hasSecurityContextChanged(current, desired *corev1.SecurityContext) bool {
+	if desired == nil {
+		return false
+	}
+
+	if current == nil {
+		return true
+	}
+
+	if desired.Capabilities != nil {
+		if current.Capabilities == nil {
+			return true
+		}
+		cmpCapabilities := cmpopts.SortSlices(func(a, b corev1.Capability) bool { return a < b })
+		if !cmp.Equal(desired.Capabilities.Add, current.Capabilities.Add, cmpCapabilities) {
+			return true
+		}
+
+		if !cmp.Equal(desired.Capabilities.Drop, current.Capabilities.Drop, cmpCapabilities) {
+			return true
+		}
+	}
+
+	if !equalBoolPtr(current.RunAsNonRoot, desired.RunAsNonRoot) {
+		return true
+	}
+
+	if !equalBoolPtr(current.Privileged, desired.Privileged) {
+		return true
+	}
+	if !equalBoolPtr(current.AllowPrivilegeEscalation, desired.AllowPrivilegeEscalation) {
+		return true
+	}
+
+	if desired.SeccompProfile != nil {
+		if current.SeccompProfile == nil {
+			return true
+		}
+		if desired.SeccompProfile.Type != "" && desired.SeccompProfile.Type != current.SeccompProfile.Type {
+			return true
+		}
+	}
+	return false
+}
+
+func equalBoolPtr(current, desired *bool) bool {
+	if desired == nil {
+		return true
+	}
+
+	if current == nil {
+		return false
+	}
+
+	if *current != *desired {
+		return false
+	}
+	return true
 }
