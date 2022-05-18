@@ -1,5 +1,7 @@
 # Tutorial
 
+## Post Installation
+
 After the operator is installed, create an instance of
 `AWSLoadBalancerController`. Note that since only a single instance of the
 aws-load-balancer-controller can be installed in a cluster only the resource
