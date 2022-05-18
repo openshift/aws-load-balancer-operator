@@ -1,7 +1,7 @@
 # Installation
 
 This documents any required information either during installation or
-post installation to ensure the operator is successfully installed.
+post installation to ensure the operator can function correctly.
 
 ## STS Clusters
 

@@ -4,7 +4,7 @@
 
 ### For non-STS clusters
 
-1. Additional credentials are needed for the operator to be successfully
+1. Additional AWS credentials are needed for the operator to be successfully
    installed. This is needed to interact with subnets and VPCs.
 2. Create AWS credentials profile for the operator
 
@@ -26,13 +26,13 @@
    oc apply -f https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-credentials-request.yaml
    ```
 
-### Fos STS clusters
+### For STS clusters
 
 The same steps mentioned above can be followed for STS clusters as well.
 But if instead of manually creating the secret in `step 2`, you prefer
 `step 3`, then there are additional steps involved.
 
-1. Post creating the *CredentialRequests*,
+1. After creating the *CredentialRequests*,
 
     ```bash
     oc get credentialsrequest -n openshift-cloud-credential-operator  \
@@ -41,7 +41,7 @@ But if instead of manually creating the secret in `step 2`, you prefer
 
     Extract and save the required *CredentialsRequest* in a directory.
 
-2. Use the ccoctl tool to process all *CredentialsRequest* objects in the credrequests
+2. Use the ccoctl tool to process all *CredentialsRequest* objects in the previously specified
 directory:
 
     ```bash
