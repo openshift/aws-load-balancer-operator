@@ -20,6 +20,10 @@ spec:
         - containerPort: 8443
           protocol: TCP
           name: https
+        securityContext:
+          capabilities:
+            drop:
+              - ALL
         resources:
           limits:
             cpu: 500m
