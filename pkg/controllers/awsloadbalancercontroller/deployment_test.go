@@ -243,11 +243,12 @@ func (b *testDeploymentBuilder) build() *appsv1.Deployment {
 }
 
 type testContainerBuilder struct {
-	name         string
-	image        string
-	args         []string
-	env          []corev1.EnvVar
-	volumeMounts []corev1.VolumeMount
+	name            string
+	image           string
+	args            []string
+	env             []corev1.EnvVar
+	volumeMounts    []corev1.VolumeMount
+	securityContext *corev1.SecurityContext
 }
 
 func testContainer(name, image string) *testContainerBuilder {
@@ -277,13 +278,19 @@ func (b *testContainerBuilder) withVolumeMounts(mounts ...corev1.VolumeMount) *t
 	return b
 }
 
+func (b *testContainerBuilder) withSecurityContext(securityContext corev1.SecurityContext) *testContainerBuilder {
+	b.securityContext = &securityContext
+	return b
+}
+
 func (b *testContainerBuilder) build() corev1.Container {
 	return corev1.Container{
-		Name:         b.name,
-		Image:        b.image,
-		Args:         b.args,
-		Env:          b.env,
-		VolumeMounts: b.volumeMounts,
+		Name:            b.name,
+		Image:           b.image,
+		Args:            b.args,
+		Env:             b.env,
+		VolumeMounts:    b.volumeMounts,
+		SecurityContext: b.securityContext,
 	}
 }
 
@@ -511,6 +518,51 @@ func TestUpdateDeployment(t *testing.T) {
 			).build(),
 			expectUpdate: true,
 		},
+		{
+			name: "security context added",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+			).build(),
+			expectUpdate: true,
+		},
+		{
+			name: "security context changed",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)}).build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+			).build(),
+			expectUpdate: true,
+		},
+		{
+			name: "security context is same",
+			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(
+					corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true), ReadOnlyRootFilesystem: pointer.BoolPtr(false)},
+				).build(),
+			).build(),
+			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(
+					corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+				).build(),
+			).build(),
+			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
+				testContainer("controller", "controller:v1").withSecurityContext(
+					corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true), ReadOnlyRootFilesystem: pointer.BoolPtr(false)},
+				).build(),
+			).build(),
+			expectUpdate: false,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -559,7 +611,13 @@ func TestEnsureDeployment(t *testing.T) {
 				"cluster",
 				"test-namespace",
 				"test-sa", "test-serving").withContainers(
-				testContainer("controller", "test-image").withDefaultEnvs().withVolumeMounts(
+				testContainer("controller", "test-image").withSecurityContext(corev1.SecurityContext{
+					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+					Privileged:               pointer.BoolPtr(false),
+					RunAsNonRoot:             pointer.BoolPtr(true),
+					AllowPrivilegeEscalation: pointer.BoolPtr(false),
+					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+				}).withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
 					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
 					corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
@@ -605,7 +663,13 @@ func TestEnsureDeployment(t *testing.T) {
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
 					corev1.VolumeMount{Name: "tls", MountPath: "/tls"},
 					corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
-				).build(),
+				).withSecurityContext(corev1.SecurityContext{
+					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+					Privileged:               pointer.BoolPtr(false),
+					RunAsNonRoot:             pointer.BoolPtr(true),
+					AllowPrivilegeEscalation: pointer.BoolPtr(false),
+					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+				}).build(),
 			).withResourceVersion("2").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
@@ -643,6 +707,208 @@ func TestEnsureDeployment(t *testing.T) {
 			}
 			if diff := cmp.Diff(&deployment, tc.expectedDeployment); diff != "" {
 				t.Fatalf("resource mismatch:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestHasSecurityContextChanged(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		currentSC *corev1.SecurityContext
+		desiredSC *corev1.SecurityContext
+		changed   bool
+	}{
+		{
+			name:      "current RunAsNonRoot is nil",
+			currentSC: &corev1.SecurityContext{},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			// should be ignored to handle defaulting
+			name:      "desired RunAsNonRoot is nil",
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			desiredSC: &corev1.SecurityContext{},
+			changed:   false,
+		},
+		{
+			name:      "RunAsNonRoot changes true->false",
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			name:      "RunAsNonRoot changes false->true",
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			name:      "RunAsNonRoot changes is same",
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+			changed:   false,
+		},
+		{
+			name:      "current Privileged is nil",
+			currentSC: &corev1.SecurityContext{},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			// should be ignored to handle defaulting
+			name:      "desired Privileged is nil",
+			desiredSC: &corev1.SecurityContext{},
+			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			changed:   false,
+		},
+		{
+			name:      "Privileged changes true->false",
+			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			name:      "Privileged changes false->true",
+			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			name:      "Privileged is same",
+			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
+			changed:   false,
+		},
+		{
+			name:      "current AllowPrivilegeEscalation is nil",
+			currentSC: &corev1.SecurityContext{},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			// should be ignored to handle defaulting
+			name:      "desired AllowPrivilegeEscalation is nil",
+			desiredSC: &corev1.SecurityContext{},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			changed:   false,
+		},
+		{
+			name:      "AllowPrivilegeEscalation changes true->false",
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			name:      "AllowPrivilegeEscalation changes false->true",
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			changed:   true,
+		},
+		{
+			name:      "AllowPrivilegeEscalation is same",
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
+			changed:   false,
+		},
+		{
+			name:      "Add Capabilities are the same",
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"A", "B", "C"}}},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"C", "B", "A"}}},
+			changed:   false,
+		},
+		{
+			name:      "Add Capabilities are the different",
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"A", "B", "C"}}},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"C", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			name:      "current Capabilities are nil",
+			currentSC: &corev1.SecurityContext{},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"A", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			// ignore the desired because the capabilities might be defaulting or set by something else.
+			name:      "desired Capabilities are nil",
+			desiredSC: &corev1.SecurityContext{},
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"A", "B", "C"}}},
+			changed:   false,
+		},
+		{
+			name:      "current Add Capabilities are nil",
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{}},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"A", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			name:      "desired Add Capabilities are nil",
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{}},
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"A", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			name:      "Drop Capabilities are the same",
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"A", "B", "C"}}},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"C", "B", "A"}}},
+			changed:   false,
+		},
+		{
+			name:      "Drop Capabilities are the different",
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"A", "B", "C"}}},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"C", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			name:      "current Drop Capabilities are nil",
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{}},
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"A", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			name:      "desired Drop Capabilities are nil",
+			desiredSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{}},
+			currentSC: &corev1.SecurityContext{Capabilities: &corev1.Capabilities{Drop: []corev1.Capability{"A", "B", "C"}}},
+			changed:   true,
+		},
+		{
+			name:      "current SeccompProfile is nil",
+			currentSC: &corev1.SecurityContext{},
+			desiredSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost}},
+			changed:   true,
+		},
+		{
+			// ignore the desired seccompprofile if it is being defaulted elsewhere
+			name:      "desired SeccompProfile is nil",
+			desiredSC: &corev1.SecurityContext{},
+			currentSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost}},
+			changed:   false,
+		},
+		{
+			name:      "SeccompProfile is different",
+			currentSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
+			desiredSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost}},
+			changed:   true,
+		},
+		{
+			name:      "SeccompProfile is same",
+			currentSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
+			desiredSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
+			changed:   false,
+		},
+		{
+			name:      "SeccompProfile is empty",
+			currentSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{}},
+			desiredSC: &corev1.SecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}},
+			changed:   true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changed := hasSecurityContextChanged(tc.currentSC, tc.desiredSC)
+			if changed != tc.changed {
+				t.Errorf("expected %v, instead was %v", tc.changed, changed)
 			}
 		})
 	}
