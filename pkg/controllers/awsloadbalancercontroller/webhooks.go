@@ -129,6 +129,7 @@ func desiredValidatingWebhookConfiguration(controller *albo.AWSLoadBalancerContr
 							APIGroups:   []string{"elbv2.k8s.aws"},
 							APIVersions: []string{"v1beta1"},
 							Resources:   []string{"targetgroupbindings"},
+							Scope:       scopeTypePtr(arv1.AllScopes),
 						},
 					},
 				},
@@ -157,6 +158,7 @@ func desiredValidatingWebhookConfiguration(controller *albo.AWSLoadBalancerContr
 							APIGroups:   []string{"networking.k8s.io"},
 							APIVersions: []string{"v1"},
 							Resources:   []string{"ingresses"},
+							Scope:       scopeTypePtr(arv1.AllScopes),
 						},
 					},
 				},
@@ -252,6 +254,20 @@ func haveValidatingWebhooksChanged(updated sortableValidatingWebhooks, desired s
 		if !equality.Semantic.DeepEqual(u.ClientConfig.Service, d.ClientConfig.Service) {
 			return true
 		}
+
+		if len(u.Rules) != len(d.Rules) {
+			return true
+		}
+
+		for j := 0; j < len(d.Rules); j++ {
+			desiredRule := d.Rules[j]
+			currentRule := u.Rules[j]
+
+			if !rulesEqual(desiredRule, currentRule) {
+				return true
+			}
+
+		}
 		if !equality.Semantic.DeepEqual(u.Rules, d.Rules) {
 			return true
 		}
@@ -286,6 +302,25 @@ func haveValidatingWebhooksChanged(updated sortableValidatingWebhooks, desired s
 	return false
 }
 
+func rulesEqual(desired arv1.RuleWithOperations, current arv1.RuleWithOperations) bool {
+	if !equality.Semantic.DeepEqual(desired.Operations, current.Operations) {
+		return false
+	}
+	if !equality.Semantic.DeepEqual(desired.APIGroups, current.APIGroups) {
+		return false
+	}
+	if !equality.Semantic.DeepEqual(desired.APIVersions, current.APIVersions) {
+		return false
+	}
+	if !equality.Semantic.DeepEqual(desired.Resources, current.Resources) {
+		return false
+	}
+	if *desired.Scope != *current.Scope {
+		return false
+	}
+	return true
+}
+
 func desiredMutatingWebhookConfiguration(controller *albo.AWSLoadBalancerController, webhookService *corev1.Service) *arv1.MutatingWebhookConfiguration {
 	return &arv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
@@ -312,6 +347,7 @@ func desiredMutatingWebhookConfiguration(controller *albo.AWSLoadBalancerControl
 							APIGroups:   []string{"elbv2.k8s.aws"},
 							APIVersions: []string{"v1beta1"},
 							Resources:   []string{"targetgroupbindings"},
+							Scope:       scopeTypePtr(arv1.AllScopes),
 						},
 						Operations: []arv1.OperationType{
 							arv1.Create,
@@ -410,4 +446,8 @@ func haveMutatingWebhooksChanged(updated, desired sortableMutatingWebhooks) bool
 		}
 	}
 	return false
+}
+
+func scopeTypePtr(scopeType arv1.ScopeType) *arv1.ScopeType {
+	return &scopeType
 }
