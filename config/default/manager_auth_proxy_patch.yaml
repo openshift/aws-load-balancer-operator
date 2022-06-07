@@ -21,6 +21,7 @@ spec:
           protocol: TCP
           name: https
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
               - ALL
