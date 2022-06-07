@@ -33,6 +33,7 @@ import (
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -202,7 +203,7 @@ func (r *AWSLoadBalancerControllerReconciler) getAWSLoadBalancerController(ctx c
 // SetupWithManager sets up the controller with the Manager.
 func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&albo.AWSLoadBalancerController{}).
+		For(&albo.AWSLoadBalancerController{}, builder.WithPredicates(reconcileClusterNamedResource())).
 		Owns(&cco.CredentialsRequest{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRoleBinding{}).
@@ -212,7 +213,6 @@ func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&corev1.Service{}).
 		Owns(&arv1.ValidatingWebhookConfiguration{}).
 		Owns(&arv1.MutatingWebhookConfiguration{}).
-		WithEventFilter(reconcileClusterNamedResource()).
 		Complete(r)
 }
 
