@@ -147,6 +147,47 @@ func TestAreValidatingWebhooksSame(t *testing.T) {
 			desiredVWs:     []arv1.ValidatingWebhook{{Name: "a", FailurePolicy: failurePolicyPtr(arv1.Fail)}},
 			expectedResult: true,
 		},
+		{
+			name:       "rules have changed",
+			currentVWs: []arv1.ValidatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{}}},
+			desiredVWs: []arv1.ValidatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{
+				{
+					Operations: []arv1.OperationType{arv1.Create},
+					Rule: arv1.Rule{
+						APIGroups:   []string{"apps"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"deployments"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
+					},
+				},
+			}}},
+			expectedResult: true,
+		},
+		{
+			name: "rules are the same",
+			currentVWs: []arv1.ValidatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{
+				{
+					Operations: []arv1.OperationType{arv1.Create},
+					Rule: arv1.Rule{
+						APIGroups:   []string{"apps"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"deployments"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
+					},
+				},
+			}}},
+			desiredVWs: []arv1.ValidatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{
+				{
+					Operations: []arv1.OperationType{arv1.Create},
+					Rule: arv1.Rule{
+						APIGroups:   []string{"apps"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"deployments"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
+					},
+				},
+			}}},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result := haveValidatingWebhooksChanged(tc.currentVWs, tc.desiredVWs)
@@ -287,6 +328,47 @@ func TestAreMutatingWebhooksSame(t *testing.T) {
 			desiredVWs:     []arv1.MutatingWebhook{{Name: "a", FailurePolicy: failurePolicyPtr(arv1.Fail)}},
 			expectedResult: true,
 		},
+		{
+			name:       "rules have changed",
+			currentVWs: []arv1.MutatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{}}},
+			desiredVWs: []arv1.MutatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{
+				{
+					Operations: []arv1.OperationType{arv1.Create},
+					Rule: arv1.Rule{
+						APIGroups:   []string{"apps"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"deployments"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
+					},
+				},
+			}}},
+			expectedResult: true,
+		},
+		{
+			name: "rules are the same",
+			currentVWs: []arv1.MutatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{
+				{
+					Operations: []arv1.OperationType{arv1.Create},
+					Rule: arv1.Rule{
+						APIGroups:   []string{"apps"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"deployments"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
+					},
+				},
+			}}},
+			desiredVWs: []arv1.MutatingWebhook{{Name: "a", Rules: []arv1.RuleWithOperations{
+				{
+					Operations: []arv1.OperationType{arv1.Create},
+					Rule: arv1.Rule{
+						APIGroups:   []string{"apps"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"deployments"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
+					},
+				},
+			}}},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result := haveMutatingWebhooksChanged(tc.currentVWs, tc.desiredVWs)
@@ -319,6 +401,7 @@ func testValidatingWebhooks(serviceName, serviceNamespace string) []arv1.Validat
 						APIGroups:   []string{"elbv2.k8s.aws"},
 						APIVersions: []string{"v1beta1"},
 						Resources:   []string{"targetgroupbindings"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
 					},
 				},
 			},
@@ -347,6 +430,7 @@ func testValidatingWebhooks(serviceName, serviceNamespace string) []arv1.Validat
 						APIGroups:   []string{"networking.k8s.io"},
 						APIVersions: []string{"v1"},
 						Resources:   []string{"ingresses"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
 					},
 				},
 			},
@@ -377,6 +461,7 @@ func testMutatingWebhooks(serviceName, serviceNamespace string) []arv1.MutatingW
 						APIGroups:   []string{"elbv2.k8s.aws"},
 						APIVersions: []string{"v1beta1"},
 						Resources:   []string{"targetgroupbindings"},
+						Scope:       scopeTypePtr(arv1.AllScopes),
 					},
 					Operations: []arv1.OperationType{
 						arv1.Create,
