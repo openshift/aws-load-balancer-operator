@@ -94,6 +94,12 @@ func conditionsMatchExpected(expected, actual map[string]string) bool {
 
 // buildEchoPod returns a pod definition for an socat-based echo server.
 func buildEchoPod(name, namespace string) *corev1.Pod {
+	var (
+		allCapabilities          = "ALL"
+		privileged               = false
+		runAsNonRoot             = true
+		allowPrivilegeEscalation = false
+	)
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
@@ -117,6 +123,17 @@ func buildEchoPod(name, namespace string) *corev1.Pod {
 						{
 							ContainerPort: int32(8080),
 							Protocol:      corev1.ProtocolTCP,
+						},
+					},
+					SecurityContext: &corev1.SecurityContext{
+						Capabilities: &corev1.Capabilities{
+							Drop: []corev1.Capability{corev1.Capability(allCapabilities)},
+						},
+						Privileged:               &privileged,
+						RunAsNonRoot:             &runAsNonRoot,
+						AllowPrivilegeEscalation: &allowPrivilegeEscalation,
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
 					},
 				},
