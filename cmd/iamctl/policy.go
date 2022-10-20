@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -61,7 +60,7 @@ func generateIAMPolicy(inputFile, output, pkg string) {
 		panic(err)
 	}
 
-	jsFs, err := ioutil.ReadFile(inputFile)
+	jsFs, err := os.ReadFile(inputFile)
 	if err != nil {
 		panic(fmt.Errorf("failed to read input file %v", err))
 	}
