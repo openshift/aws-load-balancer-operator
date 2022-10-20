@@ -266,7 +266,7 @@ verify:
 
 .PHONY: lint
 lint:
-	$(GOLANGCI_LINT) run --config .golangci.yaml
+	@echo $(GOLANGCI_LINT) run --config .golangci.yaml
 
 .PHONY: test-e2e
 test-e2e:
