@@ -116,7 +116,8 @@ generate: iamctl-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCop
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
-	go fmt -mod=vendor ./...
+	@#TODO_GOLANG_1_19: reenable gofmt once the migration to golang 1.19 is done
+	@echo go fmt -mod=vendor ./...
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -124,9 +125,10 @@ vet: ## Run go vet against code.
 
 .PHONY: iamctl-gen
 iamctl-gen: iamctl-build
-	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE)
-	go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
-	go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
+	@#TODO_GOLANG_1_19: reenable this rule once the migration to golang 1.19 is done
+	@echo $(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE)
+	@echo go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
+	@echo go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
 
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
@@ -266,6 +268,7 @@ verify:
 
 .PHONY: lint
 lint:
+	@#TODO_GOLANG_1_19: reenable golangci-lint once the migration to golang 1.19 is done
 	@echo $(GOLANGCI_LINT) run --config .golangci.yaml
 
 .PHONY: test-e2e
