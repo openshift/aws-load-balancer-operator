@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#TODO_GOLANG_1_19: reenable this file once the migration to golang 1.19 is done
-exit 0
-
 go_files=$( find . -name '*.go' -not -path './vendor/*' -print )
 bad_files=$(gofmt -s -l ${go_files})
 if [[ -n "${bad_files}" ]]; then

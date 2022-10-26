@@ -29,20 +29,33 @@ import (
 	"mvdan.cc/gofumpt/internal/version"
 )
 
+// Options is the set of formatting options which affect gofumpt.
 type Options struct {
 	// LangVersion corresponds to the Go language version a piece of code is
 	// written in. The version is used to decide whether to apply formatting
 	// rules which require new language features. When inside a Go module,
-	// LangVersion should generally be specified as the result of:
+	// LangVersion should be:
 	//
-	//     go list -m -f {{.GoVersion}}
+	//     go mod edit -json | jq -r '.Go'
 	//
-	// LangVersion is treated as a semantic version, which might start with
-	// a "v" prefix. Like Go versions, it might also be incomplete; "1.14"
-	// is equivalent to "1.14.0". When empty, it is equivalent to "v1", to
-	// not use language features which could break programs.
+	// LangVersion is treated as a semantic version, which may start with a "v"
+	// prefix. Like Go versions, it may also be incomplete; "1.14" is equivalent
+	// to "1.14.0". When empty, it is equivalent to "v1", to not use language
+	// features which could break programs.
 	LangVersion string
 
+	// ModulePath corresponds to the Go module path which contains the source
+	// code being formatted. When inside a Go module, ModulePath should be:
+	//
+	//     go mod edit -json | jq -r '.Module.Path'
+	//
+	// ModulePath is used for formatting decisions like what import paths are
+	// considered to be not part of the standard library. When empty, the source
+	// is formatted as if it weren't inside a module.
+	ModulePath string
+
+	// ExtraRules enables extra formatting rules, such as grouping function
+	// parameters with repeated types together.
 	ExtraRules bool
 }
 
@@ -55,7 +68,7 @@ func Source(src []byte, opts Options) ([]byte, error) {
 	// to ensure that using token.NoPos+1 will panic.
 	fset.AddFile("gofumpt_base.go", 1, 10)
 
-	file, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	file, err := parser.ParseFile(fset, "", src, parser.SkipObjectResolution|parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
@@ -69,24 +82,11 @@ func Source(src []byte, opts Options) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-var rxCodeGenerated = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
-
 // File modifies a file and fset in place to follow gofumpt's format. The
 // changes might include manipulating adding or removing newlines in fset,
 // modifying the position of nodes, or modifying literal values.
 func File(fset *token.FileSet, file *ast.File, opts Options) {
 	simplify(file)
-
-	for _, cg := range file.Comments {
-		if cg.Pos() > file.Package {
-			break
-		}
-		for _, line := range cg.List {
-			if rxCodeGenerated.MatchString(line.Text) {
-				return
-			}
-		}
-	}
 
 	if opts.LangVersion == "" {
 		opts.LangVersion = "v1"
@@ -281,15 +281,6 @@ func (f *fumpter) printLength(node ast.Node) int {
 	return int(count) + (f.blockLevel * 8)
 }
 
-func (f *fumpter) tabbedColumn(p token.Pos) int {
-	col := f.Position(p).Column
-
-	// Like in printLength, add an approximation of the indentation level.
-	// Since any existing tabs were already counted as one column, multiply
-	// the level by 7.
-	return col + (f.blockLevel * 7)
-}
-
 func (f *fumpter) lineEnd(line int) token.Pos {
 	if line < 1 {
 		panic("illegal line number")
@@ -306,14 +297,14 @@ func (f *fumpter) lineEnd(line int) token.Pos {
 
 // rxCommentDirective covers all common Go comment directives:
 //
-//   //go:          | standard Go directives, like go:noinline
-//   //some-words:  | similar to the syntax above, like lint:ignore or go-sumtype:decl
-//   //line         | inserted line information for cmd/compile
-//   //export       | to mark cgo funcs for exporting
-//   //extern       | C function declarations for gccgo
-//   //sys(nb)?     | syscall function wrapper prototypes
-//   //nolint       | nolint directive for golangci
-//   //noinspection | noinspection directive for GoLand and friends
+//	//go:          | standard Go directives, like go:noinline
+//	//some-words:  | similar to the syntax above, like lint:ignore or go-sumtype:decl
+//	//line         | inserted line information for cmd/compile
+//	//export       | to mark cgo funcs for exporting
+//	//extern       | C function declarations for gccgo
+//	//sys(nb)?     | syscall function wrapper prototypes
+//	//nolint       | nolint directive for golangci
+//	//noinspection | noinspection directive for GoLand and friends
 //
 // Note that the "some-words:" matching expects a letter afterward, such as
 // "go:generate", to prevent matching false positives like "https://site".
@@ -325,23 +316,39 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 	switch node := c.Node().(type) {
 	case *ast.File:
 		// Join contiguous lone var/const/import lines.
-		// Abort if there are empty lines or comments in between,
-		// including a leading comment, which could be a directive.
+		// Abort if there are empty lines in between,
+		// including a leading comment if it's a directive.
 		newDecls := make([]ast.Decl, 0, len(node.Decls))
 		for i := 0; i < len(node.Decls); {
 			newDecls = append(newDecls, node.Decls[i])
 			start, ok := node.Decls[i].(*ast.GenDecl)
-			if !ok || isCgoImport(start) || start.Doc != nil {
+			if !ok || isCgoImport(start) || containsAnyDirective(start.Doc) {
 				i++
 				continue
 			}
 			lastPos := start.Pos()
+		contLoop:
 			for i++; i < len(node.Decls); {
 				cont, ok := node.Decls[i].(*ast.GenDecl)
-				if !ok || cont.Tok != start.Tok || cont.Lparen != token.NoPos ||
-					f.Line(lastPos) < f.Line(cont.Pos())-1 || isCgoImport(cont) {
+				if !ok || cont.Tok != start.Tok || cont.Lparen != token.NoPos || isCgoImport(cont) {
 					break
 				}
+				// Are there things between these two declarations? e.g. empty lines, comments, directives
+				// If so, break the chain on empty lines and directives, continue below for comments.
+				if f.Line(lastPos) < f.Line(cont.Pos())-1 {
+					// break on empty line
+					if cont.Doc == nil {
+						break
+					}
+					// break on directive
+					for i, comment := range cont.Doc.List {
+						if f.Line(comment.Slash) != f.Line(lastPos)+1+i || rxCommentDirective.MatchString(strings.TrimPrefix(comment.Text, "//")) {
+							break contLoop
+						}
+					}
+					// continue below for comments
+				}
+
 				start.Specs = append(start.Specs, cont.Specs...)
 				if c := f.inlineComment(cont.End()); c != nil {
 					// don't move an inline comment outside
@@ -370,7 +377,8 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 				pos = comments[0].Pos()
 			}
 
-			multi := f.Line(pos) < f.Line(decl.End())
+			// Note that we want End-1, as End is the character after the node.
+			multi := f.Line(pos) < f.Line(decl.End()-1)
 			if multi && lastMulti && f.Line(lastEnd)+1 == f.Line(pos) {
 				f.addNewline(lastEnd)
 			}
@@ -386,8 +394,11 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 				if comment.Text == "//gofumpt:diagnose" || strings.HasPrefix(comment.Text, "//gofumpt:diagnose ") {
 					slc := []string{
 						"//gofumpt:diagnose",
+						"version:",
 						version.String(),
+						"flags:",
 						"-lang=" + f.LangVersion,
+						"-modpath=" + f.ModulePath,
 					}
 					if f.ExtraRules {
 						slc = append(slc, "-extra")
@@ -471,28 +482,15 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 		}
 
 	case *ast.InterfaceType:
-		var prev *ast.Field
-		for _, method := range node.Methods.List {
-			switch {
-			case prev == nil:
-				removeToPos := method.Pos()
-				if comments := f.commentsBetween(node.Interface, method.Pos()); len(comments) > 0 {
-					// only remove leading line upto the first comment
-					removeToPos = comments[0].Pos()
-				}
-				// remove leading lines if they exist
-				f.removeLines(f.Line(node.Interface)+1, f.Line(removeToPos))
-
-			case len(f.commentsBetween(prev.End(), method.Pos())) > 0:
-				// comments in between; leave newlines alone
-			case len(prev.Names) != len(method.Names):
-				// don't group type unions with methods
-			case len(prev.Names) == 1 && token.IsExported(prev.Names[0].Name) != token.IsExported(method.Names[0].Name):
-				// don't group exported and unexported methods together
-			default:
-				f.removeLinesBetween(prev.End(), method.Pos())
+		if len(node.Methods.List) > 0 {
+			method := node.Methods.List[0]
+			removeToPos := method.Pos()
+			if comments := f.commentsBetween(node.Interface, method.Pos()); len(comments) > 0 {
+				// only remove leading line upto the first comment
+				removeToPos = comments[0].Pos()
 			}
-			prev = method
+			// remove leading lines if they exist
+			f.removeLines(f.Line(node.Interface)+1, f.Line(removeToPos))
 		}
 
 	case *ast.BlockStmt:
@@ -546,33 +544,40 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 		if sign != nil {
 			endLine := f.Line(sign.End())
 
-			paramClosingIsFirstCharOnEndLine := sign.Params != nil &&
-				f.Position(sign.Params.Closing).Column == 1 &&
-				f.Line(sign.Params.Closing) == endLine
+			if f.Line(sign.Pos()) != endLine {
+				handleMultiLine := func(fl *ast.FieldList) {
+					if fl == nil || len(fl.List) == 0 {
+						return
+					}
+					lastFieldEnd := fl.List[len(fl.List)-1].End()
+					lastFieldLine := f.Line(lastFieldEnd)
+					fieldClosingLine := f.Line(fl.Closing)
+					isLastFieldOnFieldClosingLine := lastFieldLine == fieldClosingLine
+					isLastFieldOnSigClosingLine := lastFieldLine == endLine
 
-			resultClosingIsFirstCharOnEndLine := sign.Results != nil &&
-				f.Position(sign.Results.Closing).Column == 1 &&
-				f.Line(sign.Results.Closing) == endLine
+					var isLastCommentGrpOnFieldClosingLine, isLastCommentGrpOnSigClosingLine bool
+					if comments := f.commentsBetween(lastFieldEnd, fl.Closing); len(comments) > 0 {
+						lastCommentGrp := comments[len(comments)-1]
+						lastCommentGrpLine := f.Line(lastCommentGrp.End())
 
-			endLineIsIndented := !(paramClosingIsFirstCharOnEndLine || resultClosingIsFirstCharOnEndLine)
+						isLastCommentGrpOnFieldClosingLine = lastCommentGrpLine == fieldClosingLine
+						isLastCommentGrpOnSigClosingLine = lastCommentGrpLine == endLine
+					}
 
-			if f.Line(sign.Pos()) != endLine && endLineIsIndented {
-				// is there an empty line?
-				isThereAnEmptyLine := endLine+1 != f.Line(bodyPos)
-
-				// The body is preceded by a multi-line function
-				// signature, we move the `) {` to avoid the empty line.
-				switch {
-				case isThereAnEmptyLine && sign.Results != nil &&
-					!resultClosingIsFirstCharOnEndLine &&
-					sign.Results.Closing.IsValid(): // there may be no ")"
-					sign.Results.Closing += 1
-					f.addNewline(sign.Results.Closing)
-
-				case isThereAnEmptyLine && sign.Params != nil &&
-					!paramClosingIsFirstCharOnEndLine:
-					sign.Params.Closing += 1
-					f.addNewline(sign.Params.Closing)
+					// is there a comment grp/last field, field closing and sig closing on the same line?
+					if (isLastFieldOnFieldClosingLine && isLastFieldOnSigClosingLine) ||
+						(isLastCommentGrpOnFieldClosingLine && isLastCommentGrpOnSigClosingLine) {
+						fl.Closing += 1
+						f.addNewline(fl.Closing)
+					}
+				}
+				handleMultiLine(sign.Params)
+				if sign.Results != nil && len(sign.Results.List) > 0 {
+					lastResultLine := f.Line(sign.Results.List[len(sign.Results.List)-1].End())
+					isLastResultOnParamClosingLine := sign.Params != nil && lastResultLine == f.Line(sign.Params.Closing)
+					if !isLastResultOnParamClosingLine {
+						handleMultiLine(sign.Results)
+					}
 				}
 			}
 		}
@@ -591,7 +596,13 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 			// don't move comments
 			break
 		}
-		if f.printLength(node) > shortLineLimit {
+		// check the length excluding the body
+		nodeWithoutBody := &ast.CaseClause{
+			Case:  node.Case,
+			List:  node.List,
+			Colon: node.Colon,
+		}
+		if f.printLength(nodeWithoutBody) > shortLineLimit {
 			// too long to collapse
 			break
 		}
@@ -601,13 +612,34 @@ func (f *fumpter) applyPre(c *astutil.Cursor) {
 		f.stmts(node.Body)
 
 	case *ast.FieldList:
-		if node.NumFields() == 0 && len(f.commentsBetween(node.Pos(), node.End())) == 0 {
+		numFields := node.NumFields()
+		comments := f.commentsBetween(node.Pos(), node.End())
+
+		if numFields == 0 && len(comments) == 0 {
 			// Empty field lists should not contain a newline.
 			// Do not join the two lines if the first has an inline
 			// comment, as that can result in broken formatting.
 			openLine := f.Line(node.Pos())
 			closeLine := f.Line(node.End())
 			f.removeLines(openLine, closeLine)
+		} else {
+			// Remove lines before first comment/field and lines after last
+			// comment/field
+			var bodyPos, bodyEnd token.Pos
+			if numFields > 0 {
+				bodyPos = node.List[0].Pos()
+				bodyEnd = node.List[len(node.List)-1].End()
+			}
+			if len(comments) > 0 {
+				if pos := comments[0].Pos(); !bodyPos.IsValid() || pos < bodyPos {
+					bodyPos = pos
+				}
+				if pos := comments[len(comments)-1].End(); !bodyPos.IsValid() || pos > bodyEnd {
+					bodyEnd = pos
+				}
+			}
+			f.removeLinesBetween(node.Pos(), bodyPos)
+			f.removeLinesBetween(bodyEnd, node.End())
 		}
 
 		// Merging adjacent fields (e.g. parameters) is disabled by default.
@@ -843,11 +875,11 @@ func identEqual(expr ast.Expr, name string) bool {
 
 // isCgoImport returns true if the declaration is simply:
 //
-//   import "C"
+//	import "C"
 //
 // or the equivalent:
 //
-//   import `C`
+//	import `C`
 //
 // Note that parentheses do not affect the result.
 func isCgoImport(decl *ast.GenDecl) bool {
@@ -869,6 +901,23 @@ func (f *fumpter) joinStdImports(d *ast.GenDecl) {
 	firstGroup := true
 	lastEnd := d.Pos()
 	needsSort := false
+
+	// If ModulePath is "foo/bar", we assume "foo/..." is not part of std.
+	// Users shouldn't declare modules that may collide with std this way,
+	// but historically some private codebases have done so.
+	// This is a relatively harmless way to make gofumpt compatible with them,
+	// as it changes nothing for the common external module paths.
+	var modulePrefix string
+	if f.ModulePath == "" {
+		// Nothing to do.
+	} else if i := strings.IndexByte(f.ModulePath, '/'); i != -1 {
+		// ModulePath is "foo/bar", so we use "foo" as the prefix.
+		modulePrefix = f.ModulePath[:i]
+	} else {
+		// ModulePath is "foo", so we use "foo" as the prefix.
+		modulePrefix = f.ModulePath
+	}
+
 	for i, spec := range d.Specs {
 		spec := spec.(*ast.ImportSpec)
 		if coms := f.commentsBetween(lastEnd, spec.Pos()); len(coms) > 0 {
@@ -881,20 +930,31 @@ func (f *fumpter) joinStdImports(d *ast.GenDecl) {
 			lastEnd = spec.End()
 		}
 
-		path, _ := strconv.Unquote(spec.Path.Value)
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			panic(err) // should never error
+		}
+		periodIndex := strings.IndexByte(path, '.')
+		slashIndex := strings.IndexByte(path, '/')
 		switch {
-		// Imports with a period are definitely third party.
-		case strings.Contains(path, "."):
-			fallthrough
-		// "test" and "example" are reserved as per golang.org/issue/37641.
-		// "internal" is unreachable.
-		case strings.HasPrefix(path, "test/") ||
-			strings.HasPrefix(path, "example/") ||
-			strings.HasPrefix(path, "internal/"):
-			fallthrough
-		// To be conservative, if an import has a name or an inline
-		// comment, and isn't part of the top group, treat it as non-std.
-		case !firstGroup && (spec.Name != nil || spec.Comment != nil):
+		// Imports with a period in the first path element are third party.
+		// Note that this includes "foo.com" and excludes "foo/bar.com/baz".
+		case periodIndex > 0 && (slashIndex == -1 || periodIndex < slashIndex),
+
+			// "test" and "example" are reserved as per golang.org/issue/37641.
+			// "internal" is unreachable.
+			strings.HasPrefix(path, "test/"),
+			strings.HasPrefix(path, "example/"),
+			strings.HasPrefix(path, "internal/"),
+
+			// See if we match modulePrefix; see its documentation above.
+			// We match either exactly or with a slash suffix,
+			// so that the prefix "foo" for "foo/..." does not match "foobar".
+			path == modulePrefix || strings.HasPrefix(path, modulePrefix+"/"),
+
+			// To be conservative, if an import has a name or an inline
+			// comment, and isn't part of the top group, treat it as non-std.
+			!firstGroup && (spec.Name != nil || spec.Comment != nil):
 			other = append(other, spec)
 			continue
 		}
@@ -982,4 +1042,17 @@ func setPos(v reflect.Value, pos token.Pos) {
 			setPos(v.Field(i), pos)
 		}
 	}
+}
+
+func containsAnyDirective(group *ast.CommentGroup) bool {
+	if group == nil {
+		return false
+	}
+	for _, comment := range group.List {
+		body := strings.TrimPrefix(comment.Text, "//")
+		if rxCommentDirective.MatchString(body) {
+			return true
+		}
+	}
+	return false
 }
