@@ -43,6 +43,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--enable-waf=false",
 				"--enable-wafv2=false",
 				"--ingress-class=special-ingress-class",
+				"--feature-gates=EnableIPTargetType=false",
 			),
 		},
 		{
@@ -58,6 +59,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--enable-wafv2=false",
 				"--ingress-class=alb",
 				"--enable-leader-election",
+				"--feature-gates=EnableIPTargetType=false",
 			),
 		},
 		{
@@ -74,6 +76,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--enable-waf=true",
 				"--enable-wafv2=false",
 				"--ingress-class=alb",
+				"--feature-gates=EnableIPTargetType=false",
 			),
 		},
 		{
@@ -90,6 +93,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--enable-waf=false",
 				"--enable-wafv2=true",
 				"--ingress-class=alb",
+				"--feature-gates=EnableIPTargetType=false",
 			),
 		},
 		{
@@ -106,6 +110,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--enable-waf=false",
 				"--enable-wafv2=false",
 				"--ingress-class=alb",
+				"--feature-gates=EnableIPTargetType=false",
 			),
 		},
 		{
@@ -125,6 +130,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--enable-wafv2=false",
 				"--ingress-class=alb",
 				"--default-tags=test-key1=test-value1,test-key2=test-value2,test-key3=test-value3",
+				"--feature-gates=EnableIPTargetType=false",
 			),
 		},
 	} {
