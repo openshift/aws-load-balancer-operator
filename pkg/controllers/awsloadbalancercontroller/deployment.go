@@ -243,6 +243,7 @@ func desiredContainerArgs(controller *albo.AWSLoadBalancerController, clusterNam
 		args = append(args, "--enable-wafv2=false")
 	}
 	args = append(args, fmt.Sprintf("--ingress-class=%s", controller.Spec.IngressClass))
+	args = append(args, "--feature-gates=EnableIPTargetType=false")
 	sort.Strings(args)
 	return args
 }

@@ -135,6 +135,7 @@ func TestDesiredArgs(t *testing.T) {
 				"--disable-ingress-class-annotation",
 				"--disable-ingress-group-name-annotation",
 				"--webhook-cert-dir=/tls",
+				"--feature-gates=EnableIPTargetType=false",
 			)
 			expectedArgs := defaultArgs.Union(tc.expectedArgs)
 			if tc.controller.Spec.IngressClass == "" {
