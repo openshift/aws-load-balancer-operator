@@ -411,24 +411,36 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 
 	wafClient := wafv2.NewFromConfig(cfg)
-	acl, err := wafClient.CreateWebACL(context.Background(), &wafv2.CreateWebACLInput{
-		DefaultAction: &wafv2types.DefaultAction{Block: &wafv2types.BlockAction{}},
-		Name:          aws.String("echoserver-acl"),
-		Scope:         wafv2types.ScopeRegional,
-		VisibilityConfig: &wafv2types.VisibilityConfig{
-			CloudWatchMetricsEnabled: false,
-			MetricName:               aws.String("echoserver"),
-			SampledRequestsEnabled:   false,
-		},
-	})
+	webACLName := "echoserver-acl"
+	acl, err := findAWSWebACL(wafClient, webACLName)
 	if err != nil {
-		t.Fatalf("failed to create aws wafv2 acl due to %v", err)
+		t.Logf("failed to find %q aws wafv2 acl due to %v, continue to creation anyway", webACLName, err)
 	}
+	if acl == nil {
+		t.Logf("AWS WAFv2 ACL %q was not found, creating one", webACLName)
+		createdACL, err := wafClient.CreateWebACL(context.Background(), &wafv2.CreateWebACLInput{
+			DefaultAction: &wafv2types.DefaultAction{Block: &wafv2types.BlockAction{}},
+			Name:          aws.String(webACLName),
+			Scope:         wafv2types.ScopeRegional,
+			VisibilityConfig: &wafv2types.VisibilityConfig{
+				CloudWatchMetricsEnabled: false,
+				MetricName:               aws.String("echoserver"),
+				SampledRequestsEnabled:   false,
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed to create aws wafv2 acl due to %v", err)
+		}
+		acl = createdACL.Summary
+	}
+
+	t.Logf("Got AWS WAFv2 ACL. ID: %s, Name: %s", *acl.Id, *acl.Name)
+
 	defer func() {
 		_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
-			Id:        aws.String(*acl.Summary.Id),
-			Name:      aws.String("echoserver-acl"),
-			LockToken: acl.Summary.LockToken,
+			Id:        aws.String(*acl.Id),
+			Name:      aws.String(webACLName),
+			LockToken: acl.LockToken,
 			Scope:     wafv2types.ScopeRegional,
 		})
 		if err != nil {
@@ -441,7 +453,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	ingAnnotations := map[string]string{
 		"alb.ingress.kubernetes.io/scheme":        "internet-facing",
 		"alb.ingress.kubernetes.io/target-type":   "instance",
-		"alb.ingress.kubernetes.io/wafv2-acl-arn": *acl.Summary.ARN,
+		"alb.ingress.kubernetes.io/wafv2-acl-arn": *acl.ARN,
 	}
 	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
 	err = retry.OnError(defaultRetryPolicy,
@@ -584,12 +596,12 @@ func ensureCredentialsRequest() error {
 	providerSpec, err := codec.EncodeProviderSpec(&cco.AWSProviderSpec{
 		StatementEntries: []cco.StatementEntry{
 			{
-				Action:   []string{"wafv2:CreateWebACL", "wafv2:DeleteWebACL"},
+				Action:   []string{"wafv2:CreateWebACL", "wafv2:DeleteWebACL", "wafv2:ListWebACLs"},
 				Effect:   "Allow",
 				Resource: "*",
 			},
 			{
-				Action:   []string{"waf-regional:GetChangeToken", "waf-regional:CreateWebACL", "waf-regional:DeleteWebACL"},
+				Action:   []string{"waf-regional:GetChangeToken", "waf-regional:CreateWebACL", "waf-regional:DeleteWebACL", "waf-regional:ListWebACLs"},
 				Effect:   "Allow",
 				Resource: "*",
 			},

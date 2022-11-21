@@ -20,6 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/aws/aws-sdk-go-v2/service/wafv2"
+	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -323,4 +326,27 @@ func buildIngressClass(name types.NamespacedName, controller string) *networking
 			Controller: controller,
 		},
 	}
+}
+
+func findAWSWebACL(wafClient *wafv2.Client, aclName string) (*wafv2types.WebACLSummary, error) {
+	return findAWSWebACLRecursive(wafClient, aclName, nil)
+}
+
+func findAWSWebACLRecursive(wafClient *wafv2.Client, aclName string, nextMarker *string) (*wafv2types.WebACLSummary, error) {
+	output, err := wafClient.ListWebACLs(context.Background(), &wafv2.ListWebACLsInput{
+		Scope:      wafv2types.ScopeRegional,
+		NextMarker: nextMarker,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for i, acl := range output.WebACLs {
+		if acl.Name != nil && *acl.Name == aclName {
+			return &output.WebACLs[i], nil
+		}
+	}
+	if output.NextMarker != nil {
+		return findAWSWebACLRecursive(wafClient, aclName, output.NextMarker)
+	}
+	return nil, nil
 }
