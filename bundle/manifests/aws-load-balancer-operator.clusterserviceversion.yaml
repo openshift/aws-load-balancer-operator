@@ -56,9 +56,10 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    olm.skipRange: <0.2.0
     operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: aws-load-balancer-operator.v0.0.1
+  name: aws-load-balancer-operator.v0.2.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -453,4 +454,4 @@ spec:
   provider:
     name: Red Hat
     url: https://redhat.com
-  version: 0.0.1
+  version: 0.2.0
