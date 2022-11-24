@@ -1346,8 +1346,8 @@ mvdan.cc/unparam v0.0.0-20220706161116-678bad134442/go.mod h1:F/Cxw/6mVrNKqrR2Yj
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
-sigs.k8s.io/aws-load-balancer-controller v0.0.0-20220316010148-c4471defda10 h1:k00CjF5xvSxbAlzjITqh8rSKP8w0a4DiK6NtCYCfoks=
-sigs.k8s.io/aws-load-balancer-controller v0.0.0-20220316010148-c4471defda10/go.mod h1:IgdiNk6qx80CRWsvY2tfmXrpxG6rhkb9p+8oTcaJXzs=
+sigs.k8s.io/aws-load-balancer-controller v0.0.0-20220923211742-8d282339857c h1:fBqIqHt15N77DumArx4WM1oQijcwhn15t8jmdUqL4qE=
+sigs.k8s.io/aws-load-balancer-controller v0.0.0-20220923211742-8d282339857c/go.mod h1:Qc8eLv+CH8uM731hIWfFjYVx7rl36+JobbOhP1TAA5U=
 sigs.k8s.io/controller-runtime v0.13.0 h1:iqa5RNciy7ADWnIc8QxCbOX5FEKVR3uxVxKHRMc2WIQ=
 sigs.k8s.io/controller-runtime v0.13.0/go.mod h1:Zbz+el8Yg31jubvAEyglRZGdLAjplZl+PgtYNI6WNTI=
 sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20220407132358-188b48630db2 h1:Aeremz8m2nQFqy9VMRPSlHhdJMIzKJJLLJSWnMIGEog=
