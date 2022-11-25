@@ -4,7 +4,8 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: aws-load-balancer-operator.v0.0.0
+    olm.skipRange: <0.2.0
+  name: aws-load-balancer-operator.v0.2.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -100,4 +101,4 @@ spec:
   provider:
     name: Red Hat
     url: https://redhat.com
-  version: 0.0.0
+  version: 0.2.0
