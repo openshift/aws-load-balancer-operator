@@ -10,7 +10,7 @@ BUNDLE_VERSION ?= 0.2.0
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
 # - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=candidate,fast,stable)
 # - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
-CHANNELS = "alpha,stable-v0.1,stable-v0.2,stable-v0"
+CHANNELS = "stable-v0.2,stable-v0"
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
