@@ -98,6 +98,13 @@ More information in
 the [controller docs](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/guide/ingress/annotations/#addons)
 .
 
+### credentials.name
+This field is used to specify the secret name containing AWS credentials to be used by the controller.
+The secret specified must be created in the namespace where the operator was installed (by default `aws-load-balancer-operator`).
+`credentials` is an optional field. If it's not set, the controller's credentials will be requested using the Cloud Credentials API;
+see [Cloud Credentials Operator](https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html).   
+The IAM policy required for the controller can be found in [`assets/iam-policy.json`](../assets/iam-policy.json) in this repository.
+
 ## Creating an Ingress
 
 Once the controller is running an ALB backed Ingress can be created. The

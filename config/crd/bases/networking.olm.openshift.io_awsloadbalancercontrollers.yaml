@@ -54,6 +54,18 @@ spec:
                     format: int32
                     type: integer
                 type: object
+              credentials:
+                description: Credentials is a reference to a secret containing the
+                  AWS credentials to be used by the controller. The secret is required
+                  to be in the operator namespace. If this field is empty - the credentials
+                  will be requested using the Cloud Credentials API, see https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
+                properties:
+                  name:
+                    description: Name is the name of the secret.
+                    type: string
+                required:
+                - name
+                type: object
               enabledAddons:
                 description: AWSAddon describes the AWS services that can be integrated
                   with the AWS Load Balancer.

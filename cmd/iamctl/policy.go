@@ -54,7 +54,14 @@ var compressionPrefixes = map[string]string{
 	"elasticloadbalancing:Describe": "elasticloadbalancing:Describe*",
 }
 
-func generateIAMPolicy(inputFile, output, pkg string) {
+func generateIAMPolicy(inputFile, output, outputCR, pkg string) {
+	generateIAMPolicyFromTemplate(filetemplate, inputFile, output, pkg)
+	if outputCR != "" {
+		generateIAMPolicyFromTemplate(credentialsRequestTemplate, inputFile, outputCR, pkg)
+	}
+}
+
+func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg string) {
 	tmpl, err := template.New("").Parse(filetemplate)
 	if err != nil {
 		panic(err)

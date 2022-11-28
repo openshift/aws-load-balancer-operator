@@ -88,6 +88,16 @@ type AWSLoadBalancerControllerSpec struct {
 	// +optional
 	EnabledAddons []AWSAddon `json:"enabledAddons,omitempty"` // indicates which AWS addons should be disabled.
 
+	// Credentials is a reference to a secret containing
+	// the AWS credentials to be used by the controller.
+	// The secret is required to be in the operator namespace.
+	// If this field is empty - the credentials will be
+	// requested using the Cloud Credentials API,
+	// see https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	Credentials *SecretReference `json:"credentials,omitempty"`
 }
 
 type AWSLoadBalancerDeploymentConfig struct {
@@ -96,6 +106,16 @@ type AWSLoadBalancerDeploymentConfig struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
+}
+
+// SecretReference contains the information to let you locate the desired secret.
+// Secret is required to be in the operator namespace.
+type SecretReference struct {
+	// Name is the name of the secret.
+	//
+	// +kubebuilder:validation:Required
+	// +required
+	Name string `json:"name"`
 }
 
 // AWSLoadBalancerControllerStatus defines the observed state of AWSLoadBalancerController.

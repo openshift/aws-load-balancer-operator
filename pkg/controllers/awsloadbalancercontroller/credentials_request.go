@@ -67,19 +67,27 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 		if err := r.createCredentialsRequest(ctx, desired); err != nil {
 			return nil, fmt.Errorf("failed to create credentials request %s: %w", desired.Name, err)
 		}
-	} else if err := r.updateCredentialsRequest(ctx, current, desired); err != nil {
-		return nil, fmt.Errorf("failed to update credentials request %q: %w", credReq.Name, err)
+		_, current, err = r.currentCredentialsRequest(ctx, credReq)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get new credentials request %q: %w", credReq.Name, err)
+		}
+		return current, nil
 	}
 
-	_, current, err = r.currentCredentialsRequest(ctx, credReq)
+	updated, err := r.updateCredentialsRequest(ctx, current, desired)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get existing credentials request %q: %w", credReq.Name, err)
+		return nil, fmt.Errorf("failed to update credentials request %q: %w", credReq.Name, err)
+	}
+	if updated {
+		_, current, err = r.currentCredentialsRequest(ctx, credReq)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get existing credentials request %q: %w", credReq.Name, err)
+		}
 	}
 	return current, nil
 }
 
-func (r *AWSLoadBalancerControllerReconciler) credentialsSecretProvisioned(ctx context.Context, cr *cco.CredentialsRequest) (bool, error) {
-	name := types.NamespacedName{Name: cr.Spec.SecretRef.Name, Namespace: cr.Spec.SecretRef.Namespace}
+func (r *AWSLoadBalancerControllerReconciler) credentialsSecretProvisioned(ctx context.Context, name types.NamespacedName) (bool, error) {
 	var secret corev1.Secret
 
 	err := r.Client.Get(context.TODO(), name, &secret)
@@ -101,23 +109,23 @@ func (r *AWSLoadBalancerControllerReconciler) createCredentialsRequest(ctx conte
 }
 
 // updateCredentialsRequest updates the CredentialsRequest if needed
-func (r *AWSLoadBalancerControllerReconciler) updateCredentialsRequest(ctx context.Context, current *cco.CredentialsRequest, desired *cco.CredentialsRequest) error {
+func (r *AWSLoadBalancerControllerReconciler) updateCredentialsRequest(ctx context.Context, current *cco.CredentialsRequest, desired *cco.CredentialsRequest) (bool, error) {
 	var updated *cco.CredentialsRequest
 	changed, err := isCredentialsRequestChanged(current, desired)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !changed {
-		return nil
+		return false, nil
 	}
 	updated = current.DeepCopy()
 	updated.Name = desired.Name
 	updated.Namespace = desired.Namespace
 	updated.Spec = desired.Spec
 	if err := r.Client.Update(ctx, updated); err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	return true, nil
 }
 
 func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.ObjectReference, saName string) (*cco.CredentialsRequest, error) {
@@ -173,6 +181,14 @@ func isCredentialsRequestChanged(current, desired *cco.CredentialsRequest) (bool
 	}
 
 	if current.Namespace != desired.Namespace {
+		return true, nil
+	}
+
+	if !reflect.DeepEqual(current.Spec.SecretRef, desired.Spec.SecretRef) {
+		return true, nil
+	}
+
+	if !equalStrings(current.Spec.ServiceAccountNames, desired.Spec.ServiceAccountNames) {
 		return true, nil
 	}
 
