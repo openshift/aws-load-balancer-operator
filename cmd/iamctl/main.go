@@ -13,6 +13,9 @@ var (
 	// outputfile specifies the location of the generated code.
 	outputFile string
 
+	// outputCRFile specifies the location of the generated CredentialsRequest YAML.
+	outputCRFile string
+
 	// pkg specifies the package with which the code is generated.
 	pkg string
 )
@@ -20,12 +23,13 @@ var (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "iamctl",
-	Short: "A CLI used to convert aws iam policy JSON to Go code.",
+	Short: "A CLI used to convert aws iam policy JSON to Go code and other formats.",
 	Long: `A CLI used to convert aws iam policy JSON to Go code. This
 	CLI produces a '.go' file that is consumed by the aws load balancer operator.
+    Also it can produce a CredentialsRequest YAML file which can provision the secret for the controller.
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		generateIAMPolicy(inputFile, outputFile, pkg)
+		generateIAMPolicy(inputFile, outputFile, outputCRFile, pkg)
 	},
 }
 
@@ -46,6 +50,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&outputFile, "output-file", "o", "", "Used to specify output Go file path.")
 	_ = rootCmd.MarkPersistentFlagRequired("output-file")
+
+	rootCmd.PersistentFlags().StringVarP(&outputCRFile, "output-cr-file", "c", "", "Used to specify output CredentialsRequest YAML file path.")
 
 	rootCmd.PersistentFlags().StringVarP(&pkg, "package", "p", "main", "Used to specify output Go file path.")
 	_ = rootCmd.MarkPersistentFlagRequired("package")

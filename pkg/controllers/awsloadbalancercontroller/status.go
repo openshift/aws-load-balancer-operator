@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
@@ -21,12 +20,10 @@ const (
 	CredentialsSecretAvailableCondition = "CredentialsSecretAvailable"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context.Context, controller *albo.AWSLoadBalancerController, deployment *appsv1.Deployment, cr *cco.CredentialsRequest, secretProvisioned bool) error {
+func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context.Context, controller *albo.AWSLoadBalancerController, deployment *appsv1.Deployment, secretName string, secretProvisioned bool) error {
 	status := controller.Status.DeepCopy()
 
-	if cr != nil {
-		status.Conditions = mergeConditions(status.Conditions, credentialRequestsConditions(cr.Spec.SecretRef.Name, secretProvisioned, controller.Generation)...)
-	}
+	status.Conditions = mergeConditions(status.Conditions, credentialsSecretConditions(secretName, secretProvisioned, controller.Generation)...)
 
 	if deployment != nil {
 		status.Conditions = mergeConditions(status.Conditions, deploymentConditions(deployment, controller.Generation)...)
@@ -39,7 +36,7 @@ func (r *AWSLoadBalancerControllerReconciler) updateControllerStatus(ctx context
 	return nil
 }
 
-func credentialRequestsConditions(secretName string, secretProvisioned bool, generation int64) []metav1.Condition {
+func credentialsSecretConditions(secretName string, secretProvisioned bool, generation int64) []metav1.Condition {
 	var conditions []metav1.Condition
 	if secretProvisioned {
 		conditions = append(conditions, metav1.Condition{

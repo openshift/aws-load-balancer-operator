@@ -28,4 +28,26 @@ func GetIAMPolicy() IAMPolicy {
 	}
 }	
 `
+	credentialsRequestTemplate = `apiVersion: cloudcredential.openshift.io/v1
+kind: CredentialsRequest
+metadata:
+  name: aws-load-balancer-controller
+  namespace: openshift-cloud-credential-operator
+spec:
+  providerSpec:
+    apiVersion: cloudcredential.openshift.io/v1
+    kind: AWSProviderSpec
+    statementEntries:
+    - action:
+      {{range $index, $element := .Statement.Action}}- {{$element}}
+      {{end -}}
+
+      effect: {{.Statement.Effect}}
+      resource: {{range .Statement.Resource}}{{printf "%q" .}}{{end}}
+  secretRef:
+    name: aws-load-balancer-controller-manual-cluster
+    namespace: aws-load-balancer-operator
+  serviceAccountNames:
+  - aws-load-balancer-controller-cluster
+`
 )
