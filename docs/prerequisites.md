@@ -1,12 +1,11 @@
 # Pre-Requisites
 
 ## CredentialsRequest
+Additional AWS credentials are needed for the operator to be successfully installed. This is needed to interact with subnets and VPCs.
 
 ### For non-STS clusters
 
-1. Additional AWS credentials are needed for the operator to be successfully
-   installed. This is needed to interact with subnets and VPCs.
-2. Create AWS credentials profile for the operator
+1. Create AWS credentials profile for the operator:
 
     ```bash
     cat << EOF > credentials
@@ -20,7 +19,7 @@
     --from-file=credentials=credentials
     ```
   
-3. Alternatively use the *CredentialsRequest* resource in the `hack` directory
+2. Alternatively use the `CredentialsRequest` resource in the `hack` directory:
 
    ```bash
    oc apply -f https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-credentials-request.yaml
@@ -28,37 +27,23 @@
 
 ### For STS clusters
 
-The same steps mentioned above can be followed for STS clusters as well.
-But if instead of manually creating the secret in `step 2`, you prefer
-`step 3`, then there are additional steps involved.
+1. [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
 
-1. After creating the *CredentialRequests*,
+2. Use the `ccoctl` tool to process the operator's `CredentialsRequest` objects needed to bootstrap the operator:
 
     ```bash
-    oc get credentialsrequest -n openshift-cloud-credential-operator  \
-        aws-load-balancer-controller -o yaml > <path-to-credrequests-dir>/cr.yaml
-    ```
-
-    Extract and save the required *CredentialsRequest* in a directory.
-
-2. Use the ccoctl tool to process all *CredentialsRequest* objects in the previously specified
-directory:
-
-    ```bash
+    curl --create-dirs -o <path-to-credrequests-dir>/cr.yaml https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-credentials-request.yaml
     ccoctl aws create-iam-roles \
         --name <name> --region=<aws_region> \
         --credentials-requests-dir=<path-to-credrequests-dir> \
         --identity-provider-arn <oidc-arn>
     ```
 
-    For each *CredentialsRequest* object, `ccoctl` creates an IAM role with a trust
+    For each `CredentialsRequest` object, `ccoctl` creates an IAM role with a trust
     policy that is tied to the specified OIDC identity provider, and permissions
-    policy as defined in each *CredentialsRequest* object. This also generates a set
+    policy as defined in each `CredentialsRequest` object. This also generates a set
     of secrets in a **manifests** directory that is required
     by the **aws-load-balancer-operator**.
-
-    **Note**: To Extract and prepare the `ccoctl` binary, documentation can be
-    found [here](https://docs.openshift.com/container-platform/4.10/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts).
 
 3. Apply the secrets to your cluster:
 
@@ -66,9 +51,19 @@ directory:
     ls manifests/*-credentials.yaml | xargs -I{} oc apply -f {}
     ```
 
+4. Verify that the operator's credentials secret is created:
+
+    ```bash
+    oc -n aws-load-balancer-operator get secret aws-load-balancer-operator -o json | jq -r '.data.credentials' | base64 -d
+    [default]
+    sts_regional_endpoints = regional
+    role_arn = arn:aws:iam::999999999999:role/aws-load-balancer-operator-aws-load-balancer-operator
+    web_identity_token_file = /var/run/secrets/openshift/serviceaccount/token
+    ```
+
 ## VPC and Subnets
 
-The `aws-load-balancer-operator` requires specific tags on some of the aws
+The **aws-load-balancer-operator** requires specific tags on some AWS
 resources to function correctly. They are as follows:
 
 ### VPC

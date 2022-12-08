@@ -19,7 +19,7 @@ spec:
   additionalResourceTags:
     example.org/cost-center: 5113232
     example.org/security-scope: staging
-  ingressClass: cloud
+  ingressClass: alb
   config:
     replicas: 2
   enabledAddons:
@@ -124,6 +124,8 @@ spec:
     spec:
       containers:
         - image: openshift/origin-node
+          command:
+           - "/bin/socat"
           args:
             - TCP4-LISTEN:8080,reuseaddr,fork
             - EXEC:'/bin/bash -c \"printf \\\"HTTP/1.0 200 OK\r\n\r\n\\\"; sed -e \\\"/^\r/q\\\"\"'
