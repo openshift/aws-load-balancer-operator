@@ -60,3 +60,39 @@ secret is created and available before spawning the **aws-load-balancer-controll
     aws-load-balancer-controller-cluster-9b766d6-gg82c              1/1     Running   0          137m
     aws-load-balancer-operator-controller-manager-b55ff68cc-85jzg   2/2     Running   0          3h26m
     ```
+
+### Use predefined `CredentialsRequest`
+In case the provisioning of the credentials secret should not be done by the **cloud-credential-operator**, the secret needs to be explicitly referenced in `AWSLoadBalancerController` CR, see [credentials.name field description](./tutorial.md#credentialsname).    
+However, this credentials secret needs to reference a role with all the policies needed by the controller. For this purpose a dedicated controller's `CredentialsRequest` is maintained in [hack/controller](../hack/controller/) directory of this repository.
+Its contents are identical to the ones requested from the **cloud-credential-operator**.
+
+1. Use the `ccoctl` tool to process the controller's `CredentialsRequest` object:
+
+    ```bash
+    ccoctl aws create-iam-roles \
+        --name <name> --region=<aws_region> \
+        --credentials-requests-dir=hack/controller \
+        --identity-provider-arn <oidc-arn>
+    ```
+
+    For each `CredentialsRequest` object, `ccoctl` creates an IAM role with a trust
+    policy that is tied to the specified OIDC identity provider, and permissions
+    policy as defined in each `CredentialsRequest` object. This also generates a set
+    of secrets in a **manifests** directory that is required
+    by the **aws-load-balancer-controller**.
+
+2. Apply the secrets to your cluster:
+
+    ```bash
+    ls manifests/*-credentials.yaml | xargs -I{} oc apply -f {}
+    ```
+
+3. Verify that the controller's credentials secret is created:
+
+    ```bash
+    oc -n aws-load-balancer-operator get secret aws-load-balancer-controller-manual-cluster -o json | jq -r '.data.credentials' | base64 -d
+    [default]
+    sts_regional_endpoints = regional
+    role_arn = arn:aws:iam::999999999999:role/aws-load-balancer-operator-aws-load-balancer-controller
+    web_identity_token_file = /var/run/secrets/openshift/serviceaccount/token
+    ```

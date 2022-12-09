@@ -6,13 +6,11 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
@@ -158,12 +156,12 @@ func equalStringSlices(a, b []string) bool {
 
 func TestUpdateStatus(t *testing.T) {
 	for _, tc := range []struct {
-		name               string
-		controller         *albo.AWSLoadBalancerController
-		deployment         *appsv1.Deployment
-		credentialsRequest *cco.CredentialsRequest
-		secretProvisioned  bool
-		conditions         []metav1.Condition
+		name                  string
+		controller            *albo.AWSLoadBalancerController
+		deployment            *appsv1.Deployment
+		credentialsSecretName string
+		secretProvisioned     bool
+		conditions            []metav1.Condition
 	}{
 		{
 			name: "deployment and credentials secret available and up-to-date",
@@ -172,17 +170,8 @@ func TestUpdateStatus(t *testing.T) {
 				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 1},
 			},
-			credentialsRequest: &cco.CredentialsRequest{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
-				Spec: cco.CredentialsRequestSpec{
-					SecretRef: corev1.ObjectReference{
-						Name:      "test",
-						Namespace: test.OperatorNamespace,
-					},
-				},
-				Status: cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
-			},
-			secretProvisioned: true,
+			credentialsSecretName: "test",
+			secretProvisioned:     true,
 			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
 			},
@@ -218,19 +207,8 @@ func TestUpdateStatus(t *testing.T) {
 				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32Ptr(2)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 2, UpdatedReplicas: 1},
 			},
-			credentialsRequest: &cco.CredentialsRequest{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 3},
-				Spec: cco.CredentialsRequestSpec{
-					SecretRef: corev1.ObjectReference{
-						Name:      "test",
-						Namespace: test.OperatorNamespace,
-					},
-				},
-				Status: cco.CredentialsRequestStatus{
-					Provisioned: true, LastSyncGeneration: 3,
-				},
-			},
-			secretProvisioned: true,
+			credentialsSecretName: "test",
+			secretProvisioned:     true,
 			conditions: []metav1.Condition{
 				{
 					Type:               CredentialsSecretAvailableCondition,
@@ -262,17 +240,8 @@ func TestUpdateStatus(t *testing.T) {
 				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(2)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 2},
 			},
-			credentialsRequest: &cco.CredentialsRequest{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
-				Spec: cco.CredentialsRequestSpec{
-					SecretRef: corev1.ObjectReference{
-						Name:      "test",
-						Namespace: test.OperatorNamespace,
-					},
-				},
-				Status: cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: true},
-			},
-			secretProvisioned: true,
+			credentialsSecretName: "test",
+			secretProvisioned:     true,
 			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
 			},
@@ -307,17 +276,8 @@ func TestUpdateStatus(t *testing.T) {
 				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 1},
 			},
-			credentialsRequest: &cco.CredentialsRequest{
-				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 1},
-				Spec: cco.CredentialsRequestSpec{
-					SecretRef: corev1.ObjectReference{
-						Name:      "test",
-						Namespace: test.OperatorNamespace,
-					},
-				},
-				Status: cco.CredentialsRequestStatus{LastSyncGeneration: 1, Provisioned: false},
-			},
-			secretProvisioned: false,
+			credentialsSecretName: "test",
+			secretProvisioned:     false,
 			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5},
 			},
@@ -350,7 +310,7 @@ func TestUpdateStatus(t *testing.T) {
 			r := AWSLoadBalancerControllerReconciler{
 				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(tc.controller).Build(),
 			}
-			err := r.updateControllerStatus(context.Background(), tc.controller, tc.deployment, tc.credentialsRequest, tc.secretProvisioned)
+			err := r.updateControllerStatus(context.Background(), tc.controller, tc.deployment, tc.credentialsSecretName, tc.secretProvisioned)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

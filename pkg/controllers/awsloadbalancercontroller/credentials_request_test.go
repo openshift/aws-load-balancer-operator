@@ -26,11 +26,28 @@ const (
 )
 
 func TestEnsureCredentialsRequest(t *testing.T) {
-	managedTypesList := []client.ObjectList{
-		&cco.CredentialsRequestList{},
-	}
-
-	eventWaitTimeout := time.Duration(1 * time.Second)
+	var (
+		managedTypesList = []client.ObjectList{
+			&cco.CredentialsRequestList{},
+		}
+		eventWaitTimeout = time.Duration(1 * time.Second)
+		addEvent         = test.Event{
+			EventType: watch.Added,
+			ObjType:   "credentialsrequest",
+			NamespacedName: types.NamespacedName{
+				Namespace: testCredentialsRequestNamespace,
+				Name:      "aws-load-balancer-controller-cluster",
+			},
+		}
+		modifyEvent = test.Event{
+			EventType: watch.Modified,
+			ObjType:   "credentialsrequest",
+			NamespacedName: types.NamespacedName{
+				Namespace: testCredentialsRequestNamespace,
+				Name:      "aws-load-balancer-controller-cluster",
+			},
+		}
+	)
 
 	testcases := []struct {
 		name            string
@@ -41,34 +58,40 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 		{
 			name:            "Initial bootstrap",
 			existingObjects: make([]runtime.Object, 0),
-			expectedEvents: []test.Event{
-				{
-					EventType: watch.Added,
-					ObjType:   "credentialsrequest",
-					NamespacedName: types.NamespacedName{
-						Namespace: testCredentialsRequestNamespace,
-						Name:      "aws-load-balancer-controller-cluster",
-					},
-				},
-			},
-			errExpected: false,
+			expectedEvents:  []test.Event{addEvent},
+			errExpected:     false,
 		},
 		{
-			name: "Change in Credential Request",
+			name: "Change in Credential Request. ProviderSpec",
 			existingObjects: []runtime.Object{
-				testPartialCredentialsRequest(),
+				testCredentialsRequestProviderSpecDiff(),
 			},
-			expectedEvents: []test.Event{
-				{
-					EventType: watch.Modified,
-					ObjType:   "credentialsrequest",
-					NamespacedName: types.NamespacedName{
-						Namespace: testCredentialsRequestNamespace,
-						Name:      "aws-load-balancer-controller-cluster",
-					},
-				},
+			expectedEvents: []test.Event{modifyEvent},
+			errExpected:    false,
+		},
+		{
+			name: "Change in Credential Request. SecretName",
+			existingObjects: []runtime.Object{
+				testCredentialsRequestSecretNameDiff(),
 			},
-			errExpected: false,
+			expectedEvents: []test.Event{modifyEvent},
+			errExpected:    false,
+		},
+		{
+			name: "Change in Credential Request. SecretNamespace",
+			existingObjects: []runtime.Object{
+				testCredentialsRequestSecretNsDiff(),
+			},
+			expectedEvents: []test.Event{modifyEvent},
+			errExpected:    false,
+		},
+		{
+			name: "Change in Credential Request. ServiceAccounts",
+			existingObjects: []runtime.Object{
+				testCredentialsRequestSADiff(),
+			},
+			expectedEvents: []test.Event{modifyEvent},
+			errExpected:    false,
 		},
 		{
 			name: "No change in Credential Request",
@@ -130,18 +153,6 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 	}
 }
 
-func testPartialCredentialsRequest() *cco.CredentialsRequest {
-	return &cco.CredentialsRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "aws-load-balancer-controller-cluster",
-			Namespace: testCredentialsRequestNamespace,
-		},
-		Spec: cco.CredentialsRequestSpec{
-			ProviderSpec: testAWSProviderSpec(),
-		},
-	}
-}
-
 func testCompleteCredentialsRequest() *cco.CredentialsRequest {
 	codec, _ := cco.NewCodec()
 	cfg, _ := createProviderConfig(codec)
@@ -151,10 +162,35 @@ func testCompleteCredentialsRequest() *cco.CredentialsRequest {
 			Namespace: testCredentialsRequestNamespace,
 		},
 		Spec: cco.CredentialsRequestSpec{
-			ProviderSpec: cfg,
-			SecretRef:    createCredentialsSecretRef("aws-load-balancer-controller-credentialsrequest-cluster", test.OperatorNamespace),
+			ProviderSpec:        cfg,
+			SecretRef:           createCredentialsSecretRef("aws-load-balancer-controller-credentialsrequest-cluster", test.OperatorNamespace),
+			ServiceAccountNames: []string{"aws-load-balancer-controller-cluster"},
 		},
 	}
+}
+
+func testCredentialsRequestProviderSpecDiff() *cco.CredentialsRequest {
+	cr := testCompleteCredentialsRequest()
+	cr.Spec.ProviderSpec = testAWSProviderSpec()
+	return cr
+}
+
+func testCredentialsRequestSecretNameDiff() *cco.CredentialsRequest {
+	cr := testCompleteCredentialsRequest()
+	cr.Spec.SecretRef.Name = "wrongsecret"
+	return cr
+}
+
+func testCredentialsRequestSecretNsDiff() *cco.CredentialsRequest {
+	cr := testCompleteCredentialsRequest()
+	cr.Spec.SecretRef.Namespace = "wrongns"
+	return cr
+}
+
+func testCredentialsRequestSADiff() *cco.CredentialsRequest {
+	cr := testCompleteCredentialsRequest()
+	cr.Spec.ServiceAccountNames = []string{"wrongsa"}
+	return cr
 }
 
 func testAWSProviderSpec() *runtime.RawExtension {
