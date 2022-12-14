@@ -5,38 +5,28 @@ post installation to ensure the operator can function correctly.
 
 ## STS Clusters
 
-### Post operator installation
+### Pre operator installation
 
 In an STS Cluster, `CredentialsRequest`s are not automatically provisioned by
-the **cloud-credential-operator** and the manual intervention done by the
-cluster-admin is required. IAM role and policies as well as the credentials secret need to be provisioned manually for the further consumption by the pods.
+the **cloud-credential-operator** and manual intervention is required by the
+cluster-admin. IAM roles and policies as well as the credentials secret need to be provisioned manually for the further consumption by the pods.
 `ccoctl` binary can be used to facilitate this task.
 
 Normally, the **aws-load-balancer-operator** relies on the **cloud-credential-operator**
-to provision the secret for the operated controller using `CredentialsRequest`. And so in an STS cluster this
-secret needs to be provisioned manually. The **aws-load-balancer-operator** will wait until the required
-secret is created and available before spawning the **aws-load-balancer-controller** pod.
+to provision the secret for both the operator and provision controller using `CredentialsRequest`. And so in an STS cluster this
+secret needs to be provisioned manually. The **aws-load-balancer-operator** will fail to create pods if the 
+secret is not reated and available before spawning the **aws-load-balancer-controller** pod.
 
 #### Pre-Requisites
 
 #### [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
 
-#### Extract required `CredentialsRequests`
-
-1. For `AWSLoadBalancerController` CR the **aws-load-balancer-operator** creates a `CredentialsRequest` named `aws-load-balancer-controller-cluster` in the `openshift-cloud-credential-operator` namespace. Extract and save the created `CredentialsRequest` in a directory:
-
-    ```bash
-    oc get credentialsrequest -n openshift-cloud-credential-operator  \
-        aws-load-balancer-controller-cluster -o yaml > <path-to-credrequests-dir>/cr.yaml
-    ```
-    Note: currently `AWSLoadBalancerController` CR can only be named `cluster`
-
-2. Use the `ccoctl` tool to process all `CredentialsRequest` objects from the credrequests directory:
+1. Use the `ccoctl` tool to create the operator IAM role and policy
 
     ```bash
     ccoctl aws create-iam-roles \
-        --name <name> --region=<aws_region> \
-        --credentials-requests-dir=<path-to-credrequests-dir> \
+        --name aws-load-balancer-operator-role --region=<aws_region> \
+        --credentials-requests-dir=./hack/ \
         --identity-provider-arn <oidc-arn>
     ```
 
@@ -46,20 +36,29 @@ secret is created and available before spawning the **aws-load-balancer-controll
     of secrets in a **manifests** directory that is required
     by the **aws-load-balancer-controller**.
 
+2. Use the `ccoctl` tool to create the controller IAM role and policy
+
+    ```bash
+    ccoctl aws create-iam-roles \
+        --name aws-load-balancer-controller-role --region=<aws_region> \
+        --credentials-requests-dir=./hack/controller \
+        --identity-provider-arn <oidc-arn>
+    ```
+
 3. Apply the secrets to your cluster:
 
     ```bash
-    ls manifests/*-credentials.yaml | xargs -I{} oc apply -f {}
+    find ./manifests/ -name "*credentials.yaml" | xargs -I{} oc apply -f {}
     ```
 
 4. Verify that the corresponding **aws-load-balancer-controller** pod was created:
 
     ```bash
     oc -n aws-load-balancer-operator get pods
-    NAME                                                            READY   STATUS    RESTARTS   AGE
-    aws-load-balancer-controller-cluster-9b766d6-gg82c              1/1     Running   0          137m
     aws-load-balancer-operator-controller-manager-b55ff68cc-85jzg   2/2     Running   0          3h26m
     ```
+
+5. Return to [Running the operator](../#Running-the-operator)
 
 ### Use predefined `CredentialsRequest`
 In case the provisioning of the credentials secret should not be done by the **cloud-credential-operator**, the secret needs to be explicitly referenced in `AWSLoadBalancerController` CR, see [credentials.name field description](./tutorial.md#credentialsname).    

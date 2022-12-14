@@ -47,7 +47,7 @@ podman push $IMG
    ```bash
    oc create ns aws-load-balancer-operator
    ```
-4. Create AWS credentials profile for the operator
+4. Create AWS credentials profile for the operator, if you are deploying to a cluster configured in [manual mode](https://docs.openshift.com/container-platform/4.10/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts) refer to steps in [STS Clusters](/docs/install.md#sts-clusters) to create the credential requests manually before step 5.
     ```bash
     cat << EOF > credentials
     [default]
