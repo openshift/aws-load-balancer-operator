@@ -20,6 +20,7 @@ describes the design and implementation of the operator in more detail.
     2. [Running the operator](#running-the-operator)
     3. [Running the end-to-end tests](#running-the-end-to-end-tests)
     4. [Running the end-to-end tests on ROSA STS cluster](#running-the-end-to-end-tests-on-rosa-sts-cluster)
+5. [Proxy support](#proxy-support)
 
 ## Local Development
 
@@ -100,3 +101,7 @@ export ALBO_E2E_WAFV2_WEBACL_ARN=<wafv2-webacl-arn>
 export ALBO_E2E_WAF_WEBACL_ID=<wafregional-webacl-id>
 make test-e2e
 ```
+
+## Proxy support
+
+[Configuring egress proxy for AWS Load Balancer Operator](./docs/proxy.md)
