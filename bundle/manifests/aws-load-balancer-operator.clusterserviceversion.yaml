@@ -57,8 +57,11 @@ metadata:
       ]
     capabilities: Basic Install
     olm.skipRange: <0.2.0
+    operatorframework.io/suggested-namespace: aws-load-balancer-operator
     operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    repository: https://github.com/openshift/aws-load-balancer-operator
+    support: Red Hat, Inc.
   name: aws-load-balancer-operator.v0.2.0
   namespace: placeholder
 spec:
@@ -94,7 +97,7 @@ spec:
        namespace with the following command:
 
     ```
-    cat << EOF| oc create -f -
+    cat <<EOF | oc create -f -
     apiVersion: cloudcredential.openshift.io/v1
     kind: CredentialsRequest
     metadata:
@@ -123,7 +126,7 @@ spec:
         namespace: aws-load-balancer-operator
       serviceAccountNames:
         - aws-load-balancer-operator-controller-manager
-      EOF
+    EOF
     ```
     3. Ensure the credentials have been correctly provisioned
     ```bash
@@ -463,6 +466,6 @@ spec:
   maturity: alpha
   minKubeVersion: 1.20.0
   provider:
-    name: Red Hat
+    name: Red Hat Inc.
     url: https://redhat.com
   version: 0.2.0
