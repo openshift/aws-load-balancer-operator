@@ -17,12 +17,19 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+
+	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
@@ -30,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	networkingolmv1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albc "github.com/openshift/aws-load-balancer-operator/pkg/controllers/awsloadbalancercontroller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -38,6 +46,14 @@ import (
 
 var k8sClient client.Client
 var testEnv *envtest.Environment
+var cancelManager context.CancelFunc
+var reconcileCollector = &AWSLoadBalancerControllerReconcileCollector{
+	AWSLoadBalancerControllerReconciler: &albc.AWSLoadBalancerControllerReconciler{
+		Namespace:              "aws-load-balancer-operator",
+		TrustedCAConfigMapName: "test-trusted-ca",
+	},
+	Requests: make(chan ctrl.Request),
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -52,7 +68,10 @@ var _ = BeforeSuite(func() {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		CRDDirectoryPaths: []string{
+			filepath.Join("..", "..", "config", "crd", "bases"),
+			filepath.Join("test", "crd"),
+		},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -63,16 +82,57 @@ var _ = BeforeSuite(func() {
 	err = networkingolmv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
+	err = cco.Install(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
 	//+kubebuilder:scaffold:scheme
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme:             scheme.Scheme,
+		LeaderElection:     false,
+		MetricsBindAddress: "0",
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	err = reconcileCollector.BuildManagedController(mgr).Complete(reconcileCollector)
+	Expect(err).NotTo(HaveOccurred())
+
+	operatorTestNs := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "aws-load-balancer-operator",
+		},
+	}
+	Expect(k8sClient.Create(context.Background(), operatorTestNs)).Should(Succeed())
+
+	var ctx context.Context
+	ctx, cancelManager = context.WithCancel(context.Background())
+
+	go func() {
+		err = mgr.Start(ctx)
+		if err != nil {
+			Expect(err).NotTo(HaveOccurred())
+		}
+	}()
 }, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
+	cancelManager()
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+// AWSLoadBalancerControllerReconcileCollector collects reconcile requests.
+type AWSLoadBalancerControllerReconcileCollector struct {
+	*albc.AWSLoadBalancerControllerReconciler
+	Requests chan ctrl.Request
+}
+
+func (c *AWSLoadBalancerControllerReconcileCollector) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	c.Requests <- req
+	return ctrl.Result{}, nil
+}

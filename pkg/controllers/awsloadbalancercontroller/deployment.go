@@ -2,6 +2,8 @@ package awsloadbalancercontroller
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/operator-framework/operator-lib/proxy"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -25,6 +28,14 @@ const (
 	appLabelName    = "app.kubernetes.io/name"
 	appName         = "aws-load-balancer-operator"
 	appInstanceName = "app.kubernetes.io/instance"
+	// trustedCAAnnotation is the annotation which contains the hash of the trusted CA configmap's contents.
+	// It's added to the template pod spec of the controller deployment. Therefore a new rollout is triggered
+	// if the hash (annotation value) changes. The hash is calculated at each reconciliation of the controller resource.
+	// The rollout is necessary because 1) the trusted configmap is consumed as a subPath which forbids the updates,
+	// 2) the controller doesn't have a means (fsnotify or similar) to detect the updates anyway.
+	trustedCAAnnotation = "networking.olm.openshift.io/trusted-ca-configmap-hash"
+	// awsLoadBalancerControllerContainerName is the name of the AWS load balancer controller's container.
+	awsLoadBalancerControllerContainerName = "controller"
 	// awsSDKLoadConfigName is the name of the environment variable which enables shared configs.
 	// Without which certain fields in the config aren't set. Eg: role_arn.
 	awsSDKLoadConfigName = "AWS_SDK_LOAD_CONFIG"
@@ -46,22 +57,40 @@ const (
 	boundSATokenVolumeName = "bound-sa-token"
 	// boundSATokenDir is the sa token directory
 	boundSATokenDir = "/var/run/secrets/openshift/serviceaccount"
+	// trustedCAVolumeName is the name of the volume with the CA bundle to be trusted by the controller.
+	trustedCAVolumeName = "trusted-ca"
+	// trustedCAPath is the mounting path for the trusted CA bundle.
+	// Default certificate path is taken from the golang source:
+	// https://cs.opensource.google/go/go/+/refs/tags/go1.19.5:src/crypto/x509/root_linux.go;drc=82f09b75ca181a6be0e594e1917e4d3d91934b27;l=20
+	trustedCAPath = "/etc/pki/tls/certs/albo-tls-ca-bundle.crt"
+	// defaultCABundleKey is the default name for the data key of the configmap injected with the trusted CA.
+	defaultCABundleKey = "ca-bundle.crt"
 	// all capabilities in the pod security context
 	allCapabilities = "ALL"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, namespace, image string, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController) (*appsv1.Deployment, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController, trustCAConfigMap *corev1.ConfigMap) (*appsv1.Deployment, error) {
 	deploymentName := fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)
 
 	reqLogger := log.FromContext(ctx).WithValues("deployment", deploymentName)
 	reqLogger.Info("ensuring deployment for aws-load-balancer-controller instance")
 
-	exists, current, err := r.currentDeployment(ctx, deploymentName, namespace)
+	exists, current, err := r.currentDeployment(ctx, deploymentName, r.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing deployment %s: %w", deploymentName, err)
 	}
 
-	desired := desiredDeployment(deploymentName, namespace, image, r.VPCID, r.ClusterName, r.AWSRegion, crSecretName, servingSecretName, controller, sa)
+	trustCAConfigMapName, trustCAConfigMapHash := "", ""
+	if trustCAConfigMap != nil {
+		trustCAConfigMapName = trustCAConfigMap.Name
+		configMapHash, err := buildMapHash(trustCAConfigMap.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build the trusted CA configmap's hash: %w", err)
+		}
+		trustCAConfigMapHash = configMapHash
+	}
+
+	desired := r.desiredDeployment(deploymentName, crSecretName, servingSecretName, controller, sa, trustCAConfigMapName, trustCAConfigMapHash)
 	err = controllerutil.SetControllerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on deployment %s: %w", deploymentName, err)
@@ -72,7 +101,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 		if err != nil {
 			return nil, fmt.Errorf("failed to create deployment %s: %w", deploymentName, err)
 		}
-		_, current, err = r.currentDeployment(ctx, deploymentName, namespace)
+		_, current, err = r.currentDeployment(ctx, deploymentName, r.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get new deployment %s: %w", deploymentName, err)
 		}
@@ -83,7 +112,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 		return nil, fmt.Errorf("failed to update existing deployment: %w", err)
 	}
 	if updated {
-		_, current, err = r.currentDeployment(ctx, deploymentName, namespace)
+		_, current, err = r.currentDeployment(ctx, deploymentName, r.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get existing deployment: %w", err)
 		}
@@ -91,11 +120,11 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 	return current, nil
 }
 
-func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, credentialsRequestSecretName, servingSecret string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount) *appsv1.Deployment {
+func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credentialsRequestSecretName, servingSecret string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount, trustedCAConfigMapName, trustedCAConfigMapHash string) *appsv1.Deployment {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: r.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -114,13 +143,13 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "controller",
-							Image: image,
-							Args:  desiredContainerArgs(controller, clusterName, vpcID),
-							Env: []corev1.EnvVar{
+							Name:  awsLoadBalancerControllerContainerName,
+							Image: r.Image,
+							Args:  desiredContainerArgs(controller, r.ClusterName, r.VPCID),
+							Env: append([]corev1.EnvVar{
 								{
 									Name:  awsRegionEnvVarName,
-									Value: awsRegion,
+									Value: r.AWSRegion,
 								},
 								{
 									Name:  awsCredentialEnvVarName,
@@ -130,7 +159,11 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 									Name:  awsSDKLoadConfigName,
 									Value: "1",
 								},
-							},
+								// OLM adds the http proxy environment variables to all the operators it manages
+								// if the cluster wide egress proxy is set up on the cluster.
+								// We propagate these environment variables down to the controller.
+								// Ref: https://sdk.operatorframework.io/docs/building-operators/golang/references/proxy-vars/#m-docsbuilding-operatorsgolangreferencesproxy-vars
+							}, proxy.ReadProxyVarsFromEnv()...),
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      awsCredentialsVolumeName,
@@ -199,6 +232,30 @@ func desiredDeployment(name, namespace, image, vpcID, clusterName, awsRegion, cr
 	}
 	if controller.Spec.Config != nil && controller.Spec.Config.Replicas != 0 {
 		d.Spec.Replicas = pointer.Int32(controller.Spec.Config.Replicas)
+	}
+	if trustedCAConfigMapName != "" {
+		if trustedCAConfigMapHash != "" {
+			if d.Spec.Template.Annotations == nil {
+				d.Spec.Template.Annotations = map[string]string{}
+			}
+			d.Spec.Template.Annotations[trustedCAAnnotation] = trustedCAConfigMapHash
+		}
+		d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: trustedCAVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: trustedCAConfigMapName,
+					},
+				},
+			}})
+		for i := range d.Spec.Template.Spec.Containers {
+			d.Spec.Template.Spec.Containers[i].VolumeMounts = append(d.Spec.Template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      trustedCAVolumeName,
+				MountPath: trustedCAPath,
+				SubPath:   defaultCABundleKey,
+			})
+		}
 	}
 	return d
 }
@@ -279,6 +336,19 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 		if *desired.Spec.Replicas != *updated.Spec.Replicas {
 			updated.Spec.Replicas = desired.Spec.Replicas
 			outdated = true
+		}
+	}
+
+	// add desired template annotations if missing
+	if len(desired.Spec.Template.Annotations) != 0 {
+		if updated.Spec.Template.Annotations == nil {
+			updated.Spec.Template.Annotations = map[string]string{}
+		}
+		for desKey, desVal := range desired.Spec.Template.Annotations {
+			if currVal, currExists := current.Spec.Template.Annotations[desKey]; !currExists || currVal != desVal {
+				updated.Spec.Template.Annotations[desKey] = desVal
+				outdated = true
+			}
 		}
 	}
 
@@ -384,14 +454,6 @@ func hasContainerChanged(current, desired corev1.Container) bool {
 	return false
 }
 
-func indexedContainerEnv(envs []corev1.EnvVar) map[string]corev1.EnvVar {
-	indexed := make(map[string]corev1.EnvVar)
-	for _, e := range envs {
-		indexed[e.Name] = e
-	}
-	return indexed
-}
-
 func hasSecurityContextChanged(current, desired *corev1.SecurityContext) bool {
 	if desired == nil {
 		return false
@@ -437,6 +499,14 @@ func hasSecurityContextChanged(current, desired *corev1.SecurityContext) bool {
 	return false
 }
 
+func indexedContainerEnv(envs []corev1.EnvVar) map[string]corev1.EnvVar {
+	indexed := make(map[string]corev1.EnvVar)
+	for _, e := range envs {
+		indexed[e.Name] = e
+	}
+	return indexed
+}
+
 func equalBoolPtr(current, desired *bool) bool {
 	if desired == nil {
 		return true
@@ -450,4 +520,25 @@ func equalBoolPtr(current, desired *bool) bool {
 		return false
 	}
 	return true
+}
+
+// buildMapHash is a utility function to get a checksum of a data map.
+func buildMapHash(data map[string]string) (string, error) {
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	hash := sha256.New()
+	for _, k := range keys {
+		_, err := hash.Write([]byte(k))
+		if err != nil {
+			return "", err
+		}
+		_, err = hash.Write([]byte(data[k]))
+		if err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }

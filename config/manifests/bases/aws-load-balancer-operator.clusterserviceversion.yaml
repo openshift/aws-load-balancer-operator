@@ -6,6 +6,7 @@ metadata:
     capabilities: Basic Install
     olm.skipRange: <0.2.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
+    operators.openshift.io/infrastructure-features: '["proxy-aware"]'
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
   name: aws-load-balancer-operator.v0.2.0

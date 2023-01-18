@@ -16,6 +16,7 @@ require (
 	github.com/onsi/gomega v1.20.1
 	github.com/openshift/api v0.0.0-20220906163444-2df055c101a3
 	github.com/openshift/cloud-credential-operator v0.0.0-20220512195103-2ea3d8c8240a
+	github.com/operator-framework/operator-lib v0.11.0
 	github.com/spf13/cobra v1.5.0
 	k8s.io/api v0.25.3
 	k8s.io/apimachinery v0.25.3

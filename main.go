@@ -74,11 +74,14 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var namespace string
-	var image string
+	var (
+		metricsAddr            string
+		enableLeaderElection   bool
+		probeAddr              string
+		namespace              string
+		image                  string
+		trustedCAConfigMapName string
+	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -86,6 +89,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&namespace, "namespace", "aws-load-balancer-operator", "The namespace where operands should be installed")
 	flag.StringVar(&image, "image", "quay.io/aws-load-balancer-operator/aws-load-balancer-controller:latest", "The image to be used for the operand")
+	flag.StringVar(&trustedCAConfigMapName, "trusted-ca-configmap", "", "The name of the config map containing TLS CA(s) which should be trusted by the controller's containers. PEM encoded file under \"ca-bundle.crt\" key is expected.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -140,14 +144,15 @@ func main() {
 	}
 
 	if err = (&awsloadbalancercontroller.AWSLoadBalancerControllerReconciler{
-		Client:      mgr.GetClient(),
-		Scheme:      mgr.GetScheme(),
-		EC2Client:   ec2Client,
-		Namespace:   namespace,
-		Image:       image,
-		VPCID:       vpcID,
-		ClusterName: clusterName,
-		AWSRegion:   awsRegion,
+		Client:                 mgr.GetClient(),
+		Scheme:                 mgr.GetScheme(),
+		EC2Client:              ec2Client,
+		Namespace:              namespace,
+		Image:                  image,
+		VPCID:                  vpcID,
+		ClusterName:            clusterName,
+		AWSRegion:              awsRegion,
+		TrustedCAConfigMapName: trustedCAConfigMapName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AWSLoadBalancerController")
 		os.Exit(1)
