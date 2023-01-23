@@ -29,7 +29,12 @@ Additional AWS credentials are needed for the operator to be successfully instal
 
 1. [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
 
-2. Use the `ccoctl` tool to process the operator's `CredentialsRequest` objects needed to bootstrap the operator:
+2. Create AWS Load Balancer Operator's namespace:
+    ```bash
+    oc create namespace aws-load-balancer-operator
+    ```
+
+3. Use the `ccoctl` tool to process the operator's `CredentialsRequest` objects needed to bootstrap the operator:
 
     ```bash
     curl --create-dirs -o <path-to-credrequests-dir>/cr.yaml https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-credentials-request.yaml
@@ -45,13 +50,13 @@ Additional AWS credentials are needed for the operator to be successfully instal
     of secrets in a **manifests** directory that is required
     by the **aws-load-balancer-operator**.
 
-3. Apply the secrets to your cluster:
+4. Apply the secrets to your cluster:
 
     ```bash
     ls manifests/*-credentials.yaml | xargs -I{} oc apply -f {}
     ```
 
-4. Verify that the operator's credentials secret is created:
+5. Verify that the operator's credentials secret is created:
 
     ```bash
     oc -n aws-load-balancer-operator get secret aws-load-balancer-operator -o json | jq -r '.data.credentials' | base64 -d
