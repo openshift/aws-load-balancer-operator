@@ -20,8 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
-
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 
@@ -29,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
-	albc "github.com/openshift/aws-load-balancer-operator/pkg/controllers/awsloadbalancercontroller"
 )
 
 var (
@@ -87,21 +84,6 @@ func waitForDeletion(t *testing.T, cl client.Client, obj client.Object, timeout 
 		t.Logf("deleted resource %s/%s", obj.GetName(), obj.GetNamespace())
 		return true, nil
 	})
-}
-
-// verifyConsumedCredentialsSecret returns true if the given deployment has the expected secret consumed as volume.
-func verifyConsumedCredentialsSecret(cl client.Client, deploymentName types.NamespacedName, expectedSecretName string) (bool, error) {
-	dep := &appsv1.Deployment{}
-	if err := cl.Get(context.TODO(), deploymentName, dep); err != nil {
-		return false, err
-	}
-
-	for _, vol := range dep.Spec.Template.Spec.Volumes {
-		if vol.Secret != nil && vol.Secret.SecretName == expectedSecretName {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func deploymentConditionMap(conditions ...appsv1.DeploymentCondition) map[string]string {
@@ -167,6 +149,7 @@ func buildEchoPod(name, namespace string) *corev1.Pod {
 }
 
 func waitForHTTPClientCondition(t *testing.T, httpClient *http.Client, req *http.Request, interval, timeout time.Duration, compareFunc func(*http.Response) bool) error {
+	t.Helper()
 	return wait.PollImmediate(interval, timeout, func() (done bool, err error) {
 		resp, err := httpClient.Do(req)
 		if err == nil {
@@ -373,6 +356,14 @@ func (b *albcBuilder) withCredSecret(name string) *albcBuilder {
 	return b
 }
 
+// withCredSecretIf adds the credentials secret only if the given condition is true.
+func (b *albcBuilder) withCredSecretIf(condition bool, name string) *albcBuilder {
+	if condition {
+		b.credentials = &albo.SecretReference{Name: name}
+	}
+	return b
+}
+
 func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
 	return &albo.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
@@ -421,35 +412,4 @@ func findAWSWebACLRecursive(wafClient *wafv2.Client, aclName string, nextMarker 
 		return findAWSWebACLRecursive(wafClient, aclName, output.NextMarker)
 	}
 	return nil, nil
-}
-
-// mustGenerateALBCCredentialsRequest returns CredentialsRequest with IAM policies required by ALBC.
-// Panics if the encoding of the IAM policy fails.
-func mustGenerateALBCCredentialsRequest(name types.NamespacedName, secretRef corev1.ObjectReference, saName string) *cco.CredentialsRequest {
-	credentialsRequest := &cco.CredentialsRequest{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.Name,
-			Namespace: name.Namespace,
-		},
-		Spec: cco.CredentialsRequestSpec{
-			ServiceAccountNames: []string{saName},
-			SecretRef:           secretRef,
-		},
-	}
-
-	codec, err := cco.NewCodec()
-	if err != nil {
-		panic(err)
-	}
-
-	providerSpec, err := codec.EncodeProviderSpec(&cco.AWSProviderSpec{
-		StatementEntries: albc.GetIAMPolicy().Statement,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	credentialsRequest.Spec.ProviderSpec = providerSpec
-
-	return credentialsRequest
 }

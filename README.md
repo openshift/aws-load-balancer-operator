@@ -16,18 +16,23 @@ describes the design and implementation of the operator in more detail.
    1. [STS Clusters](/docs/install.md#sts-clusters)
 3. [Tutorial](/docs/tutorial.md)
 4. [Local Development](#local-development)
+    1. [Build the operand image](#build-the-operand-image)
+    2. [Running the operator](#running-the-operator)
+    3. [Running the end-to-end tests](#running-the-end-to-end-tests)
+    4. [Running the end-to-end tests on ROSA STS cluster](#running-the-end-to-end-tests-on-rosa-sts-cluster)
 
 ## Local Development
 
 ### Build the operand image
 
-The operand image must be built first. Our fork of the operand
-is [here](https://github.com/openshift/aws-load-balancer-controller/). Clone 
-the repository and build the image and push it to a registry which is 
-accessible from the test cluster.
+**Note**: only needed for unmerged changes, all merged changes get published in a public quay.io repository
+
+The operand image must be built first. Clone [the OpenShift fork of the operand](https://github.com/openshift/aws-load-balancer-controller),
+build the image and push it to a registry which is accessible from the test cluster.
 
 ```bash
 git clone https://github.com/openshift/aws-load-balancer-controller.git
+cd aws-load-balancer-controller
 IMG=quay.io/$USER/aws-load-balancer-controller
 podman build -t $IMG -f Dockerfile.openshift
 podman push $IMG
@@ -38,7 +43,7 @@ podman push $IMG
 1. Replace the operand image in the file `config/manager/manager.yaml` in 
    the environment variable `RELATED_IMAGE_CONTROLLER` with the image 
    created in the previous step.
-2. Build and push the image to an image registry.
+2. Build and push the operator image to an image registry.
     ```bash
     export IMG=quay.io/$USER/aws-load-balancer-operator:latest
     make image-build image-push
@@ -73,5 +78,25 @@ After the operator has been deployed as described previously you can run the e2e
 tests with the following command:
 
 ```bash
+make test-e2e
+```
+
+### Running the end-to-end tests on ROSA STS cluster
+
+**Prerequisistes**:
+- The operator has to be deployed with [the prerequisites for the STS cluster](./docs/prerequisites.md#for-sts-clusters).
+- The controller's secret needs to be created as described in [the installation instructions for the STS cluster](./docs/install.md#post-operator-installation).
+- The test WAFv2 and WAF regional WebACLs need to be created. You can use the following commands:
+```bash
+aws wafv2 create-web-acl --name "echoserver-acl" --scope REGIONAL --default-action '{"Block":{}}'  --visibility-config '{"MetricName":"echoserver","CloudWatchMetricsEnabled": false,"SampledRequestsEnabled":false}'
+aws waf-regional create-web-acl --name "echoserverclassicacl" --metric-name "echoserverclassicacl" --default-action '{"Type":"BLOCK"}' --change-token "$(aws waf-regional get-change-token)"
+```
+**Note**: note the ARN and ID of the created ACLs from the output of the commands
+
+Now you can run the e2e test with the following commands:
+```bash
+export ALBO_E2E_PLATFORM=ROSA
+export ALBO_E2E_WAFV2_WEBACL_ARN=<wafv2-webacl-arn>
+export ALBO_E2E_WAF_WEBACL_ID=<wafregional-webacl-id>
 make test-e2e
 ```

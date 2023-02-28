@@ -111,6 +111,15 @@ Once the controller is running an ALB backed Ingress can be created. The
 following example creates an HTTP echo server which responds with the request
 body payload.
 
+Create a namespace with the following manifest:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: echoserver
+```
+
 Create a deployment with the following manifest:
 
 ```yaml

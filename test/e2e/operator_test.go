@@ -42,6 +42,22 @@ import (
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
+const (
+	e2ePlatformVarName = "ALBO_E2E_PLATFORM"
+
+	// WAF/WAFV2 web ACLs are needed to test the ALB WAF addons.
+	// The environment variables below allow the user to provide the existing ACLs.
+	// These variables are required for the e2e when it's run on the ROSA/STS cluster.
+	// The e2e cannot build a valid AWS config to create the ACLs itself.
+	// Because the e2e binary doesn't have the token required by AWS to provision the temporary STS credentials
+	// unlike the operator and the controller which use the service account token signed by OpenShift.
+	wafv2WebACLARNVarName = "ALBO_E2E_WAFV2_WEBACL_ARN"
+	wafWebACLIDVarName    = "ALBO_E2E_WAF_WEBACL_ID"
+
+	// controllerSecretName is the name of the controller's cloud credential secret provisioned by the CI.
+	controllerSecretName = "aws-load-balancer-controller-manual-cluster"
+)
+
 var (
 	cfg                aws.Config
 	kubeClient         client.Client
@@ -57,7 +73,11 @@ var (
 		Jitter:   1.0,
 		Steps:    10,
 	}
-	httpClient = http.Client{Timeout: 5 * time.Second}
+	httpClient    = http.Client{Timeout: 5 * time.Second}
+	e2eSecretName = types.NamespacedName{
+		Name:      "aws-load-balancer-operator-e2e",
+		Namespace: operatorNamespace,
+	}
 )
 
 func init() {
@@ -96,11 +116,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	err = ensureCredentialsRequest()
-	if err != nil {
-		fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
-		os.Exit(1)
-	}
+	if !isOnROSA() {
+		if err := ensureCredentialsRequest(e2eSecretName); err != nil {
+			fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
+			os.Exit(1)
+		}
+	} // ROSA forbids the creation of CredentialsRequests by non cluster admins.
 
 	var infra configv1.Infrastructure
 	clusterInfrastructureName := types.NamespacedName{Name: "cluster"}
@@ -115,15 +136,13 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	secretName := types.NamespacedName{
-		Name:      "aws-load-balancer-operator-e2e",
-		Namespace: operatorNamespace,
-	}
-	cfg, err = awsCredentials(kubeClient, infra.Status.PlatformStatus.AWS.Region, secretName)
-	if err != nil {
-		fmt.Printf("failed to load aws config %v", err)
-		os.Exit(1)
-	}
+	if !isOnROSA() {
+		cfg, err = awsConfigWithCredentials(kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
+		if err != nil {
+			fmt.Printf("failed to load aws config %v", err)
+			os.Exit(1)
+		}
+	} // No need to get AWS config on ROSA cluster: the CI provisions all the required AWS resources.
 
 	os.Exit(m.Run())
 }
@@ -151,7 +170,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).build()
+	alb := newALBCBuilder().withName(name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -221,27 +240,9 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 // TestAWSLoadBalancerControllerWithCredentialsSecret tests the basic happy flow for the operator
 // using the explicitly specified credentials secret.
 func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
-	t.Log("Provisioning AWS credentials for aws load balancer controller imitating the manually created secret")
-	albcSecretName := "manual-aws-credentials-e2e"
-	albcSecretRef := corev1.ObjectReference{
-		Name:      albcSecretName,
-		Namespace: "aws-load-balancer-operator",
-	}
-	albcCrName := types.NamespacedName{
-		Name:      "mimic-manual-creds",
-		Namespace: "openshift-cloud-credential-operator",
-	}
-	albcCr := mustGenerateALBCCredentialsRequest(albcCrName, albcSecretRef, "testsa")
-	if err := kubeClient.Create(context.TODO(), albcCr); err != nil {
-		t.Fatalf("failed to create credentials request to mimic manually created albc credentials: %v", err)
-	}
-	defer func() {
-		waitForDeletion(t, kubeClient, albcCr, defaultTimeout)
-	}()
-
 	t.Log("Creating aws load balancer controller instance with credentials secret")
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).withCredSecret(albcSecretName).build()
+	alb := newALBCBuilder().withName(name).withCredSecret(controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -255,13 +256,6 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
 	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
-	}
-
-	t.Log("Verifing the secret used by aws load balancer controller is different from the provisioned by the operator")
-	if verified, err := verifyConsumedCredentialsSecret(kubeClient, deploymentName, albcSecretName); err != nil {
-		t.Fatalf("failed to verify consumed credentials secret for controller deployment: %v", err)
-	} else if !verified {
-		t.Fatalf("expected credentials secret %q is not consumed by the controller deployment %q", albcSecretName, deploymentName)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-cred-secret"
@@ -329,7 +323,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).withIngressClass(ingclassName.Name).build()
+	alb := newALBCBuilder().withName(name).withIngressClass(ingclassName.Name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -400,7 +394,7 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).build()
+	alb := newALBCBuilder().withName(name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -492,7 +486,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).withAddons(albo.AWSAddonWAFv2).build()
+	alb := newALBCBuilder().withName(name).withAddons(albo.AWSAddonWAFv2).withCredSecretIf(isOnROSA(), controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -514,53 +508,64 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
 	}()
 
-	wafClient := wafv2.NewFromConfig(cfg)
-	webACLName := "echoserver-acl"
-	acl, err := findAWSWebACL(wafClient, webACLName)
-	if err != nil {
-		t.Logf("failed to find %q aws wafv2 acl due to %v, continue to creation anyway", webACLName, err)
-	}
-	if acl == nil {
-		t.Logf("AWS WAFv2 ACL %q was not found, creating one", webACLName)
-		createdACL, err := wafClient.CreateWebACL(context.Background(), &wafv2.CreateWebACLInput{
-			DefaultAction: &wafv2types.DefaultAction{Block: &wafv2types.BlockAction{}},
-			Name:          aws.String(webACLName),
-			Scope:         wafv2types.ScopeRegional,
-			VisibilityConfig: &wafv2types.VisibilityConfig{
-				CloudWatchMetricsEnabled: false,
-				MetricName:               aws.String("echoserver"),
-				SampledRequestsEnabled:   false,
-			},
-		})
+	var aclARN string
+	if !isOnROSA() {
+		wafClient := wafv2.NewFromConfig(cfg)
+		webACLName := "echoserver-acl"
+		acl, err := findAWSWebACL(wafClient, webACLName)
 		if err != nil {
-			t.Fatalf("failed to create aws wafv2 acl due to %v", err)
+			t.Logf("failed to find %q aws wafv2 acl due to %v, continue to creation anyway", webACLName, err)
 		}
-		acl = createdACL.Summary
+		if acl == nil {
+			t.Logf("AWS WAFv2 ACL %q was not found, creating one", webACLName)
+			createdACL, err := wafClient.CreateWebACL(context.Background(), &wafv2.CreateWebACLInput{
+				DefaultAction: &wafv2types.DefaultAction{Block: &wafv2types.BlockAction{}},
+				Name:          aws.String(webACLName),
+				Scope:         wafv2types.ScopeRegional,
+				VisibilityConfig: &wafv2types.VisibilityConfig{
+					CloudWatchMetricsEnabled: false,
+					MetricName:               aws.String("echoserver"),
+					SampledRequestsEnabled:   false,
+				},
+			})
+			if err != nil {
+				t.Fatalf("failed to create aws wafv2 acl due to %v", err)
+			}
+			acl = createdACL.Summary
+		}
+
+		aclARN = *acl.ARN
+		t.Logf("Got AWS WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
+
+		defer func() {
+			_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
+				Id:        aws.String(*acl.Id),
+				Name:      aws.String(webACLName),
+				LockToken: acl.LockToken,
+				Scope:     wafv2types.ScopeRegional,
+			})
+			if err != nil {
+				t.Fatalf("failed to delete aws wafv2 acl due to %v", err)
+			}
+		}()
+	} else {
+		// Web ACLs are provisioned by CI on ROSA cluster.
+		aclARN = os.Getenv(wafv2WebACLARNVarName)
+		if aclARN == "" {
+			t.Fatalf("no wafv2 webacl arn provided")
+		}
+		t.Logf("Got AWS WAFv2 WebACL. ARN: %s", aclARN)
 	}
-
-	t.Logf("Got AWS WAFv2 ACL. ID: %s, Name: %s", *acl.Id, *acl.Name)
-
-	defer func() {
-		_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
-			Id:        aws.String(*acl.Id),
-			Name:      aws.String(webACLName),
-			LockToken: acl.LockToken,
-			Scope:     wafv2types.ScopeRegional,
-		})
-		if err != nil {
-			t.Fatalf("failed to delete aws wafv2 acl due to %v", err)
-		}
-	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
 	ingAnnotations := map[string]string{
 		"alb.ingress.kubernetes.io/scheme":        "internet-facing",
 		"alb.ingress.kubernetes.io/target-type":   "instance",
-		"alb.ingress.kubernetes.io/wafv2-acl-arn": *acl.ARN,
+		"alb.ingress.kubernetes.io/wafv2-acl-arn": aclARN,
 	}
 	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
-	err = retry.OnError(defaultRetryPolicy,
+	err := retry.OnError(defaultRetryPolicy,
 		func(err error) bool {
 			if errors.IsAlreadyExists(err) {
 				return false
@@ -602,7 +607,7 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).withAddons(albo.AWSAddonWAFv1).build()
+	alb := newALBCBuilder().withName(name).withAddons(albo.AWSAddonWAFv1).withCredSecretIf(isOnROSA(), controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -624,45 +629,57 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
 	}()
 
-	wafClient := waf.NewFromConfig(cfg)
+	var webACLID string
+	if !isOnROSA() {
+		wafClient := waf.NewFromConfig(cfg)
 
-	token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
-	if err != nil {
-		t.Fatalf("failed to get change token for waf regional classic %v", err)
-	}
-	acl, err := wafClient.CreateWebACL(context.TODO(), &waf.CreateWebACLInput{
-		DefaultAction: &waftypes.WafAction{Type: waftypes.WafActionTypeBlock},
-		MetricName:    aws.String("echoserverclassicacl"),
-		Name:          aws.String("echoserverclassicacl"),
-		ChangeToken:   token.ChangeToken,
-	})
-	if err != nil {
-		t.Fatalf("failed to create aws waf regional acl due to %v", err)
-	}
-	defer func() {
 		token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
 		if err != nil {
 			t.Fatalf("failed to get change token for waf regional classic %v", err)
 		}
-
-		_, err = wafClient.DeleteWebACL(context.TODO(), &waf.DeleteWebACLInput{
-			ChangeToken: token.ChangeToken,
-			WebACLId:    acl.WebACL.WebACLId,
+		acl, err := wafClient.CreateWebACL(context.TODO(), &waf.CreateWebACLInput{
+			DefaultAction: &waftypes.WafAction{Type: waftypes.WafActionTypeBlock},
+			MetricName:    aws.String("echoserverclassicacl"),
+			Name:          aws.String("echoserverclassicacl"),
+			ChangeToken:   token.ChangeToken,
 		})
 		if err != nil {
-			t.Fatalf("failed to delete aws waf regional acl due to %v", err)
+			t.Fatalf("failed to create aws waf regional acl due to %v", err)
 		}
-	}()
+		webACLID = *acl.WebACL.WebACLId
+		defer func() {
+			token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
+			if err != nil {
+				t.Fatalf("failed to get change token for waf regional classic %v", err)
+			}
+
+			_, err = wafClient.DeleteWebACL(context.TODO(), &waf.DeleteWebACLInput{
+				ChangeToken: token.ChangeToken,
+				WebACLId:    acl.WebACL.WebACLId,
+			})
+			if err != nil {
+				t.Fatalf("failed to delete aws waf regional acl due to %v", err)
+			}
+		}()
+	} else {
+		// Web ACLs are provisioned by CI on ROSA cluster.
+		webACLID = os.Getenv(wafWebACLIDVarName)
+		if webACLID == "" {
+			t.Fatalf("no wafregional webacl id provided")
+		}
+	}
+
+	t.Logf("Got AWS WAFRegional WebACL. ID: %s", webACLID)
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
 	ingAnnotations := map[string]string{
 		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
 		"alb.ingress.kubernetes.io/target-type": "instance",
-		"alb.ingress.kubernetes.io/waf-acl-id":  *acl.WebACL.WebACLId,
+		"alb.ingress.kubernetes.io/waf-acl-id":  webACLID,
 	}
 	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
-	err = retry.OnError(defaultRetryPolicy,
+	err := retry.OnError(defaultRetryPolicy,
 		func(err error) bool {
 			if errors.IsAlreadyExists(err) {
 				return false
@@ -698,52 +715,6 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 			t.Fatalf("failed verify condition with external client: %v", err)
 		}
 	}
-}
-
-func ensureCredentialsRequest() error {
-	codec, err := cco.NewCodec()
-	if err != nil {
-		return err
-	}
-
-	providerSpec, err := codec.EncodeProviderSpec(&cco.AWSProviderSpec{
-		StatementEntries: []cco.StatementEntry{
-			{
-				Action:   []string{"wafv2:CreateWebACL", "wafv2:DeleteWebACL", "wafv2:ListWebACLs"},
-				Effect:   "Allow",
-				Resource: "*",
-			},
-			{
-				Action:   []string{"waf-regional:GetChangeToken", "waf-regional:CreateWebACL", "waf-regional:DeleteWebACL", "waf-regional:ListWebACLs"},
-				Effect:   "Allow",
-				Resource: "*",
-			},
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	cr := cco.CredentialsRequest{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "aws-load-balancer-operator-e2e",
-			Namespace: "openshift-cloud-credential-operator",
-		},
-		Spec: cco.CredentialsRequestSpec{
-			SecretRef: corev1.ObjectReference{
-				Name:      "aws-load-balancer-operator-e2e",
-				Namespace: operatorNamespace,
-			},
-			ServiceAccountNames: []string{operatorName},
-			ProviderSpec:        providerSpec,
-		},
-	}
-
-	if err = kubeClient.Create(context.Background(), &cr); err != nil && !errors.IsAlreadyExists(err) {
-		return err
-	}
-
-	return nil
 }
 
 func TestIngressGroup(t *testing.T) {
@@ -785,7 +756,7 @@ func TestIngressGroup(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).withIngressClass(ingressClassName.Name).build()
+	alb := newALBCBuilder().withName(name).withIngressClass(ingressClassName.Name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
@@ -883,7 +854,55 @@ func TestIngressGroup(t *testing.T) {
 	}
 }
 
+// ensureCredentialsRequest creates CredentialsRequest to provision a secret with the cloud credentials required by this e2e test.
+func ensureCredentialsRequest(secret types.NamespacedName) error {
+	codec, err := cco.NewCodec()
+	if err != nil {
+		return err
+	}
+
+	providerSpec, err := codec.EncodeProviderSpec(&cco.AWSProviderSpec{
+		StatementEntries: []cco.StatementEntry{
+			{
+				Action:   []string{"wafv2:CreateWebACL", "wafv2:DeleteWebACL", "wafv2:ListWebACLs"},
+				Effect:   "Allow",
+				Resource: "*",
+			},
+			{
+				Action:   []string{"waf-regional:GetChangeToken", "waf-regional:CreateWebACL", "waf-regional:DeleteWebACL", "waf-regional:ListWebACLs"},
+				Effect:   "Allow",
+				Resource: "*",
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	cr := cco.CredentialsRequest{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "aws-load-balancer-operator-e2e",
+			Namespace: "openshift-cloud-credential-operator",
+		},
+		Spec: cco.CredentialsRequestSpec{
+			SecretRef: corev1.ObjectReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+			ServiceAccountNames: []string{operatorName},
+			ProviderSpec:        providerSpec,
+		},
+	}
+
+	if err = kubeClient.Create(context.Background(), &cr); err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
+}
+
 func createTestWorkload(t *testing.T, namespace string) (*corev1.Service, *corev1.Namespace) {
+	t.Helper()
 	t.Logf("Ensuring test workload namespace %s", namespace)
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace}}
 	err := kubeClient.Create(context.TODO(), ns)
@@ -904,4 +923,8 @@ func createTestWorkload(t *testing.T, namespace string) (*corev1.Service, *corev
 	}
 
 	return echosvc, ns
+}
+
+func isOnROSA() bool {
+	return strings.ToUpper(os.Getenv(e2ePlatformVarName)) == "ROSA"
 }

@@ -19,7 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func awsCredentials(kubeClient client.Client, awsRegion string, secretName types.NamespacedName) (aws.Config, error) {
+// awsConfigWithCredentials returns the default AWS config with the given region and static credentials.
+func awsConfigWithCredentials(kubeClient client.Client, awsRegion string, secretName types.NamespacedName) (aws.Config, error) {
 	secret := &corev1.Secret{}
 	err := wait.PollImmediateInfinite(5*time.Second, func() (done bool, err error) {
 		err = kubeClient.Get(context.TODO(), secretName, secret)
