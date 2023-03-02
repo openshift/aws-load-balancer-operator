@@ -14,6 +14,272 @@ spec:
     singular: awsloadbalancercontroller
   scope: Cluster
   versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
+          API.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AWSLoadBalancerControllerSpec defines the desired state of
+              AWSLoadBalancerController.
+            properties:
+              additionalResourceTags:
+                description: 'additionalResourceTags are the AWS tags that will be
+                  applied to all AWS resources managed by this controller. The managed
+                  AWS resources don''t include the cluster subnets which are tagged
+                  by the operator. The addition of new tags as well as the update
+                  or removal of any existing tags will be propagated to the AWS resources.
+                  The controller owns all the tags of the managed AWS resources, unsolicited
+                  tags are removed. The controller doesn''t watch for changes on AWS,
+                  so the removal of the unsolicited tags can only be triggered by
+                  an event coming from OpenShift. AWS supports a maximum of 50 tags
+                  per resource. AWSLoadBalancerController reserves 3 tags for its
+                  use, the rest is split between the tag annotation which can be set
+                  on the ingress and this field: 23 and 24, respectively. Each tag
+                  key must be unique.'
+                items:
+                  description: AWSResourceTag is a tag to apply to AWS resources created
+                    by the controller.
+                  properties:
+                    key:
+                      description: key is the key of the tag. See https://docs.aws.amazon.com/tag-editor/latest/userguide/tagging.html#tag-conventions
+                        for information on the tagging conventions.
+                      maxLength: 128
+                      minLength: 1
+                      pattern: ^[0-9A-Za-z_.:/=+-@]+$
+                      type: string
+                    value:
+                      description: value is the value of the tag. See https://docs.aws.amazon.com/tag-editor/latest/userguide/tagging.html#tag-conventions
+                        for information on the tagging conventions.
+                      maxLength: 256
+                      pattern: ^[0-9A-Za-z_.:/=+-@]*$
+                      type: string
+                  required:
+                  - key
+                  - value
+                  type: object
+                maxItems: 24
+                type: array
+                x-kubernetes-list-map-keys:
+                - key
+                x-kubernetes-list-type: map
+              config:
+                description: config specifies further customization options for the
+                  controller's deployment spec.
+                properties:
+                  replicas:
+                    default: 1
+                    description: replicas is the desired number of the controller
+                      replicas. The controller exposes webhooks for the IngressClassParams
+                      and TargetGroupBinding custom resources. At least 1 replica
+                      of the controller should be ready to serve the webhook requests.
+                      For that reason the replicas cannot be set to 0. The leader
+                      election is enabled on the controller if the number of replicas
+                      is greater than 1.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                type: object
+              credentials:
+                description: credentials is a reference to a secret containing the
+                  AWS credentials to be used by the controller. The secret is required
+                  to have a "credentials" data key containing the AWS CLI credentials
+                  file (static or STS), for examples, see https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
+                  under the "credentials" data key. The secret is required to be in
+                  the operator namespace. If this field is empty, the credentials
+                  will be requested using the Cloud Credentials API, see https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
+                properties:
+                  name:
+                    description: name is the metadata.name of the referenced secret
+                    type: string
+                required:
+                - name
+                type: object
+              enabledAddons:
+                description: enabledAddons describes the AWS services that can be
+                  integrated with the AWS Load Balancers created by the controller.
+                  Enabling an addon does not enable the feature on the ingress resources.
+                  Instead, it allows for configuration of the feature through the
+                  ingress annotations. Similarly, removing an addon does not disable
+                  the feature which is already configured on the ingress resources.
+                  Instead, it starts ignoring any configuration of the disabled feature
+                  through the annotations. For more info on the addon annotations
+                  see https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/guide/ingress/annotations/#addons.
+                items:
+                  enum:
+                  - AWSShield
+                  - AWSWAFv1
+                  - AWSWAFv2
+                  type: string
+                type: array
+              ingressClass:
+                default: alb
+                description: ingressClass specifies the Ingress class which the controller
+                  will reconcile. This Ingress class will be created unless it already
+                  exists. The value will default to "alb". The defaulting to "alb"
+                  is necessary so that this controller can function as expected in
+                  parallel with openshift-router, for more info see https://github.com/openshift/enhancements/blob/master/enhancements/ingress/aws-load-balancer-operator.md#parallel-operation-of-the-openshift-router-and-lb-controller.
+                type: string
+              subnetTagging:
+                default: Auto
+                description: subnetTagging describes how the subnet tagging will be
+                  done by the operator. Allowed values are "Auto" and "Manual".  The
+                  default value is "Auto". When this field is set to "Auto", the operator
+                  will detect the subnets where the load balancers will be provisioned
+                  and will continuously ensure the required resource tags are on those
+                  subnets whereas when set to "Manual", this responsibility lies on
+                  the user. The tags added by the operator will be removed when transitioning
+                  from "Auto" to "Manual" whereas any tags added by the user will
+                  be left intact when transitioning from "Manual" to "Auto". For more
+                  info about the subnet detection and the required subnet tags, see
+                  https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/deploy/subnet_discovery.
+                enum:
+                - Auto
+                - Manual
+                type: string
+            type: object
+          status:
+            description: AWSLoadBalancerControllerStatus defines the observed state
+              of AWSLoadBalancerController.
+            properties:
+              conditions:
+                description: conditions is a list of operator-specific conditions
+                  and their status.
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource. --- This struct is intended for direct
+                    use as an array at the field path .status.conditions.  For example,
+                    \n type FooStatus struct{ // Represents the observations of a
+                    foo's current state. // Known .status.conditions.type are: \"Available\",
+                    \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                    // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                    `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another. This should be when
+                        the underlying condition changed.  If that is not known, then
+                        using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human readable message indicating
+                        details about the transition. This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.generation
+                        that the condition was set based upon. For instance, if .metadata.generation
+                        is currently 12, but the .status.conditions[x].observedGeneration
+                        is 9, the condition is out of date with respect to the current
+                        state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: reason contains a programmatic identifier indicating
+                        the reason for the condition's last transition. Producers
+                        of specific condition types may define expected values and
+                        meanings for this field, and whether the values are considered
+                        a guaranteed API. The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        --- Many .condition.type values are consistent across resources
+                        like Available, but because arbitrary conditions can be useful
+                        (see .node.status.conditions), the ability to deconflict is
+                        important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              ingressClass:
+                description: ingressClass is the Ingress class currently used by the
+                  controller.
+                type: string
+              observedGeneration:
+                description: observedGeneration is the most recent generation observed.
+                format: int64
+                type: integer
+              subnets:
+                description: subnets contains the cluster subnet details which matter
+                  for the controller. The cluster subnets are those having `kubernetes.io/cluster/${cluster-name}`
+                  tag. For more info on the cluster subnets which matter for the controller
+                  see https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/deploy/subnet_discovery.
+                properties:
+                  internal:
+                    description: internal is the list of subnet ids which belong to
+                      the cluster and have the tag `kubernetes.io/role/internal-elb`.
+                    items:
+                      type: string
+                    type: array
+                  public:
+                    description: public is the list of subnet ids which belong to
+                      the cluster and have the tag `kubernetes.io/role/elb`.
+                    items:
+                      type: string
+                    type: array
+                  subnetTagging:
+                    description: subnetTagging indicates the current status of the
+                      subnet tags.
+                    enum:
+                    - Auto
+                    - Manual
+                    type: string
+                  tagged:
+                    description: tagged is the list of subnet ids which belong to
+                      the cluster and have been tagged by the operator.
+                    items:
+                      type: string
+                    type: array
+                  untagged:
+                    description: untagged is the list of subnet ids which belong to
+                      the cluster and do not have any role tags.
+                    items:
+                      type: string
+                    type: array
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
   - name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -212,7 +478,7 @@ spec:
             type: object
         type: object
     served: true
-    storage: true
+    storage: false
     subresources:
       status: {}
 status:

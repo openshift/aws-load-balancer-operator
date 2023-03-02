@@ -45,6 +45,16 @@ metadata:
           }
         },
         {
+          "apiVersion": "networking.olm.openshift.io/v1",
+          "kind": "AWSLoadBalancerController",
+          "metadata": {
+            "name": "cluster"
+          },
+          "spec": {
+            "subnetTagging": "Auto"
+          }
+        },
+        {
           "apiVersion": "networking.olm.openshift.io/v1alpha1",
           "kind": "AWSLoadBalancerController",
           "metadata": {
@@ -69,6 +79,12 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
+        API.
+      displayName: AWSLoad Balancer Controller
+      kind: AWSLoadBalancerController
+      name: awsloadbalancercontrollers.networking.olm.openshift.io
+      version: v1
     - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
         API
       displayName: AWSLoad Balancer Controller

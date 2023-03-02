@@ -113,10 +113,10 @@ func TestDesiredArgs(t *testing.T) {
 			name: "resource tags specified",
 			controller: &albo.AWSLoadBalancerController{
 				Spec: albo.AWSLoadBalancerControllerSpec{
-					AdditionalResourceTags: map[string]string{
-						"test-key1": "test-value1",
-						"test-key2": "test-value2",
-						"test-key3": "test-value3",
+					AdditionalResourceTags: []albo.AWSResourceTag{
+						{Key: "test-key1", Value: "test-value1"},
+						{Key: "test-key2", Value: "test-value2"},
+						{Key: "test-key3", Value: "test-value3"},
 					},
 				},
 			},

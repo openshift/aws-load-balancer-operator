@@ -14,4 +14,11 @@ resources:
   kind: AWSLoadBalancerController
   path: github.com/openshift/aws-load-balancer-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+  domain: openshift.io
+  group: networking.olm
+  kind: AWSLoadBalancerController
+  path: github.com/openshift/aws-load-balancer-operator/api/v1
+  version: v1
 version: "3"
