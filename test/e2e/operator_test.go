@@ -85,6 +85,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(cco.Install(scheme))
 	utilruntime.Must(albo.AddToScheme(scheme))
+	utilruntime.Must(albov1alpha1.AddToScheme(scheme))
 	utilruntime.Must(cco.AddToScheme(scheme))
 	utilruntime.Must(configv1.Install(scheme))
 	utilruntime.Must(cco.Install(scheme))
@@ -172,6 +173,79 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
 	alb := newALBCBuilder().withName(name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	if err := kubeClient.Create(context.TODO(), alb); err != nil {
+		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+	}()
+
+	expected := []appsv1.DeploymentCondition{
+		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+	}
+	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
+	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
+	}
+
+	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
+	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+	}()
+
+	t.Log("Creating Ingress Resource with default ingress class")
+	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
+	ingAnnotations := map[string]string{
+		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
+		"alb.ingress.kubernetes.io/target-type": "instance",
+	}
+	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
+	err := retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			if errors.IsAlreadyExists(err) {
+				return false
+			}
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return true
+		},
+		func() error { return kubeClient.Create(context.TODO(), echoIng) })
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
+	}
+	defer func() {
+		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+	}()
+
+	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	if err != nil {
+		t.Fatalf("did not get expected available condition for ingress: %v", err)
+	}
+
+	t.Logf("Testing aws load balancer for ingress traffic at address %s", address)
+	for _, rule := range echoIng.Spec.Rules {
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s", address), nil)
+		if err != nil {
+			t.Fatalf("failed to build client request: %v", err)
+		}
+		req.Host = rule.Host
+
+		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+			return r.StatusCode == http.StatusOK
+		})
+		if err != nil {
+			t.Fatalf("failed verify condition with external client: %v", err)
+		}
+	}
+}
+
+// TestAWSLoadBalancerControllerWithDefaultIngressClassV1Alpha1 tests the basic happy flow for the operator, mostly
+// using the default values.
+func TestAWSLoadBalancerControllerWithDefaultIngressClassV1Alpha1(t *testing.T) {
+	t.Log("Creating aws load balancer controller instance with default ingress class")
+
+	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
+	alb := newALBCBuilder().withName(name).buildv1alpha1()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}

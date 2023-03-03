@@ -367,6 +367,24 @@ func (b *albcBuilder) withCredSecretIf(condition bool, name string) *albcBuilder
 	return b
 }
 
+func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
+	albc := &albov1alpha1.AWSLoadBalancerController{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      b.nsname.Name,
+			Namespace: b.nsname.Namespace,
+		},
+		Spec: albov1alpha1.AWSLoadBalancerControllerSpec{
+			SubnetTagging: albov1alpha1.SubnetTaggingPolicy(b.tagPolicy),
+			IngressClass:  b.ingressClass,
+			Credentials:   (*albov1alpha1.SecretReference)(b.credentials),
+		},
+	}
+	for _, a := range b.addons {
+		albc.Spec.EnabledAddons = append(albc.Spec.EnabledAddons, albov1alpha1.AWSAddon(a))
+	}
+	return albc
+}
+
 func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
 	return &albo.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
