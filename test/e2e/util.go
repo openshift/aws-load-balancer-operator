@@ -20,13 +20,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
+	albov1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
 var (
@@ -325,7 +328,7 @@ type albcBuilder struct {
 	tagPolicy    albo.SubnetTaggingPolicy
 	ingressClass string
 	addons       []albo.AWSAddon
-	credentials  *albo.SecretReference
+	credentials  *configv1.SecretNameReference
 }
 
 func newALBCBuilder() *albcBuilder {
@@ -352,14 +355,14 @@ func (b *albcBuilder) withAddons(addons ...albo.AWSAddon) *albcBuilder {
 }
 
 func (b *albcBuilder) withCredSecret(name string) *albcBuilder {
-	b.credentials = &albo.SecretReference{Name: name}
+	b.credentials = &configv1.SecretNameReference{Name: name}
 	return b
 }
 
 // withCredSecretIf adds the credentials secret only if the given condition is true.
 func (b *albcBuilder) withCredSecretIf(condition bool, name string) *albcBuilder {
 	if condition {
-		b.credentials = &albo.SecretReference{Name: name}
+		b.credentials = &configv1.SecretNameReference{Name: name}
 	}
 	return b
 }

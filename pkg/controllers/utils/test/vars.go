@@ -25,7 +25,7 @@ import (
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
 const (

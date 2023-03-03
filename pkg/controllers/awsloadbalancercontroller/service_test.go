@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
@@ -49,13 +49,13 @@ func TestEnsureService(t *testing.T) {
 	for _, tc := range []struct {
 		name            string
 		existingObjects []client.Object
-		controller      *v1alpha1.AWSLoadBalancerController
+		controller      *albo.AWSLoadBalancerController
 		deployment      *appsv1.Deployment
 		expectedService *corev1.Service
 	}{
 		{
 			name: "new service",
-			controller: &v1alpha1.AWSLoadBalancerController{
+			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 				},
@@ -76,7 +76,7 @@ func TestEnsureService(t *testing.T) {
 		},
 		{
 			name: "existing service, selector modified",
-			controller: &v1alpha1.AWSLoadBalancerController{
+			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 				},
@@ -105,7 +105,7 @@ func TestEnsureService(t *testing.T) {
 		},
 		{
 			name: "existing service, ports modified",
-			controller: &v1alpha1.AWSLoadBalancerController{
+			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 				},
@@ -147,7 +147,7 @@ func TestEnsureService(t *testing.T) {
 		},
 		{
 			name: "existing service, service type modified",
-			controller: &v1alpha1.AWSLoadBalancerController{
+			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 				},
@@ -192,7 +192,7 @@ func TestEnsureService(t *testing.T) {
 		},
 		{
 			name: "existing service, extra annotations present",
-			controller: &v1alpha1.AWSLoadBalancerController{
+			controller: &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 				},

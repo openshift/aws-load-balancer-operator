@@ -140,11 +140,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err != nil {
-		setupLog.Error(err, "unable to make EC2 Client")
-		os.Exit(1)
-	}
-
 	if err = (&awsloadbalancercontroller.AWSLoadBalancerControllerReconciler{
 		Client:                 mgr.GetClient(),
 		Scheme:                 mgr.GetScheme(),
