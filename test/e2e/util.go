@@ -329,6 +329,7 @@ type albcBuilder struct {
 	ingressClass string
 	addons       []albo.AWSAddon
 	credentials  *configv1.SecretNameReference
+	tags         map[string]string
 }
 
 func newALBCBuilder() *albcBuilder {
@@ -367,6 +368,11 @@ func (b *albcBuilder) withCredSecretIf(condition bool, name string) *albcBuilder
 	return b
 }
 
+func (b *albcBuilder) withResourceTags(tags map[string]string) *albcBuilder {
+	b.tags = tags
+	return b
+}
+
 func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
 	albc := &albov1alpha1.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
@@ -374,9 +380,10 @@ func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
 			Namespace: b.nsname.Namespace,
 		},
 		Spec: albov1alpha1.AWSLoadBalancerControllerSpec{
-			SubnetTagging: albov1alpha1.SubnetTaggingPolicy(b.tagPolicy),
-			IngressClass:  b.ingressClass,
-			Credentials:   (*albov1alpha1.SecretReference)(b.credentials),
+			SubnetTagging:          albov1alpha1.SubnetTaggingPolicy(b.tagPolicy),
+			IngressClass:           b.ingressClass,
+			Credentials:            (*albov1alpha1.SecretReference)(b.credentials),
+			AdditionalResourceTags: b.tags,
 		},
 	}
 	for _, a := range b.addons {
@@ -386,7 +393,7 @@ func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
 }
 
 func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
-	return &albo.AWSLoadBalancerController{
+	albc := &albo.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      b.nsname.Name,
 			Namespace: b.nsname.Namespace,
@@ -398,6 +405,10 @@ func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
 			Credentials:   b.credentials,
 		},
 	}
+	for k, v := range b.tags {
+		albc.Spec.AdditionalResourceTags = append(albc.Spec.AdditionalResourceTags, albo.AWSResourceTag{Key: k, Value: v})
+	}
+	return albc
 }
 
 func buildIngressClass(name types.NamespacedName, controller string) *networkingv1.IngressClass {

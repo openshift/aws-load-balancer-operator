@@ -239,13 +239,14 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 	}
 }
 
-// TestAWSLoadBalancerControllerWithDefaultIngressClassV1Alpha1 tests the basic happy flow for the operator, mostly
-// using the default values.
-func TestAWSLoadBalancerControllerWithDefaultIngressClassV1Alpha1(t *testing.T) {
-	t.Log("Creating aws load balancer controller instance with default ingress class")
+// TestAWSLoadBalancerControllersV1Alpha1 tests the basic happy flow for the operator using v1alpha1 ALBC.
+func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
+	t.Log("Creating v1alpha1 aws load balancer controller instance with default ingress class, additional resource tags and credentials secret")
 
 	name := types.NamespacedName{Name: "cluster", Namespace: "aws-load-balancer-operator"}
-	alb := newALBCBuilder().withName(name).buildv1alpha1()
+	// The additional resource tags and the credentials secret are added to ALBC
+	// because they changed in v1.
+	alb := newALBCBuilder().withName(name).withResourceTags(map[string]string{"testtag": "testval"}).withCredSecret(controllerSecretName).buildv1alpha1()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}

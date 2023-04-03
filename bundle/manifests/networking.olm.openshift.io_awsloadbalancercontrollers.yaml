@@ -6,6 +6,16 @@ metadata:
   creationTimestamp: null
   name: awsloadbalancercontrollers.networking.olm.openshift.io
 spec:
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: aws-load-balancer-operator-webhook-service
+          namespace: aws-load-balancer-operator
+          path: /convert
+      conversionReviewVersions:
+      - v1
   group: networking.olm.openshift.io
   names:
     kind: AWSLoadBalancerController

@@ -8,34 +8,19 @@ resources:
 # [WEBHOOK] To enable webhooks, uncomment all the sections with [WEBHOOK] prefix.
 # Do NOT uncomment sections with prefix [CERTMANAGER], as OLM does not support cert-manager.
 # These patches remove the unnecessary "cert" volume and its manager container volumeMount.
-#patchesJson6902:
-#- target:
-#    group: apps
-#    version: v1
-#    kind: Deployment
-#    name: controller-manager
-#    namespace: system
-#  patch: |-
-#    # Remove the manager container's "cert" volumeMount, since OLM will create and mount a set of certs.
-#    # Update the indices in this path if adding or removing containers/volumeMounts in the manager's Deployment.
-#    - op: remove
-#      path: /spec/template/spec/containers/1/volumeMounts/0
-#    # Remove the "cert" volume, since OLM will create and mount a set of certs.
-#    # Update the indices in this path if adding or removing volumes in the manager's Deployment.
-#    - op: remove
-#      path: /spec/template/spec/volumes/0
-
-# This patch sets the TARGET_NAMESPACE environment variable to the annotation which is added by the OLM.
 patchesJson6902:
-  - target:
-      kind: Deployment
-      name: controller-manager
-      version: v1
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/1/env/2
-        value: 
-          name: TARGET_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.annotations['olm.targetNamespaces']
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: controller-manager
+    namespace: system
+  patch: |-
+    # Remove the manager container's "cert" volumeMount, since OLM will create and mount a set of certs.
+    # Update the indices in this path if adding or removing containers/volumeMounts in the manager's Deployment.
+    - op: remove
+      path: /spec/template/spec/containers/1/volumeMounts/0
+    # Remove the "cert" volume, since OLM will create and mount a set of certs.
+    # Update the indices in this path if adding or removing volumes in the manager's Deployment.
+    - op: remove
+      path: /spec/template/spec/volumes/0
