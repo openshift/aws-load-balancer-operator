@@ -593,6 +593,8 @@ github.com/openshift/api v0.0.0-20220906163444-2df055c101a3 h1:JEFTPLulnOSzBIsZZ
 github.com/openshift/api v0.0.0-20220906163444-2df055c101a3/go.mod h1:9JWn+H7X8wEPPc9D63krigXl8r3F1Mt6/lC98brUyhQ=
 github.com/openshift/cloud-credential-operator v0.0.0-20220512195103-2ea3d8c8240a h1:YGI306ZRrlhnJ5Wwrb1dh6jgGxiZC/+Ee2g9UxY7XQE=
 github.com/openshift/cloud-credential-operator v0.0.0-20220512195103-2ea3d8c8240a/go.mod h1:qTEqKytotRAu1/N5Grbfd0DGjD56EYk4zNsHg+4Hvlw=
+github.com/operator-framework/operator-lib v0.11.0 h1:eYzqpiOfq9WBI4Trddisiq/X9BwCisZd3rIzmHRC9Z8=
+github.com/operator-framework/operator-lib v0.11.0/go.mod h1:RpyKhFAoG6DmKTDIwMuO6pI3LRc8IE9rxEYWy476o6g=
 github.com/otiai10/copy v1.2.0 h1:HvG945u96iNadPoG2/Ja2+AUJeW5YuFQMixq9yirC+k=
 github.com/otiai10/copy v1.2.0/go.mod h1:rrF5dJ5F0t/EWSYODDu4j9/vEeYHMkc8jt0zJChqQWw=
 github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95/go.mod h1:9qAhocn7zKJG+0mI8eUu6xqkFDYS2kb2saOteoSB3cE=

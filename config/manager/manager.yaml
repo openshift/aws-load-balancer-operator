@@ -37,6 +37,7 @@ spec:
         - "--leader-elect"
         - "--image=$(RELATED_IMAGE_CONTROLLER)"
         - "--namespace=$(TARGET_NAMESPACE)"
+        - "--trusted-ca-configmap=$(TRUSTED_CA_CONFIGMAP_NAME)"
         image: controller:latest
         name: manager
         securityContext:
@@ -74,6 +75,7 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          - name: TRUSTED_CA_CONFIGMAP_NAME
         volumeMounts:
           - mountPath: /etc/aws-credentials
             name: aws-credentials

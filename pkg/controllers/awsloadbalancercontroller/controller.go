@@ -19,7 +19,6 @@ package awsloadbalancercontroller
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	arv1 "k8s.io/api/admissionregistration/v1"
@@ -35,9 +34,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
@@ -59,19 +60,21 @@ const (
 // AWSLoadBalancerControllerReconciler reconciles a AWSLoadBalancerController object
 type AWSLoadBalancerControllerReconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	Namespace   string
-	Image       string
-	EC2Client   aws.EC2Client
-	ClusterName string
-	VPCID       string
-	AWSRegion   string
+	Scheme                 *runtime.Scheme
+	Namespace              string
+	Image                  string
+	EC2Client              aws.EC2Client
+	ClusterName            string
+	VPCID                  string
+	AWSRegion              string
+	TrustedCAConfigMapName string
 }
 
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=networking.olm.openshift.io,resources=awsloadbalancercontrollers/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=services;secrets,namespace=system,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,namespace=system,verbs=get;list;watch
 //+kubebuilder:rbac:groups="networking.k8s.io",resources=ingressclasses,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="config.openshift.io",resources=infrastructures,verbs=get;list;watch
 //+kubebuilder:rbac:groups="apps",resources=deployments,namespace=system,verbs=get;list;watch;create;update;patch;delete
@@ -162,6 +165,19 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{RequeueAfter: secretMissingReEnqueueDuration}, nil
 	}
 
+	var trustCAConfigMap *corev1.ConfigMap
+	if r.TrustedCAConfigMapName != "" {
+		configMap, configMapExists, err := r.getConfigMap(ctx, r.TrustedCAConfigMapName, r.Namespace)
+		if err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to get the trusted CA configmap: %w", err)
+		}
+		if !configMapExists {
+			logger.Info("(Retrying) trusted CA config map doesn't exist", "configmap", r.TrustedCAConfigMapName)
+			return reconcile.Result{RequeueAfter: secretMissingReEnqueueDuration}, nil
+		}
+		trustCAConfigMap = configMap
+	}
+
 	sa, err := r.ensureControllerServiceAccount(ctx, r.Namespace, lbController)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure AWSLoadBalancerController %q service account: %w", req.Name, err)
@@ -172,7 +188,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	deployment, err := r.ensureDeployment(ctx, r.Namespace, r.Image, sa, credSecretNsName.Name, servingSecretName, lbController)
+	deployment, err := r.ensureDeployment(ctx, sa, credSecretNsName.Name, servingSecretName, lbController, trustCAConfigMap)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %q: %w", req.Name, err)
 	}
@@ -206,10 +222,22 @@ func (r *AWSLoadBalancerControllerReconciler) getAWSLoadBalancerController(ctx c
 	return &controller, true, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&albo.AWSLoadBalancerController{}, builder.WithPredicates(reconcileClusterNamedResource())).
+func (r *AWSLoadBalancerControllerReconciler) getConfigMap(ctx context.Context, name, namespace string) (*corev1.ConfigMap, bool, error) {
+	var cm corev1.ConfigMap
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &cm)
+	if err != nil && errors.IsNotFound(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return &cm, true, nil
+}
+
+// BuildManagedController returns the controller builder with all the watches set up.
+func (r *AWSLoadBalancerControllerReconciler) BuildManagedController(mgr ctrl.Manager) *builder.Builder {
+	bldr := ctrl.NewControllerManagedBy(mgr).
+		For(&albo.AWSLoadBalancerController{}, builder.WithPredicates(predicate.NewPredicateFuncs(hasName(controllerName)))).
 		Owns(&cco.CredentialsRequest{}).
 		Owns(&corev1.ServiceAccount{}).
 		Owns(&rbacv1.ClusterRoleBinding{}).
@@ -218,20 +246,49 @@ func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager)
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&arv1.ValidatingWebhookConfiguration{}).
-		Owns(&arv1.MutatingWebhookConfiguration{}).
-		Complete(r)
+		Owns(&arv1.MutatingWebhookConfiguration{})
+
+	if r.TrustedCAConfigMapName != "" {
+		clusterALBCInstance := func(o client.Object) []reconcile.Request {
+			return []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Name: controllerName,
+					},
+				},
+			}
+		}
+
+		// Requeue the only (cluster) instance of AWSLoadBalancerController
+		// so that the main reconciliation loop can detect the changes in the trusted CA configmap's contents
+		// and redeploy the controller if needed.
+		// The change detection is achieved using the annotation which contains the configmap's contents hash.
+		// The hash is recalculated at each reconciliation and put in the controller deployment's template pod spec
+		// leading to a rollout in case of a change.
+		bldr = bldr.Watches(&source.Kind{Type: &corev1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(clusterALBCInstance),
+			builder.WithPredicates(predicate.And(
+				predicate.NewPredicateFuncs(inNamespace(r.Namespace))),
+				predicate.NewPredicateFuncs(hasName(r.TrustedCAConfigMapName))))
+	}
+	return bldr
 }
 
-func reconcileClusterNamedResource() predicate.Funcs {
-	return predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			return strings.EqualFold(controllerName, e.Object.GetName())
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return strings.EqualFold(controllerName, e.ObjectNew.GetName())
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return strings.EqualFold(controllerName, e.Object.GetName())
-		},
+// SetupWithManager sets up the controller with the Manager.
+func (r *AWSLoadBalancerControllerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return r.BuildManagedController(mgr).Complete(r)
+}
+
+// hasName returns a predicate which checks whether an object has the given name.
+func hasName(name string) func(o client.Object) bool {
+	return func(o client.Object) bool {
+		return o.GetName() == name
+	}
+}
+
+// inNamespace returns a predicate which checks whether an object belongs to the given namespace.
+func inNamespace(namespace string) func(o client.Object) bool {
+	return func(o client.Object) bool {
+		return o.GetNamespace() == namespace
 	}
 }
