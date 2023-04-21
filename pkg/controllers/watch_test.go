@@ -13,13 +13,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	albov1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
 var _ = Describe("AWS Load Balancer Reconciler Watch Predicates", func() {
 	Context("AWS Load Balancer Controller", func() {
 		It("does not match the unique name", func() {
-			albc := &albov1alpha1.AWSLoadBalancerController{
+			albc := &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "wrongname",
 				},
@@ -30,7 +30,7 @@ var _ = Describe("AWS Load Balancer Reconciler Watch Predicates", func() {
 			Expect(<-errCh).NotTo(BeNil())
 		})
 		It("matches the unique name", func() {
-			albc := &albov1alpha1.AWSLoadBalancerController{
+			albc := &albo.AWSLoadBalancerController{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster",
 				},

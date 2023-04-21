@@ -45,6 +45,16 @@ metadata:
           }
         },
         {
+          "apiVersion": "networking.olm.openshift.io/v1",
+          "kind": "AWSLoadBalancerController",
+          "metadata": {
+            "name": "cluster"
+          },
+          "spec": {
+            "subnetTagging": "Auto"
+          }
+        },
+        {
           "apiVersion": "networking.olm.openshift.io/v1alpha1",
           "kind": "AWSLoadBalancerController",
           "metadata": {
@@ -56,19 +66,25 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    olm.skipRange: <0.2.0
+    olm.skipRange: <1.0.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
     operators.openshift.io/infrastructure-features: '["proxy-aware"]'
     operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
-  name: aws-load-balancer-operator.v0.2.0
+  name: aws-load-balancer-operator.v1.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
+        API.
+      displayName: AWSLoad Balancer Controller
+      kind: AWSLoadBalancerController
+      name: awsloadbalancercontrollers.networking.olm.openshift.io
+      version: v1
     - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
         API
       displayName: AWSLoad Balancer Controller
@@ -311,7 +327,7 @@ spec:
                 - name: TARGET_NAMESPACE
                   valueFrom:
                     fieldRef:
-                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                      fieldPath: metadata.namespace
                 - name: TRUSTED_CA_CONFIGMAP_NAME
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
@@ -321,6 +337,10 @@ spec:
                   initialDelaySeconds: 15
                   periodSeconds: 20
                 name: manager
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
                 readinessProbe:
                   httpGet:
                     path: /readyz
@@ -460,13 +480,13 @@ spec:
         serviceAccountName: aws-load-balancer-operator-controller-manager
     strategy: deployment
   installModes:
-  - supported: true
+  - supported: false
     type: OwnNamespace
-  - supported: true
+  - supported: false
     type: SingleNamespace
   - supported: false
     type: MultiNamespace
-  - supported: false
+  - supported: true
     type: AllNamespaces
   keywords:
   - aws
@@ -481,4 +501,16 @@ spec:
   provider:
     name: Red Hat Inc.
     url: https://redhat.com
-  version: 0.2.0
+  version: 1.0.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    conversionCRDs:
+    - awsloadbalancercontrollers.networking.olm.openshift.io
+    deploymentName: aws-load-balancer-operator-controller-manager
+    generateName: cawsloadbalancercontrollers.kb.io
+    sideEffects: None
+    targetPort: 9443
+    type: ConversionWebhook
+    webhookPath: /convert

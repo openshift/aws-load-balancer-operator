@@ -15,7 +15,7 @@ import (
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )

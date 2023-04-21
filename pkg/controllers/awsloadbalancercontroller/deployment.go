@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
 const (
@@ -269,8 +269,8 @@ func desiredContainerArgs(controller *albo.AWSLoadBalancerController, clusterNam
 	// if additional keys are present then sort them and append it to the arguments
 	if controller.Spec.AdditionalResourceTags != nil {
 		var tags []string
-		for k, v := range controller.Spec.AdditionalResourceTags {
-			tags = append(tags, fmt.Sprintf("%s=%s", k, v))
+		for _, t := range controller.Spec.AdditionalResourceTags {
+			tags = append(tags, fmt.Sprintf("%s=%s", t.Key, t.Value))
 		}
 		sort.Strings(tags)
 		args = append(args, fmt.Sprintf(`--default-tags=%s`, strings.Join(tags, ",")))

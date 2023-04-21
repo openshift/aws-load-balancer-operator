@@ -16,14 +16,14 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
 const (
 	servingSecretAnnotationName = "service.beta.openshift.io/serving-cert-secret-name"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureService(ctx context.Context, namespace string, controller *v1alpha1.AWSLoadBalancerController, servingSecretName string, deployment *appsv1.Deployment) (*corev1.Service, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureService(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController, servingSecretName string, deployment *appsv1.Deployment) (*corev1.Service, error) {
 	serviceName := types.NamespacedName{
 		Name:      fmt.Sprintf("aws-load-balancer-controller-%s", controller.Name),
 		Namespace: namespace,

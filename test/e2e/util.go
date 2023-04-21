@@ -20,13 +20,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
+	albov1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 )
 
 var (
@@ -325,7 +328,8 @@ type albcBuilder struct {
 	tagPolicy    albo.SubnetTaggingPolicy
 	ingressClass string
 	addons       []albo.AWSAddon
-	credentials  *albo.SecretReference
+	credentials  *configv1.SecretNameReference
+	tags         map[string]string
 }
 
 func newALBCBuilder() *albcBuilder {
@@ -352,20 +356,44 @@ func (b *albcBuilder) withAddons(addons ...albo.AWSAddon) *albcBuilder {
 }
 
 func (b *albcBuilder) withCredSecret(name string) *albcBuilder {
-	b.credentials = &albo.SecretReference{Name: name}
+	b.credentials = &configv1.SecretNameReference{Name: name}
 	return b
 }
 
 // withCredSecretIf adds the credentials secret only if the given condition is true.
 func (b *albcBuilder) withCredSecretIf(condition bool, name string) *albcBuilder {
 	if condition {
-		b.credentials = &albo.SecretReference{Name: name}
+		b.credentials = &configv1.SecretNameReference{Name: name}
 	}
 	return b
 }
 
+func (b *albcBuilder) withResourceTags(tags map[string]string) *albcBuilder {
+	b.tags = tags
+	return b
+}
+
+func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
+	albc := &albov1alpha1.AWSLoadBalancerController{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      b.nsname.Name,
+			Namespace: b.nsname.Namespace,
+		},
+		Spec: albov1alpha1.AWSLoadBalancerControllerSpec{
+			SubnetTagging:          albov1alpha1.SubnetTaggingPolicy(b.tagPolicy),
+			IngressClass:           b.ingressClass,
+			Credentials:            (*albov1alpha1.SecretReference)(b.credentials),
+			AdditionalResourceTags: b.tags,
+		},
+	}
+	for _, a := range b.addons {
+		albc.Spec.EnabledAddons = append(albc.Spec.EnabledAddons, albov1alpha1.AWSAddon(a))
+	}
+	return albc
+}
+
 func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
-	return &albo.AWSLoadBalancerController{
+	albc := &albo.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      b.nsname.Name,
 			Namespace: b.nsname.Namespace,
@@ -377,6 +405,10 @@ func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
 			Credentials:   b.credentials,
 		},
 	}
+	for k, v := range b.tags {
+		albc.Spec.AdditionalResourceTags = append(albc.Spec.AdditionalResourceTags, albo.AWSResourceTag{Key: k, Value: v})
+	}
+	return albc
 }
 
 func buildIngressClass(name types.NamespacedName, controller string) *networkingv1.IngressClass {

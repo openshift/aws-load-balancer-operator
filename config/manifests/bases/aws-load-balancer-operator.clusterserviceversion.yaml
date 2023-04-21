@@ -4,17 +4,23 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    olm.skipRange: <0.2.0
+    olm.skipRange: <1.0.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
     operators.openshift.io/infrastructure-features: '["proxy-aware"]'
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
-  name: aws-load-balancer-operator.v0.2.0
+  name: aws-load-balancer-operator.v1.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
+        API.
+      displayName: AWSLoad Balancer Controller
+      kind: AWSLoadBalancerController
+      name: awsloadbalancercontrollers.networking.olm.openshift.io
+      version: v1
     - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
         API
       displayName: AWSLoad Balancer Controller
@@ -86,13 +92,13 @@ spec:
       deployments: null
     strategy: ""
   installModes:
-  - supported: true
+  - supported: false
     type: OwnNamespace
-  - supported: true
+  - supported: false
     type: SingleNamespace
   - supported: false
     type: MultiNamespace
-  - supported: false
+  - supported: true
     type: AllNamespaces
   keywords:
   - aws
@@ -107,4 +113,4 @@ spec:
   provider:
     name: Red Hat Inc.
     url: https://redhat.com
-  version: 0.2.0
+  version: 1.0.0

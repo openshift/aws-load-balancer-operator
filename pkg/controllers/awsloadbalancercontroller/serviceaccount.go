@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
 func (r *AWSLoadBalancerControllerReconciler) ensureControllerServiceAccount(ctx context.Context, namespace string, controller *albo.AWSLoadBalancerController) (*corev1.ServiceAccount, error) {

@@ -31,7 +31,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	albv1aplha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
 // Event is a simplified representation of the watch event received from the controller runtime client.
@@ -80,7 +80,7 @@ func NewEvent(we watch.Event) Event {
 	case *corev1.Namespace:
 		te.ObjType = "namespace"
 		te.Name = obj.Name
-	case *albv1aplha1.AWSLoadBalancerController:
+	case *albo.AWSLoadBalancerController:
 		te.ObjType = "AWSLoadBalancerController"
 		te.Name = obj.Name
 	case *cco.CredentialsRequest:

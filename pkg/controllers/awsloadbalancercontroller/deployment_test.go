@@ -18,7 +18,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	albo "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
 )
 
@@ -113,10 +113,10 @@ func TestDesiredArgs(t *testing.T) {
 			name: "resource tags specified",
 			controller: &albo.AWSLoadBalancerController{
 				Spec: albo.AWSLoadBalancerControllerSpec{
-					AdditionalResourceTags: map[string]string{
-						"test-key1": "test-value1",
-						"test-key2": "test-value2",
-						"test-key3": "test-value3",
+					AdditionalResourceTags: []albo.AWSResourceTag{
+						{Key: "test-key1", Value: "test-value1"},
+						{Key: "test-key2", Value: "test-value2"},
+						{Key: "test-key3", Value: "test-value3"},
 					},
 				},
 			},
