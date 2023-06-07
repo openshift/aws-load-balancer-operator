@@ -41,7 +41,7 @@ func TestUpdateIngressClassStatus(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &AWSLoadBalancerControllerReconciler{
-				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(tc.controller).Build(),
+				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithStatusSubresource(tc.controller).WithObjects(tc.controller).Build(),
 			}
 			err := r.updateStatusIngressClass(context.Background(), tc.controller, tc.inputIngressClass)
 			if err != nil {
@@ -118,7 +118,7 @@ func TestUpdateSubnets(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &AWSLoadBalancerControllerReconciler{
-				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(tc.controller).Build(),
+				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithStatusSubresource(tc.controller).WithObjects(tc.controller).Build(),
 			}
 			err := r.updateStatusSubnets(context.Background(), tc.controller, tc.internal, tc.public, tc.untagged, tc.tagged, tc.taggingPolicy)
 			if err != nil {
@@ -204,7 +204,7 @@ func TestUpdateStatus(t *testing.T) {
 			controller: &albo.AWSLoadBalancerController{ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5}},
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
-				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32Ptr(2)},
+				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(2)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 2, UpdatedReplicas: 1},
 			},
 			credentialsSecretName: "test",
@@ -308,7 +308,7 @@ func TestUpdateStatus(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := AWSLoadBalancerControllerReconciler{
-				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithObjects(tc.controller).Build(),
+				Client: fake.NewClientBuilder().WithScheme(test.Scheme).WithStatusSubresource(tc.controller).WithObjects(tc.controller).Build(),
 			}
 			err := r.updateControllerStatus(context.Background(), tc.controller, tc.deployment, tc.credentialsSecretName, tc.secretProvisioned)
 			if err != nil {

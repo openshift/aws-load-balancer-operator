@@ -39,12 +39,12 @@ var (
 	allowPrivilegeEscalation = false
 )
 
-func waitForDeploymentStatusCondition(t *testing.T, cl client.Client, timeout time.Duration, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
+func waitForDeploymentStatusCondition(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
 	t.Helper()
 
-	return wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
+	return wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 		dep := &appsv1.Deployment{}
-		if err := cl.Get(context.TODO(), deploymentName, dep); err != nil {
+		if err := cl.Get(ctx, deploymentName, dep); err != nil {
 			t.Logf("failed to get deployment %s: %v (retrying)", deploymentName.Name, err)
 			return false, nil
 		}
@@ -55,12 +55,12 @@ func waitForDeploymentStatusCondition(t *testing.T, cl client.Client, timeout ti
 	})
 }
 
-func getIngress(t *testing.T, cl client.Client, timeout time.Duration, ingressName types.NamespacedName) (string, error) {
+func getIngress(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, ingressName types.NamespacedName) (string, error) {
 	t.Helper()
 	var address string
-	return address, wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
+	return address, wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 		ing := &networkingv1.Ingress{}
-		if err := cl.Get(context.TODO(), ingressName, ing); err != nil {
+		if err := cl.Get(ctx, ingressName, ing); err != nil {
 			t.Logf("failed to get deployment %s: %v (retrying)", ingressName.Name, err)
 			return false, nil
 		}
@@ -72,11 +72,11 @@ func getIngress(t *testing.T, cl client.Client, timeout time.Duration, ingressNa
 	})
 }
 
-func waitForDeletion(t *testing.T, cl client.Client, obj client.Object, timeout time.Duration) {
+func waitForDeletion(ctx context.Context, t *testing.T, cl client.Client, obj client.Object, timeout time.Duration) {
 	t.Helper()
 	deletionPolicy := v1.DeletePropagationForeground
-	_ = wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
-		err := cl.Delete(context.TODO(), obj, &client.DeleteOptions{PropagationPolicy: &deletionPolicy})
+	_ = wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		err := cl.Delete(ctx, obj, &client.DeleteOptions{PropagationPolicy: &deletionPolicy})
 		if err != nil && !errors.IsNotFound(err) {
 			t.Logf("failed to delete resource %s/%s: %v", obj.GetName(), obj.GetNamespace(), err)
 			return false, nil
@@ -151,9 +151,9 @@ func buildEchoPod(name, namespace string) *corev1.Pod {
 	}
 }
 
-func waitForHTTPClientCondition(t *testing.T, httpClient *http.Client, req *http.Request, interval, timeout time.Duration, compareFunc func(*http.Response) bool) error {
+func waitForHTTPClientCondition(ctx context.Context, t *testing.T, httpClient *http.Client, req *http.Request, interval, timeout time.Duration, compareFunc func(*http.Response) bool) error {
 	t.Helper()
-	return wait.PollImmediate(interval, timeout, func() (done bool, err error) {
+	return wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(ctx context.Context) (done bool, err error) {
 		resp, err := httpClient.Do(req)
 		if err == nil {
 			return compareFunc(resp), nil

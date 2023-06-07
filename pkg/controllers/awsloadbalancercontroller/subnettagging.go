@@ -53,10 +53,10 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 	}
 
 	var (
-		internal sets.String
-		public   sets.String
-		untagged sets.String
-		tagged   sets.String
+		internal sets.Set[string]
+		public   sets.Set[string]
+		untagged sets.Set[string]
+		tagged   sets.Set[string]
 	)
 
 	internal, public, tagged, untagged, err = classifySubnets(subnets)
@@ -71,7 +71,7 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 		// TODO: process the subnets based on whether they have attached internet gateways
 		if untagged.Len() > 0 {
 			_, err = r.EC2Client.CreateTags(ctx, &ec2.CreateTagsInput{
-				Resources: untagged.List(),
+				Resources: sets.List(untagged),
 				Tags: []ec2types.Tag{
 					{
 						Key:   aws.String(publicELBTagKey),
@@ -93,13 +93,13 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 		// marked the untagged subnets as now tagged
 		tagged = tagged.Union(untagged)
 		// there are no untagged subnets now
-		untagged = sets.NewString()
+		untagged = sets.New[string]()
 	case albo.ManualSubnetTaggingPolicy:
 		// if the tagging policy was changed to Manual then remove tags from previously tagged subnets
 		if tagged.Len() > 0 {
 			// when values are not specified with the tag name the tag value is not considered during tag removal
 			_, err = r.EC2Client.DeleteTags(ctx, &ec2.DeleteTagsInput{
-				Resources: tagged.List(),
+				Resources: sets.List(tagged),
 				Tags: []ec2types.Tag{
 					{
 						Key: aws.String(publicELBTagKey),
@@ -119,24 +119,24 @@ func (r *AWSLoadBalancerControllerReconciler) tagSubnets(ctx context.Context, co
 		// removed the subnets which were untagged from the public subnets
 		public = public.Difference(tagged)
 		// set the tagged subnets to empty
-		tagged = sets.NewString()
+		tagged = sets.New[string]()
 	default:
 		err = fmt.Errorf("unknown subnetTaggingPolicy %s", controller.Spec.SubnetTagging)
 	}
 
-	untaggedSubnets = untagged.List()
-	taggedSubnets = tagged.List()
-	publicSubnets = public.List()
-	internalSubnets = internal.List()
+	untaggedSubnets = sets.List(untagged)
+	taggedSubnets = sets.List(tagged)
+	publicSubnets = sets.List(public)
+	internalSubnets = sets.List(internal)
 	return
 }
 
-func classifySubnets(subnets []ec2types.Subnet) (sets.String, sets.String, sets.String, sets.String, error) {
+func classifySubnets(subnets []ec2types.Subnet) (sets.Set[string], sets.Set[string], sets.Set[string], sets.Set[string], error) {
 	var (
-		internal = sets.NewString()
-		public   = sets.NewString()
-		untagged = sets.NewString()
-		tagged   = sets.NewString()
+		internal = sets.New[string]()
+		public   = sets.New[string]()
+		untagged = sets.New[string]()
+		tagged   = sets.New[string]()
 	)
 
 	for _, s := range subnets {

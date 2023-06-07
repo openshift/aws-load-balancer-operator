@@ -30,7 +30,7 @@ func TestDesiredArgs(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		controller   *albo.AWSLoadBalancerController
-		expectedArgs sets.String
+		expectedArgs sets.Set[string]
 	}{
 		{
 			name: "non-default ingress class",
@@ -39,7 +39,7 @@ func TestDesiredArgs(t *testing.T) {
 					IngressClass: "special-ingress-class",
 				},
 			},
-			expectedArgs: sets.NewString(
+			expectedArgs: sets.New[string](
 				"--enable-shield=false",
 				"--enable-waf=false",
 				"--enable-wafv2=false",
@@ -53,7 +53,7 @@ func TestDesiredArgs(t *testing.T) {
 					Config: &albo.AWSLoadBalancerDeploymentConfig{Replicas: 2},
 				},
 			},
-			expectedArgs: sets.NewString(
+			expectedArgs: sets.New[string](
 				"--enable-shield=false",
 				"--enable-waf=false",
 				"--enable-wafv2=false",
@@ -70,7 +70,7 @@ func TestDesiredArgs(t *testing.T) {
 					},
 				},
 			},
-			expectedArgs: sets.NewString(
+			expectedArgs: sets.New[string](
 				"--enable-shield=false",
 				"--enable-waf=true",
 				"--enable-wafv2=false",
@@ -86,7 +86,7 @@ func TestDesiredArgs(t *testing.T) {
 					},
 				},
 			},
-			expectedArgs: sets.NewString(
+			expectedArgs: sets.New[string](
 				"--enable-shield=false",
 				"--enable-waf=false",
 				"--enable-wafv2=true",
@@ -102,7 +102,7 @@ func TestDesiredArgs(t *testing.T) {
 					},
 				},
 			},
-			expectedArgs: sets.NewString(
+			expectedArgs: sets.New[string](
 				"--enable-shield=true",
 				"--enable-waf=false",
 				"--enable-wafv2=false",
@@ -120,7 +120,7 @@ func TestDesiredArgs(t *testing.T) {
 					},
 				},
 			},
-			expectedArgs: sets.NewString(
+			expectedArgs: sets.New[string](
 				"--enable-shield=false",
 				"--enable-waf=false",
 				"--enable-wafv2=false",
@@ -130,7 +130,7 @@ func TestDesiredArgs(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			defaultArgs := sets.NewString(
+			defaultArgs := sets.New[string](
 				"--aws-vpc-id=test-vpc",
 				"--cluster-name=test-cluster",
 				"--disable-ingress-class-annotation",
@@ -144,7 +144,7 @@ func TestDesiredArgs(t *testing.T) {
 			}
 			args := desiredContainerArgs(tc.controller, "test-cluster", "test-vpc")
 
-			expected := expectedArgs.List()
+			expected := sets.List(expectedArgs)
 			sort.Strings(expected)
 			if diff := cmp.Diff(expected, args); diff != "" {
 				t.Fatalf("unexpected arguments\n%s", diff)
@@ -383,23 +383,23 @@ func TestUpdateDeployment(t *testing.T) {
 				testContainer("controller", "controller:v1").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "security context changed",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)}).build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
 			).build(),
 			expectUpdate: true,
 		},
@@ -407,17 +407,17 @@ func TestUpdateDeployment(t *testing.T) {
 			name: "security context is same",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withSecurityContext(
-					corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true), ReadOnlyRootFilesystem: pointer.BoolPtr(false)},
+					corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true), ReadOnlyRootFilesystem: pointer.Bool(false)},
 				).build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withSecurityContext(
-					corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+					corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
 				).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withSecurityContext(
-					corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true), ReadOnlyRootFilesystem: pointer.BoolPtr(false)},
+					corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true), ReadOnlyRootFilesystem: pointer.Bool(false)},
 				).build(),
 			).build(),
 			expectUpdate: false,
@@ -512,9 +512,9 @@ func TestEnsureDeployment(t *testing.T) {
 				"test-sa", "test-serving").withContainers(
 				testContainer("controller", "test-image").withSecurityContext(corev1.SecurityContext{
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-					Privileged:               pointer.BoolPtr(false),
-					RunAsNonRoot:             pointer.BoolPtr(true),
-					AllowPrivilegeEscalation: pointer.BoolPtr(false),
+					Privileged:               pointer.Bool(false),
+					RunAsNonRoot:             pointer.Bool(true),
+					AllowPrivilegeEscalation: pointer.Bool(false),
 					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 				}).withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
@@ -564,9 +564,9 @@ func TestEnsureDeployment(t *testing.T) {
 					corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
 				).withSecurityContext(corev1.SecurityContext{
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-					Privileged:               pointer.BoolPtr(false),
-					RunAsNonRoot:             pointer.BoolPtr(true),
-					AllowPrivilegeEscalation: pointer.BoolPtr(false),
+					Privileged:               pointer.Bool(false),
+					RunAsNonRoot:             pointer.Bool(true),
+					AllowPrivilegeEscalation: pointer.Bool(false),
 					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 				}).build(),
 			).withResourceVersion("2").withVolumes(
@@ -623,9 +623,9 @@ func TestEnsureDeployment(t *testing.T) {
 						corev1.VolumeMount{Name: "trusted-ca", MountPath: "/etc/pki/tls/certs/albo-tls-ca-bundle.crt", SubPath: "ca-bundle.crt"},
 					).withSecurityContext(corev1.SecurityContext{
 						Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-						Privileged:               pointer.BoolPtr(false),
-						RunAsNonRoot:             pointer.BoolPtr(true),
-						AllowPrivilegeEscalation: pointer.BoolPtr(false),
+						Privileged:               pointer.Bool(false),
+						RunAsNonRoot:             pointer.Bool(true),
+						AllowPrivilegeEscalation: pointer.Bool(false),
 						SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 					}).build(),
 				).withResourceVersion("2").withVolumes(
@@ -666,9 +666,9 @@ func TestEnsureDeployment(t *testing.T) {
 							corev1.VolumeMount{Name: "trusted-ca", MountPath: "/etc/pki/tls/certs/albo-tls-ca-bundle.crt", SubPath: "ca-bundle.crt"},
 						).withSecurityContext(corev1.SecurityContext{
 							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-							Privileged:               pointer.BoolPtr(false),
-							RunAsNonRoot:             pointer.BoolPtr(true),
-							AllowPrivilegeEscalation: pointer.BoolPtr(false),
+							Privileged:               pointer.Bool(false),
+							RunAsNonRoot:             pointer.Bool(true),
+							AllowPrivilegeEscalation: pointer.Bool(false),
 							SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 						}).build(),
 					).withResourceVersion("2").withVolumes(
@@ -710,9 +710,9 @@ func TestEnsureDeployment(t *testing.T) {
 						corev1.VolumeMount{Name: "trusted-ca", MountPath: "/etc/pki/tls/certs/albo-tls-ca-bundle.crt", SubPath: "ca-bundle.crt"},
 					).withSecurityContext(corev1.SecurityContext{
 						Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-						Privileged:               pointer.BoolPtr(false),
-						RunAsNonRoot:             pointer.BoolPtr(true),
-						AllowPrivilegeEscalation: pointer.BoolPtr(false),
+						Privileged:               pointer.Bool(false),
+						RunAsNonRoot:             pointer.Bool(true),
+						AllowPrivilegeEscalation: pointer.Bool(false),
 						SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 					}).build(),
 				).withResourceVersion("3").withVolumes(
@@ -810,9 +810,9 @@ func TestEnsureDeploymentEnvVars(t *testing.T) {
 						corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
 					).withSecurityContext(corev1.SecurityContext{
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-					Privileged:               pointer.BoolPtr(false),
-					RunAsNonRoot:             pointer.BoolPtr(true),
-					AllowPrivilegeEscalation: pointer.BoolPtr(false),
+					Privileged:               pointer.Bool(false),
+					RunAsNonRoot:             pointer.Bool(true),
+					AllowPrivilegeEscalation: pointer.Bool(false),
 					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 				}).build(),
 			).withResourceVersion("2").withVolumes(
@@ -881,94 +881,94 @@ func TestHasSecurityContextChanged(t *testing.T) {
 		{
 			name:      "current RunAsNonRoot is nil",
 			currentSC: &corev1.SecurityContext{},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			// should be ignored to handle defaulting
 			name:      "desired RunAsNonRoot is nil",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
 			desiredSC: &corev1.SecurityContext{},
 			changed:   false,
 		},
 		{
 			name:      "RunAsNonRoot changes true->false",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			name:      "RunAsNonRoot changes false->true",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			name:      "RunAsNonRoot changes is same",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.BoolPtr(true)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
 			changed:   false,
 		},
 		{
 			name:      "current Privileged is nil",
 			currentSC: &corev1.SecurityContext{},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			// should be ignored to handle defaulting
 			name:      "desired Privileged is nil",
 			desiredSC: &corev1.SecurityContext{},
-			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
 			changed:   false,
 		},
 		{
 			name:      "Privileged changes true->false",
-			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			name:      "Privileged changes false->true",
-			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			name:      "Privileged is same",
-			currentSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.BoolPtr(true)},
+			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
 			changed:   false,
 		},
 		{
 			name:      "current AllowPrivilegeEscalation is nil",
 			currentSC: &corev1.SecurityContext{},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			// should be ignored to handle defaulting
 			name:      "desired AllowPrivilegeEscalation is nil",
 			desiredSC: &corev1.SecurityContext{},
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
 			changed:   false,
 		},
 		{
 			name:      "AllowPrivilegeEscalation changes true->false",
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			name:      "AllowPrivilegeEscalation changes false->true",
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(false)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
 			changed:   true,
 		},
 		{
 			name:      "AllowPrivilegeEscalation is same",
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.BoolPtr(true)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
 			changed:   false,
 		},
 		{
@@ -1111,8 +1111,8 @@ func (b *testDeploymentBuilder) withControllerReference(name string) *testDeploy
 			APIVersion:         albo.GroupVersion.Identifier(),
 			Kind:               "AWSLoadBalancerController",
 			Name:               name,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 	return b

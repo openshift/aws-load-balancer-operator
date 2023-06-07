@@ -20,10 +20,10 @@ import (
 )
 
 // awsConfigWithCredentials returns the default AWS config with the given region and static credentials.
-func awsConfigWithCredentials(kubeClient client.Client, awsRegion string, secretName types.NamespacedName) (aws.Config, error) {
+func awsConfigWithCredentials(ctx context.Context, kubeClient client.Client, awsRegion string, secretName types.NamespacedName) (aws.Config, error) {
 	secret := &corev1.Secret{}
-	err := wait.PollImmediateInfinite(5*time.Second, func() (done bool, err error) {
-		err = kubeClient.Get(context.TODO(), secretName, secret)
+	err := wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (done bool, err error) {
+		err = kubeClient.Get(ctx, secretName, secret)
 		if err == nil {
 			return true, nil
 		} else if errors.IsNotFound(err) {
@@ -38,7 +38,7 @@ func awsConfigWithCredentials(kubeClient client.Client, awsRegion string, secret
 	keyID := string(secret.Data["aws_access_key_id"])
 	secretKey := string(secret.Data["aws_secret_access_key"])
 
-	return config.LoadDefaultConfig(context.Background(),
+	return config.LoadDefaultConfig(ctx,
 		config.WithRegion(awsRegion),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(keyID, secretKey, "")))
 }
