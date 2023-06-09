@@ -38,7 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
@@ -249,7 +248,7 @@ func (r *AWSLoadBalancerControllerReconciler) BuildManagedController(mgr ctrl.Ma
 		Owns(&arv1.MutatingWebhookConfiguration{})
 
 	if r.TrustedCAConfigMapName != "" {
-		clusterALBCInstance := func(o client.Object) []reconcile.Request {
+		clusterALBCInstance := func(ctx context.Context, o client.Object) []reconcile.Request {
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
@@ -265,7 +264,7 @@ func (r *AWSLoadBalancerControllerReconciler) BuildManagedController(mgr ctrl.Ma
 		// The change detection is achieved using the annotation which contains the configmap's contents hash.
 		// The hash is recalculated at each reconciliation and put in the controller deployment's template pod spec
 		// leading to a rollout in case of a change.
-		bldr = bldr.Watches(&source.Kind{Type: &corev1.ConfigMap{}},
+		bldr = bldr.Watches(&corev1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(clusterALBCInstance),
 			builder.WithPredicates(predicate.And(
 				predicate.NewPredicateFuncs(inNamespace(r.Namespace))),

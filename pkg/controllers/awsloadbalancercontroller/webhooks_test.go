@@ -49,8 +49,8 @@ func TestAreValidatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -61,8 +61,8 @@ func TestAreValidatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -76,8 +76,8 @@ func TestAreValidatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test-old"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test-old"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -88,8 +88,8 @@ func TestAreValidatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test-new"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test-new"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -230,8 +230,8 @@ func TestAreMutatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -242,8 +242,8 @@ func TestAreMutatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -257,8 +257,8 @@ func TestAreMutatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test-old"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test-old"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -269,8 +269,8 @@ func TestAreMutatingWebhooksSame(t *testing.T) {
 						Service: &arv1.ServiceReference{
 							Namespace: "test-namespace",
 							Name:      "test-service",
-							Path:      pointer.StringPtr("/test-new"),
-							Port:      pointer.Int32Ptr(8080),
+							Path:      pointer.String("/test-new"),
+							Port:      pointer.Int32(8080),
 						},
 					},
 				},
@@ -387,8 +387,8 @@ func testValidatingWebhooks(serviceName, serviceNamespace string) []arv1.Validat
 				Service: &arv1.ServiceReference{
 					Namespace: serviceNamespace,
 					Name:      serviceName,
-					Path:      pointer.StringPtr("/validate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
-					Port:      pointer.Int32Ptr(controllerWebhookPort),
+					Path:      pointer.String("/validate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
+					Port:      pointer.Int32(controllerWebhookPort),
 				},
 			},
 			Rules: []arv1.RuleWithOperations{
@@ -416,8 +416,8 @@ func testValidatingWebhooks(serviceName, serviceNamespace string) []arv1.Validat
 				Service: &arv1.ServiceReference{
 					Namespace: serviceNamespace,
 					Name:      serviceName,
-					Path:      pointer.StringPtr("/validate-networking-v1-ingress"),
-					Port:      pointer.Int32Ptr(controllerWebhookPort),
+					Path:      pointer.String("/validate-networking-v1-ingress"),
+					Port:      pointer.Int32(controllerWebhookPort),
 				},
 			},
 			Rules: []arv1.RuleWithOperations{
@@ -449,8 +449,8 @@ func testMutatingWebhooks(serviceName, serviceNamespace string) []arv1.MutatingW
 			ClientConfig: arv1.WebhookClientConfig{
 				Service: &arv1.ServiceReference{Name: serviceName,
 					Namespace: serviceNamespace,
-					Path:      pointer.StringPtr("/mutate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
-					Port:      pointer.Int32Ptr(controllerWebhookPort),
+					Path:      pointer.String("/mutate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
+					Port:      pointer.Int32(controllerWebhookPort),
 				},
 			},
 			FailurePolicy: failurePolicyPtr(arv1.Fail),

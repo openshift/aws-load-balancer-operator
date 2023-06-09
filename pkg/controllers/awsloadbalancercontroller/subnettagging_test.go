@@ -87,17 +87,17 @@ func TestClassifySubnet(t *testing.T) {
 					return
 				}
 			}
-			if !internal.Equal(sets.NewString(tc.expectedInternalSubnets...)) {
-				t.Errorf("expected internal subnets %v, got %v", tc.expectedInternalSubnets, internal.List())
+			if !internal.Equal(sets.New[string](tc.expectedInternalSubnets...)) {
+				t.Errorf("expected internal subnets %v, got %v", tc.expectedInternalSubnets, sets.List(internal))
 			}
-			if !public.Equal(sets.NewString(tc.expectedPublicSubnets...)) {
-				t.Errorf("expected public subnets %v, got %v", tc.expectedPublicSubnets, public.List())
+			if !public.Equal(sets.New[string](tc.expectedPublicSubnets...)) {
+				t.Errorf("expected public subnets %v, got %v", tc.expectedPublicSubnets, sets.List(public))
 			}
-			if !untagged.Equal(sets.NewString(tc.expectedUntaggedSubnets...)) {
-				t.Errorf("expected untagged subnets %v, got %v", tc.expectedUntaggedSubnets, untagged.List())
+			if !untagged.Equal(sets.New[string](tc.expectedUntaggedSubnets...)) {
+				t.Errorf("expected untagged subnets %v, got %v", tc.expectedUntaggedSubnets, sets.List(untagged))
 			}
-			if !tagged.Equal(sets.NewString(tc.expectedTaggedSubnets...)) {
-				t.Errorf("expected tagged subnets %v, got %v", tc.expectedTaggedSubnets, tagged.List())
+			if !tagged.Equal(sets.New[string](tc.expectedTaggedSubnets...)) {
+				t.Errorf("expected tagged subnets %v, got %v", tc.expectedTaggedSubnets, sets.List(tagged))
 			}
 		})
 	}

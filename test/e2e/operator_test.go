@@ -139,7 +139,7 @@ func TestMain(m *testing.M) {
 	}
 
 	if !isOnROSA() {
-		cfg, err = awsConfigWithCredentials(kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
+		cfg, err = awsConfigWithCredentials(context.TODO(), kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
 		if err != nil {
 			fmt.Printf("failed to load aws config %v", err)
 			os.Exit(1)
@@ -157,7 +157,7 @@ func getOperator(t *testing.T) {
 		Name:      operatorName,
 		Namespace: operatorNamespace,
 	}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, name, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, name, expected...); err != nil {
 		t.Fatalf("Did not get expected available condition: %v", err)
 	}
 }
@@ -177,21 +177,21 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
@@ -214,10 +214,10 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -230,7 +230,7 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		}
 		req.Host = rule.Host
 
-		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
 			return r.StatusCode == http.StatusOK
 		})
 		if err != nil {
@@ -251,21 +251,21 @@ func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
@@ -288,10 +288,10 @@ func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -304,7 +304,7 @@ func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
 		}
 		req.Host = rule.Host
 
-		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
 			return r.StatusCode == http.StatusOK
 		})
 		if err != nil {
@@ -323,21 +323,21 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-cred-secret"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
@@ -360,10 +360,10 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 		}
 		req.Host = rule.Host
 
-		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
 			return r.StatusCode == http.StatusOK
 		})
 		if err != nil {
@@ -393,7 +393,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("failed to ensure custom ingress class %q: %v", ingclass.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, ingclass, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, ingclass, defaultTimeout)
 	}()
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
@@ -404,21 +404,21 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with custom ingress class")
@@ -441,10 +441,10 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -457,7 +457,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		}
 		req.Host = rule.Host
 
-		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
 			return r.StatusCode == http.StatusOK
 		})
 		if err != nil {
@@ -475,21 +475,21 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-internal-ing"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	t.Log("Creating Internal Ingress Resource with default ingress class")
@@ -512,10 +512,10 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -527,11 +527,11 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 			t.Fatalf("failed to create pod %s/%s: %v", clientPod.Namespace, clientPod.Name, err)
 		}
 
-		err = wait.PollImmediate(5*time.Second, 10*time.Minute, func() (bool, error) {
+		err = wait.PollUntilContextTimeout(context.TODO(), 5*time.Second, 10*time.Minute, true, func(ctx context.Context) (bool, error) {
 			readCloser, err := kubeClientSet.CoreV1().Pods(clientPod.Namespace).GetLogs(clientPod.Name, &corev1.PodLogOptions{
 				Container: "curl",
 				Follow:    false,
-			}).Stream(context.TODO())
+			}).Stream(ctx)
 			if err != nil {
 				t.Logf("failed to read output from pod %s: %v (retrying)", clientPod.Name, err)
 				return false, nil
@@ -554,7 +554,7 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 			t.Fatalf("failed to observe the expected log message: %v", err)
 		}
 
-		waitForDeletion(t, kubeClient, clientPod, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, clientPod, defaultTimeout)
 	}
 }
 
@@ -567,21 +567,21 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-wafv2"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	var aclARN string
@@ -654,10 +654,10 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, defaultTimeout, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -670,7 +670,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		}
 		req.Host = rule.Host
 
-		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
 			return r.StatusCode == http.StatusForbidden
 		})
 		if err != nil {
@@ -688,21 +688,21 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	var webACLID string
@@ -768,10 +768,10 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
 	}()
 
-	address, err := getIngress(t, kubeClient, 20*time.Minute, ingName)
+	address, err := getIngress(context.TODO(), t, kubeClient, 20*time.Minute, ingName)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
@@ -784,7 +784,7 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 		}
 		req.Host = rule.Host
 
-		err = waitForHTTPClientCondition(t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
 			return r.StatusCode == http.StatusForbidden
 		})
 		if err != nil {
@@ -811,7 +811,7 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("failed to create IngressClassParams %s: %v", ingressClassParams.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, ingressClassParams, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, ingressClassParams, defaultTimeout)
 	}()
 
 	t.Log("Creating a custom ingress class")
@@ -826,7 +826,7 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("failed to ensure custom ingress class %q: %v", ingressClass.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, ingressClass, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, ingressClass, defaultTimeout)
 	}()
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
@@ -837,21 +837,21 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("failed to create aws load balancer controller %q: %v", name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, alb, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
 	}()
 
 	expected := []appsv1.DeploymentCondition{
 		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
 	}
 	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
 	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
 	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource 1 with custom ingress class")
@@ -873,7 +873,7 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng1.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng1, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng1, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource 2 with custom ingress class")
@@ -892,7 +892,7 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng2.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng2, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng2, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource 3 with custom ingress class")
@@ -911,16 +911,16 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng3.Name, err)
 	}
 	defer func() {
-		waitForDeletion(t, kubeClient, echoIng3, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng3, defaultTimeout)
 	}()
 
-	firstAddress, err := getIngress(t, kubeClient, defaultTimeout, ingName1)
+	firstAddress, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName1)
 	if err != nil {
 		t.Fatalf("did not get expected available condition for ingress: %v", err)
 	}
 
 	for _, ingressName := range []types.NamespacedName{ingName2, ingName3} {
-		address, err := getIngress(t, kubeClient, defaultTimeout, ingressName)
+		address, err := getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingressName)
 		if err != nil {
 			t.Fatalf("did not get expected available condition for ingress %s: %v", ingressName, err)
 		}

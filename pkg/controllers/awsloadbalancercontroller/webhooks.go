@@ -115,8 +115,8 @@ func desiredValidatingWebhookConfiguration(controller *albo.AWSLoadBalancerContr
 					Service: &arv1.ServiceReference{
 						Namespace: webhookService.Namespace,
 						Name:      webhookService.Name,
-						Path:      pointer.StringPtr("/validate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
-						Port:      pointer.Int32Ptr(controllerWebhookPort),
+						Path:      pointer.String("/validate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
+						Port:      pointer.Int32(controllerWebhookPort),
 					},
 				},
 				Rules: []arv1.RuleWithOperations{
@@ -144,7 +144,7 @@ func desiredValidatingWebhookConfiguration(controller *albo.AWSLoadBalancerContr
 					Service: &arv1.ServiceReference{
 						Namespace: webhookService.Namespace,
 						Name:      webhookService.Name,
-						Path:      pointer.StringPtr("/validate-networking-v1-ingress"),
+						Path:      pointer.String("/validate-networking-v1-ingress"),
 						Port:      pointer.Int32(controllerWebhookPort),
 					},
 				},
@@ -335,8 +335,8 @@ func desiredMutatingWebhookConfiguration(controller *albo.AWSLoadBalancerControl
 				ClientConfig: arv1.WebhookClientConfig{
 					Service: &arv1.ServiceReference{Name: webhookService.Name,
 						Namespace: webhookService.Namespace,
-						Path:      pointer.StringPtr("/mutate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
-						Port:      pointer.Int32Ptr(controllerWebhookPort),
+						Path:      pointer.String("/mutate-elbv2-k8s-aws-v1beta1-targetgroupbinding"),
+						Port:      pointer.Int32(controllerWebhookPort),
 					},
 				},
 				FailurePolicy: failurePolicyPtr(arv1.Fail),

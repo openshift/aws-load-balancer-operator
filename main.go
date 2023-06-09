@@ -109,10 +109,14 @@ func main() {
 		LeaderElectionID:       "7de51cf3.openshift.io",
 		// The default cached client does not always return an updated value after write operations. So we use a non-cache client
 		// https://pkg.go.dev/sigs.k8s.io/controller-runtime#hdr-Clients_and_Caches
-		NewClient: func(_ cache.Cache, config *rest.Config, options client.Options, _ ...client.Object) (client.Client, error) {
+		NewClient: func(config *rest.Config, options client.Options) (client.Client, error) {
+			// Must override the cache, otherwise the client will use it.
+			options.Cache = nil
 			return client.New(config, options)
 		},
-		Namespace: namespace,
+		Cache: cache.Options{
+			Namespaces: []string{namespace},
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
