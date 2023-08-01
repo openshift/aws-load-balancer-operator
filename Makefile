@@ -114,7 +114,7 @@ manifests: ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefin
 	hack/sync-upstream-rbac.sh
 
 .PHONY: generate
-generate: iamctl-gen ## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
+generate: iamctl-gen iam-gen## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 .PHONY: fmt
@@ -130,6 +130,10 @@ iamctl-gen: iamctl-build
 	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE) -c $(IAMCTL_OUTPUT_CR_FILE)
 	go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
 	go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
+
+.PHONY: iam-gen
+iam-gen:
+	./hack/generate-iam-from-credrequest.sh ./hack/operator-credentials-request.yaml ./hack/operator-permission-policy.json
 
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
