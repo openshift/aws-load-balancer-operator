@@ -323,7 +323,7 @@ spec:
                 - name: AWS_SHARED_CREDENTIALS_FILE
                   value: /etc/aws-credentials/credentials
                 - name: RELATED_IMAGE_CONTROLLER
-                  value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:95d71cc4e7e594fd7cca52c5904c3cf86837bf1e90955eecee6b5cd0862eb501
+                  value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:f359f63169432cf8029b189f6605f21d660f0f805b91d55fe964185d0b8ae0b2
                 - name: TARGET_NAMESPACE
                   valueFrom:
                     fieldRef:
