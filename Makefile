@@ -126,14 +126,18 @@ vet: ## Run go vet against code.
 	go vet -mod=vendor ./...
 
 .PHONY: iamctl-gen
-iamctl-gen: iamctl-build
+iamctl-gen: iamctl-build iam-gen
 	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE) -c $(IAMCTL_OUTPUT_CR_FILE)
 	go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
 	go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
+	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/operator-iam-policy.json -o ./pkg/operator/$(IAMCTL_OUTPUT_FILE) -p operator -n
+	go fmt -mod=vendor ./pkg/operator/$(IAMCTL_OUTPUT_FILE)
+	go vet -mod=vendor ./pkg/operator/$(IAMCTL_OUTPUT_FILE)
 
 .PHONY: iam-gen
 iam-gen:
 	./hack/generate-iam-from-credrequest.sh ./hack/operator-credentials-request.yaml ./hack/operator-permission-policy.json
+	cp ./hack/operator-permission-policy.json $(IAMCTL_ASSETS_DIR)/operator-iam-policy.json
 
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 

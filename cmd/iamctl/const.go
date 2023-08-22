@@ -14,19 +14,21 @@ type IAMPolicy struct {
 func GetIAMPolicy() IAMPolicy {
 	return IAMPolicy{
 		Statement: []cco.StatementEntry{
-			{
-				Effect: {{.Statement.Effect|printf "%q"}},
-				Resource: {{range .Statement.Resource}}{{printf "%q" .}}{{end}},
+            {{range .Statement -}}
+            {
+				Effect: {{.Effect|printf "%q"}},
+				Resource: {{range .Resource}}{{printf "%q" .}}{{end}},
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
-					{{range $index, $element := .Statement.Action -}}
+					{{range $index, $element := .Action -}}
 					{{.|printf "%q"}},{{printf "\n"}}
 					{{- end}}
 				},
 			},
+            {{end}}
 		},
 	}
-}	
+}
 `
 	credentialsRequestTemplate = `apiVersion: cloudcredential.openshift.io/v1
 kind: CredentialsRequest
@@ -38,12 +40,14 @@ spec:
     apiVersion: cloudcredential.openshift.io/v1
     kind: AWSProviderSpec
     statementEntries:
+    {{range .Statement -}}
     - action:
-      {{range $index, $element := .Statement.Action}}- {{$element}}
+      {{range $index, $element := .Action}}- {{$element}}
       {{end -}}
 
-      effect: {{.Statement.Effect}}
-      resource: {{range .Statement.Resource}}{{printf "%q" .}}{{end}}
+      effect: {{.Effect}}
+      resource: {{range .Resource}}{{printf "%q" .}}{{end}}
+    {{- end}}
   secretRef:
     name: aws-load-balancer-controller-manual-cluster
     namespace: aws-load-balancer-operator
