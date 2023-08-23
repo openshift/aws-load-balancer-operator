@@ -3,7 +3,6 @@ package awsloadbalancercontroller
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/utils"
 )
 
 const (
@@ -156,19 +156,19 @@ func (r *AWSLoadBalancerControllerReconciler) updateStatusSubnets(ctx context.Co
 		updated = true
 	}
 
-	if !equalStrings(updatedALBC.Status.Subnets.Internal, internal) {
+	if !utils.EqualStrings(updatedALBC.Status.Subnets.Internal, internal) {
 		updatedALBC.Status.Subnets.Internal = internal
 		updated = true
 	}
-	if !equalStrings(updatedALBC.Status.Subnets.Public, public) {
+	if !utils.EqualStrings(updatedALBC.Status.Subnets.Public, public) {
 		updatedALBC.Status.Subnets.Public = public
 		updated = true
 	}
-	if !equalStrings(updatedALBC.Status.Subnets.Tagged, tagged) {
+	if !utils.EqualStrings(updatedALBC.Status.Subnets.Tagged, tagged) {
 		updatedALBC.Status.Subnets.Tagged = tagged
 		updated = true
 	}
-	if !equalStrings(updatedALBC.Status.Subnets.Untagged, untagged) {
+	if !utils.EqualStrings(updatedALBC.Status.Subnets.Untagged, untagged) {
 		updatedALBC.Status.Subnets.Untagged = untagged
 		updated = true
 	}
@@ -177,20 +177,6 @@ func (r *AWSLoadBalancerControllerReconciler) updateStatusSubnets(ctx context.Co
 		return r.Status().Update(ctx, updatedALBC)
 	}
 	return nil
-}
-
-func equalStrings(x1, x2 []string) bool {
-	if len(x1) != len(x2) {
-		return false
-	}
-	x1c := make([]string, len(x1))
-	x2c := make([]string, len(x2))
-	copy(x1c, x1)
-	copy(x2c, x2)
-
-	sort.Strings(x1c)
-	sort.Strings(x2c)
-	return cmp.Equal(x1c, x2c)
 }
 
 func (r *AWSLoadBalancerControllerReconciler) updateStatusIngressClass(ctx context.Context, controller *albo.AWSLoadBalancerController, ingressClass string) error {

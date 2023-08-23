@@ -34,12 +34,14 @@ const (
 )
 
 var (
-	TrueVar = true
-	Scheme  = runtime.NewScheme()
+	TrueVar     = true
+	BasicScheme = runtime.NewScheme()
+	Scheme      = runtime.NewScheme()
 )
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
+	utilruntime.Must(clientgoscheme.AddToScheme(BasicScheme))
 
 	utilruntime.Must(albo.AddToScheme(Scheme))
 	//+kubebuilder:scaffold:scheme

@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -47,11 +48,17 @@ import (
 	networkingolmv1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
 	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/awsloadbalancercontroller"
+	"github.com/openshift/aws-load-balancer-operator/pkg/operator"
 	//+kubebuilder:scaffold:imports
 )
 
 const (
 	clusterInfrastructureName = "cluster"
+	// It's been noticed that the freshly provisioned credentials
+	// may not be usable immediately. Therefore the first AWS call needs to be
+	// repeated until it succeeds or times out.
+	awsRequestTimeout      = 20 * time.Second
+	awsRequestPollInterval = 1 * time.Second
 )
 
 var (
@@ -130,15 +137,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// self provision with AWS credentials
+	setupLog.Info("provisioning credentials")
+	awsSharedCredFileName, err := operator.ProvisionCredentials(context.TODO(), mgr.GetClient(), namespace)
+	if err != nil {
+		setupLog.Error(err, "unable to provision cloud credentials")
+		os.Exit(1)
+	}
+
 	// make and aws.EC2Client
-	ec2Client, err := aws.NewClient(context.TODO(), awsRegion)
+	ec2Client, err := aws.NewClient(context.TODO(), awsRegion, awsSharedCredFileName)
 	if err != nil {
 		setupLog.Error(err, "failed to make aws client")
 		os.Exit(1)
 	}
 
 	// get the VPC ID where the cluster is running
-	vpcID, err := aws.GetVPCId(context.TODO(), ec2Client, clusterName)
+	vpcID, err := getVPCId(context.TODO(), ec2Client, clusterName, awsRequestTimeout, awsRequestPollInterval)
 	if err != nil {
 		setupLog.Error(err, "failed to get VPC ID")
 		os.Exit(1)
@@ -203,4 +218,24 @@ func clusterInfo(ctx context.Context, client client.Client) (clusterName, awsReg
 	}
 	awsRegion = infra.Status.PlatformStatus.AWS.Region
 	return
+}
+
+// getVPCId tries to retrieve VPC ID of the given cluster polling until it succeeds or times out.
+func getVPCId(ctx context.Context, ec2Client aws.EC2Client, clusterName string, timeout, pollInterval time.Duration) (string, error) {
+	timeoutCh := time.After(timeout)
+	ticker := time.NewTicker(pollInterval)
+
+	for {
+		select {
+		case <-timeoutCh:
+			return "", fmt.Errorf("timed out trying to get vpc id")
+		case <-ticker.C:
+			vpcID, err := aws.GetVPCId(ctx, ec2Client, clusterName)
+			if err != nil {
+				setupLog.Info("failed to get VPC ID", "error", err)
+				continue
+			}
+			return vpcID, nil
+		}
+	}
 }

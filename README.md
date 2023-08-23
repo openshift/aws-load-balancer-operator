@@ -74,7 +74,7 @@ podman push $IMG
     ```
 6. The previous step deploys the conversion webhook, which requires TLS verification on the webhook client side. The
    manifests deployed through the `make deploy` command do not contain a valid certificate and key. You must provision a valid certificate and key through other tools.     
-   If you run on OpenShift, you can use a convenience script, `hack/add-serving-cert.sh`, to enable [the service serving certificate feature](https://docs.openshift.com/container-platform/4.12/security/certificates/service-serving-certificate.html). 
+   If you run on OpenShift, you can use a convenience script, `hack/add-serving-cert.sh`, to enable [the service serving certificate feature](https://docs.openshift.com/container-platform/4.13/security/certificates/service-serving-certificate.html). 
    Run the `hack/add-serving-cert.sh` script with the following inputs:
    ```bash
    hack/add-serving-cert.sh --namespace aws-load-balancer-operator --service aws-load-balancer-operator-webhook-service --secret webhook-server-cert --crd awsloadbalancercontrollers.networking.olm.openshift.io

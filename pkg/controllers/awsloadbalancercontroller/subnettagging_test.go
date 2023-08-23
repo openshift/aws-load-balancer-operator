@@ -17,7 +17,8 @@ import (
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/aws"
-	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
+	"github.com/openshift/aws-load-balancer-operator/pkg/utils"
+	"github.com/openshift/aws-load-balancer-operator/pkg/utils/test"
 )
 
 func TestClassifySubnet(t *testing.T) {
@@ -202,24 +203,24 @@ func TestTagSubnets(t *testing.T) {
 				return
 			}
 
-			if !equalStrings(tc.expectedCreateTagOperations, ec2Client.taggedResources) {
+			if !utils.EqualStrings(tc.expectedCreateTagOperations, ec2Client.taggedResources) {
 				t.Errorf("expected subnets %v to be tagged, instead got %v", tc.expectedCreateTagOperations, ec2Client.taggedResources)
 			}
 
-			if !equalStrings(tc.expectedRemoveTagOperations, ec2Client.untaggedResources) {
+			if !utils.EqualStrings(tc.expectedRemoveTagOperations, ec2Client.untaggedResources) {
 				t.Errorf("expected subnets %v to have been untagged, instead got %v", tc.expectedRemoveTagOperations, ec2Client.untaggedResources)
 			}
 
-			if !equalStrings(tc.expectedPublicSubnets, public) {
+			if !utils.EqualStrings(tc.expectedPublicSubnets, public) {
 				t.Errorf("expected public subnets %v, got %v", tc.expectedPublicSubnets, public)
 			}
-			if !equalStrings(tc.expectedInternalSubnets, internal) {
+			if !utils.EqualStrings(tc.expectedInternalSubnets, internal) {
 				t.Errorf("expected internal subnets %v, got %v", tc.expectedInternalSubnets, internal)
 			}
-			if !equalStrings(tc.expectedTaggedSubnets, tagged) {
+			if !utils.EqualStrings(tc.expectedTaggedSubnets, tagged) {
 				t.Errorf("expected tagged subnets %v, got %v", tc.expectedTaggedSubnets, tagged)
 			}
-			if !equalStrings(tc.expectedUntaggedSubnets, untagged) {
+			if !utils.EqualStrings(tc.expectedUntaggedSubnets, untagged) {
 				t.Errorf("expected untagged subnets %v, got %v", tc.expectedUntaggedSubnets, untagged)
 			}
 		})

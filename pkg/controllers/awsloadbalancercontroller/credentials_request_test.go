@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
-	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
+	"github.com/openshift/aws-load-balancer-operator/pkg/utils/test"
 )
 
 const (
@@ -154,8 +154,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 }
 
 func testCompleteCredentialsRequest() *cco.CredentialsRequest {
-	codec, _ := cco.NewCodec()
-	cfg, _ := createProviderConfig(codec)
+	cfg, _ := createProviderConfig(cco.Codec)
 	return &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "aws-load-balancer-controller-cluster",
@@ -194,7 +193,6 @@ func testCredentialsRequestSADiff() *cco.CredentialsRequest {
 }
 
 func testAWSProviderSpec() *runtime.RawExtension {
-	codec, _ := cco.NewCodec()
-	providerSpec, _ := codec.EncodeProviderSpec(&cco.AWSProviderSpec{})
+	providerSpec, _ := cco.Codec.EncodeProviderSpec(&cco.AWSProviderSpec{})
 	return providerSpec
 }
