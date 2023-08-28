@@ -80,7 +80,7 @@ spec:
     After this the operator can be installated through the console or through the command line.
 
     __Note about UPI:__ For UPI based installs, additional documentation can be found in
-    [VPC and subnets](https://github.com/openshift/aws-load-balancer-operator/blob/main/docs/prerequisites.md#vpc-and-subnets)
+    [VPC and subnets](https://github.com/openshift/aws-load-balancer-operator/blob/release-1.0/docs/prerequisites.md#vpc-and-subnets)
 
     __Note about STS:__ For clusters using STS, use the [STS documentation](https://github.com/openshift/aws-load-balancer-operator/blob/main/docs/prerequisites.md#for-sts-clusters) instead.
   displayName: AWS Load Balancer Operator
