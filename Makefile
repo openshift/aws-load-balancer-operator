@@ -63,9 +63,7 @@ CONTAINER_ENGINE ?= docker
 
 OPERATOR_SDK_VERSION = v1.17.0
 
-GOLANGCI_LINT_VERSION = v1.51.2
-
-GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
 ## iamctl vars
 
 # Assets folder for iamctl cli.
