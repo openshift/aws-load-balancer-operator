@@ -1,6 +1,17 @@
 # Pre-Requisites
 
-## CredentialsRequest
+- [AWS credentials](#aws-credentials)
+    - [For non-STS clusters](#for-non-sts-clusters)
+    - [For STS clusters](#for-sts-clusters)
+        - [Option 1. Using ccoctl](#option-1-using-ccoctl)
+        - [Option 2. Using the AWS CLI](#option-2-using-the-aws-cli)
+- [VPC and Subnets](#vpc-and-subnets)
+    - [VPC](#vpc)
+    - [Subnets](#subnets)
+        - [Public subnets](#public-subnets)
+        - [Private subnets](#private-subnets)
+
+## AWS credentials
 Additional AWS credentials are needed for the operator to be successfully installed. This is needed to interact with subnets and VPCs.
 
 ### For non-STS clusters
@@ -27,9 +38,19 @@ Additional AWS credentials are needed for the operator to be successfully instal
 
 ### For STS clusters
 
-1. [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
+There are two options for creating the credentials secret:
+- Using a pre-defined `CredentialsRequest`.
+- Using pre-defined AWS manifests.
+
+For handling `CredentialsRequests`, the cloud credential operator utility, [ccoctl](https://docs.openshift.com/container-platform/latest/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts), can be utilized.
+If you prefer not to use `ccoctl`, or your system doesn't support it, the AWS CLI can be an alternative.
+
+#### Option 1. Using `ccoctl`
+
+1. [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.13/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
 
 2. Create AWS Load Balancer Operator's namespace:
+
     ```bash
     oc create namespace aws-load-balancer-operator
     ```
@@ -64,6 +85,73 @@ Additional AWS credentials are needed for the operator to be successfully instal
     sts_regional_endpoints = regional
     role_arn = arn:aws:iam::999999999999:role/aws-load-balancer-operator-aws-load-balancer-operator
     web_identity_token_file = /var/run/secrets/openshift/serviceaccount/token
+    ```
+
+#### Option 2. Using the AWS CLI
+
+1. Create AWS Load Balancer Operator's namespace:
+
+    ```bash
+    oc create namespace aws-load-balancer-operator
+    ```
+
+2. Generate a trusted policy file using your identity provider (e.g. OpenID Connect):
+
+    ```bash
+    IDP="<my-oidc-provider-name>"
+    IDP_ARN="arn:aws:iam::<my-aws-account>:oidc-provider/${IDP}"
+    cat <<EOF > albo-operator-trusted-policy.json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Federated": "${IDP_ARN}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                    "StringEquals": {
+                        "${IDP}:sub": "system:serviceaccount:aws-load-balancer-operator:aws-load-balancer-operator-controller-manager"
+                    }
+                }
+            }
+        ]
+    }
+    EOF
+    ```
+
+3. Create and verify the role with the generated trusted policy:
+
+    ```bash
+    aws iam create-role --role-name albo-operator --assume-role-policy-document file://albo-operator-trusted-policy.json
+    OPERATOR_ROLE_ARN=$(aws iam get-role --role-name albo-operator | \grep '^ROLE' | \grep -Po 'arn:aws:iam[0-9a-z/:\-_]+')
+    echo $OPERATOR_ROLE_ARN
+    ```
+
+4. Attach the operator's permission policy to the role:
+
+    ```bash
+    curl -o albo-operator-permission-policy.json https://raw.githubusercontent.com/alebedev87/aws-load-balancer-operator/aws-cli-commands-for-sts/hack/operator-permission-policy.json
+    aws iam put-role-policy --role-name albo-operator --policy-name perms-policy-albo-operator --policy-document file://albo-operator-permission-policy.json
+    ```
+
+5. Generate the operator's aws credentials:
+
+    ```bash
+    cat <<EOF > albo-operator-aws-credentials.cfg
+    [default]
+    sts_regional_endpoints = regional
+    role_arn = ${OPERATOR_ROLE_ARN}
+    web_identity_token_file = /var/run/secrets/openshift/serviceaccount/token
+    EOF
+    ```
+    **Note**: mind the format of the credentials file, examples can be found in [OCP documentation](https://docs.openshift.com/container-platform/4.13/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#sts-mode-about_cco-mode-sts).
+
+6. Create the operator's credentials secret with the generated aws credentials:
+
+    ```bash
+    oc -n aws-load-balancer-operator create secret generic aws-load-balancer-operator --from-file=credentials=albo-operator-aws-credentials.cfg
     ```
 
 ## VPC and Subnets
