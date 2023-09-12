@@ -9,12 +9,12 @@ describes the design and implementation of the operator in more detail.
 
 ## Table of contents
 
-1. [Prerequisites](/docs/prerequisites.md)
-   1. [CredentialsRequest](/docs/prerequisites.md#credentialsrequest)
-   2. [VPC and Subnets](/docs/prerequisites.md#vpc-and-subnets)
-2. [Installation](/docs/install.md)
-   1. [STS Clusters](/docs/install.md#sts-clusters)
-3. [Tutorial](/docs/tutorial.md)
+1. [Prerequisites](docs/prerequisites.md)
+   1. [CredentialsRequest](docs/prerequisites.md#credentialsrequest)
+   2. [VPC and Subnets](docs/prerequisites.md#vpc-and-subnets)
+2. [Installation](docs/install.md)
+   1. [STS Clusters](docs/install.md#sts-clusters)
+3. [Tutorial](docs/tutorial.md)
 4. [Local Development](#local-development)
     1. [Build the operand image](#build-the-operand-image)
     2. [Running the operator](#running-the-operator)
@@ -53,26 +53,11 @@ podman push $IMG
    ```bash
    oc create ns aws-load-balancer-operator
    ```
-4. Create AWS credentials profile for the operator
-    ```bash
-    cat << EOF > credentials
-    [default]
-    aws_access_key_id=${AWS_ACCESS_KEY_ID}
-    aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}
-    EOF
-    
-    oc create secret generic aws-load-balancer-operator -n aws-load-balancer-operator \
-    --from-file=credentials=credentials
-    ```
-   Alternatively use the `CredentialsRequest` resource in the `hack` directory
-   ```bash
-   oc apply -f hack/operator-credentials-request.yaml
-   ```
-5. Deploy the operator
+4. Deploy the operator
     ```bash
     make deploy
     ```
-6. The previous step deploys the conversion webhook, which requires TLS verification on the webhook client side. The
+5. The previous step deploys the conversion webhook, which requires TLS verification on the webhook client side. The
    manifests deployed through the `make deploy` command do not contain a valid certificate and key. You must provision a valid certificate and key through other tools.     
    If you run on OpenShift, you can use a convenience script, `hack/add-serving-cert.sh`, to enable [the service serving certificate feature](https://docs.openshift.com/container-platform/4.13/security/certificates/service-serving-certificate.html). 
    Run the `hack/add-serving-cert.sh` script with the following inputs:

@@ -157,7 +157,7 @@ Its contents are identical to the ones requested by **aws-load-balancer-operator
     aws iam put-role-policy --role-name albo-controller --policy-name perms-policy-albo-controller --policy-document file://albo-controller-permission-policy.json
     ```
 
-4. Generate the operator's aws credentials:
+4. Generate the controller's aws credentials:
     ```bash
     cat <<EOF > albo-controller-aws-credentials.cfg
     [default]
@@ -168,7 +168,7 @@ Its contents are identical to the ones requested by **aws-load-balancer-operator
     ```
     **Note**: verify the format of the credentials file. Examples can be found in [OCP documentation](https://docs.openshift.com/container-platform/4.13/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#sts-mode-about_cco-mode-sts).
 
-5. Create the operator's credentials secret with the generated aws credentials:
+5. Create the controller's credentials secret with the generated aws credentials:
     ```bash
     oc -n aws-load-balancer-operator create secret generic aws-load-balancer-controller-cluster --from-file=credentials=albo-controller-aws-credentials.cfg
     ```

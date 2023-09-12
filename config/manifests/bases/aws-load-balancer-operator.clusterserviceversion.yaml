@@ -31,59 +31,9 @@ spec:
     Operator to simplify the management of aws-load-balancer-controller.
 
     ### Prerequisites for installation
-    The operator requires AWS credentials in the installation namespace before it can be installed.
+    In certain scenarios, the operator requires extra steps to be executed before it can be installed.
 
-    #### Instructions for non-STS cluster
-    1. Create the operator namespace with the following command:
-
-      ```bash
-      oc create namespace aws-load-balancer-operator
-      ```
-
-    2. Create the `CredentialsRequest` in the `openshift-cloud-credential-operator` namespace with the following command:
-
-      ```bash
-      cat <<EOF | oc create -f -
-      apiVersion: cloudcredential.openshift.io/v1
-      kind: CredentialsRequest
-      metadata:
-        name: aws-load-balancer-operator
-        namespace: openshift-cloud-credential-operator
-      spec:
-        providerSpec:
-          apiVersion: cloudcredential.openshift.io/v1
-          kind: AWSProviderSpec
-          statementEntries:
-            - action:
-                - ec2:DescribeSubnets
-              effect: Allow
-              resource: "*"
-            - action:
-                - ec2:CreateTags
-                - ec2:DeleteTags
-              effect: Allow
-              resource: arn:aws:ec2:*:*:subnet/*
-            - action:
-                - ec2:DescribeVpcs
-              effect: Allow
-              resource: "*"
-        secretRef:
-          name: aws-load-balancer-operator
-          namespace: aws-load-balancer-operator
-        serviceAccountNames:
-          - aws-load-balancer-operator-controller-manager
-      EOF
-      ```
-
-    3. Ensure the credentials have been correctly provisioned:
-
-      ```bash
-      oc get secret -n aws-load-balancer-operator aws-load-balancer-operator
-      ```
-
-    After this the operator can be installated through the console or through the command line.
-
-    #### Instructions for STS cluster (inclusing ROSA in STS mode)
+    #### Instructions for STS cluster (including ROSA in STS mode)
 
     [Bootstrapping AWS Load Balancer Operator on Security Token Service cluster](https://docs.openshift.com/container-platform/latest/networking/aws_load_balancer_operator/installing-albo-sts-cluster.html#nw-bootstra-albo-on-sts-cluster_albo-sts-cluster).
 
