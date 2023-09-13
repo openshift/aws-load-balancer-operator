@@ -132,7 +132,7 @@ If you prefer not to use `ccoctl`, or your system doesn't support it, the AWS CL
 4. Attach the operator's permission policy to the role:
 
     ```bash
-    curl -o albo-operator-permission-policy.json https://raw.githubusercontent.com/alebedev87/aws-load-balancer-operator/aws-cli-commands-for-sts/hack/operator-permission-policy.json
+    curl -o albo-operator-permission-policy.json https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/release-1.0/hack/operator-permission-policy.json
     aws iam put-role-policy --role-name albo-operator --policy-name perms-policy-albo-operator --policy-document file://albo-operator-permission-policy.json
     ```
 
