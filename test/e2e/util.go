@@ -55,19 +55,59 @@ func waitForDeploymentStatusCondition(ctx context.Context, t *testing.T, cl clie
 	})
 }
 
+// waitForPodPhases waits until one of the given phases is set on the given pod.
+// Returns the found phase or error in case of timeout.
+func waitForPodPhases(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, podName types.NamespacedName, phases ...corev1.PodPhase) (corev1.PodPhase, error) {
+	t.Helper()
+	var foundPhase corev1.PodPhase
+	err := wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		pod := &corev1.Pod{}
+		if err := cl.Get(ctx, podName, pod); err != nil {
+			t.Logf("failed to get pod %s: %v (retrying)", podName.Name, err)
+			return false, nil
+		}
+
+		for _, p := range phases {
+			if pod.Status.Phase == p {
+				foundPhase = p
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	return foundPhase, err
+}
+
 func getIngress(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, ingressName types.NamespacedName) (string, error) {
 	t.Helper()
 	var address string
 	return address, wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 		ing := &networkingv1.Ingress{}
 		if err := cl.Get(ctx, ingressName, ing); err != nil {
-			t.Logf("failed to get deployment %s: %v (retrying)", ingressName.Name, err)
+			t.Logf("failed to get ingress %s: %v (retrying)", ingressName.Name, err)
 			return false, nil
 		}
 		if len(ing.Status.LoadBalancer.Ingress) <= 0 || len(ing.Status.LoadBalancer.Ingress[0].Hostname) <= 0 {
 			return false, nil
 		}
 		address = ing.Status.LoadBalancer.Ingress[0].Hostname
+		return true, nil
+	})
+}
+
+func getService(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, svcName types.NamespacedName) (string, error) {
+	t.Helper()
+	var address string
+	return address, wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		svc := &corev1.Service{}
+		if err := cl.Get(ctx, svcName, svc); err != nil {
+			t.Logf("failed to get service %s: %v (retrying)", svcName.Name, err)
+			return false, nil
+		}
+		if len(svc.Status.LoadBalancer.Ingress) <= 0 || len(svc.Status.LoadBalancer.Ingress[0].Hostname) <= 0 {
+			return false, nil
+		}
+		address = svc.Status.LoadBalancer.Ingress[0].Hostname
 		return true, nil
 	})
 }
@@ -170,9 +210,14 @@ func buildCurlPod(name, namespace, host, address string, extraArgs ...string) *c
 	curlArgs := []string{
 		"-s",
 		"-v",
-		"--header", "HOST:" + host,
+		"-f",
 		"--retry", "300", "--retry-delay", "5", "--max-time", "2",
 	}
+
+	if len(host) != 0 {
+		curlArgs = append(curlArgs, "--header", "HOST:"+host)
+	}
+
 	curlArgs = append(curlArgs, extraArgs...)
 	curlArgs = append(curlArgs, "http://"+address)
 	return &corev1.Pod{
@@ -324,7 +369,7 @@ func buildEchoIngress(name types.NamespacedName, ingClass string, annotations ma
 
 // albcBuilder is a helper to build ALBC CRs.
 type albcBuilder struct {
-	nsname       types.NamespacedName
+	name         string
 	tagPolicy    albo.SubnetTaggingPolicy
 	ingressClass string
 	addons       []albo.AWSAddon
@@ -334,15 +379,11 @@ type albcBuilder struct {
 
 func newALBCBuilder() *albcBuilder {
 	return &albcBuilder{
+		name:         "cluster",
 		tagPolicy:    albo.AutoSubnetTaggingPolicy,
 		ingressClass: "alb",
 		addons:       []albo.AWSAddon{},
 	}
-}
-
-func (b *albcBuilder) withName(name types.NamespacedName) *albcBuilder {
-	b.nsname = name
-	return b
 }
 
 func (b *albcBuilder) withIngressClass(class string) *albcBuilder {
@@ -376,8 +417,7 @@ func (b *albcBuilder) withResourceTags(tags map[string]string) *albcBuilder {
 func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
 	albc := &albov1alpha1.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      b.nsname.Name,
-			Namespace: b.nsname.Namespace,
+			Name: b.name,
 		},
 		Spec: albov1alpha1.AWSLoadBalancerControllerSpec{
 			SubnetTagging:          albov1alpha1.SubnetTaggingPolicy(b.tagPolicy),
@@ -395,8 +435,7 @@ func (b *albcBuilder) buildv1alpha1() *albov1alpha1.AWSLoadBalancerController {
 func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
 	albc := &albo.AWSLoadBalancerController{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      b.nsname.Name,
-			Namespace: b.nsname.Namespace,
+			Name: b.name,
 		},
 		Spec: albo.AWSLoadBalancerControllerSpec{
 			SubnetTagging: b.tagPolicy,
