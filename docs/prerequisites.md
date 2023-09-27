@@ -12,29 +12,27 @@ In certain scenarios, the operator requires extra steps to be executed before it
         - [Private subnets](#private-subnets)
 
 ## IAM Role for STS clusters
-An additional IAM Role is needed for the operator to be successfully installed in STS clusters. This is needed to interact with subnets and VPCs.
+An additional IAM Role is needed for the operator to be [successfully installed in STS clusters](install.md#operator-installation-on-sts-cluster). It is needed to interact with subnets and VPCs.
 The operator will generate a `CredentialsRequest` with this role to self bootstrap with AWS credentials.
 
-There are two options for creating the IAM role:
-- Using a pre-defined `CredentialsRequest`.
-- Using pre-defined AWS manifests.
+There are two options for creating the operator's IAM role:
+1. Using [`ccoctl`](https://docs.openshift.com/container-platform/latest/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts) and a pre-defined `CredentialsRequest`.
+2. Using AWS CLI and pre-defined AWS manifests.
 
-For handling `CredentialsRequests`, the cloud credential operator utility, [`ccoctl`](https://docs.openshift.com/container-platform/latest/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts), can be utilized.
-If you prefer not to use `ccoctl`, or your system doesn't support it, the AWS CLI can be an alternative.
+If your system doesn't support `ccoctl`, the second option is the only available choice.
 
 ### Option 1. Using `ccoctl`
+The operator's `CredentialsRequest` is maintained in [hack/operator-credentials-request.yaml](../hack/operator-credentials-request.yaml) file of this repository.
 
 1. [Extract and prepare the `ccoctl` binary](https://docs.openshift.com/container-platform/4.13/authentication/managing_cloud_provider_credentials/cco-mode-sts.html#cco-ccoctl-configuring_cco-mode-sts)
 
 2. Use the `ccoctl` tool to create a IAM role from the operator's `CredentialsRequest`:
 
     ```bash
-   $ curl --create-dirs -o <path-to-credrequests-dir>/cr.yaml https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-credentials-request.yaml
+   $ curl --create-dirs -o <credrequests-dir>/operator.yaml https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-credentials-request.yaml
    $ CCOCTL_OUTPUT=$(mktemp)
-   $ ccoctl aws create-iam-roles \
-        --name <name> --region=<aws_region> \
-        --credentials-requests-dir=<path-to-credrequests-dir> \
-        --identity-provider-arn <oidc-arn> 2>&1 | tee "${CCOCTL_OUTPUT}"
+   $ ROLENAME=<name>
+   $ ccoctl aws create-iam-roles --name ${ROLENAME:0:12} --region=<aws_region> --credentials-requests-dir=<credrequests-dir> --identity-provider-arn <oidc-arn> 2>&1 | tee "${CCOCTL_OUTPUT}"
 
     2023/09/12 11:38:57 Role arn:aws:iam::777777777777:role/<name>-aws-load-balancer-operator-aws-load-balancer-operator created
     2023/09/12 11:38:57 Saved credentials configuration to: /home/user/<credrequests-dir>/manifests/aws-load-balancer-operator-aws-load-balancer-operator-credentials.yaml
@@ -54,48 +52,9 @@ If you prefer not to use `ccoctl`, or your system doesn't support it, the AWS CL
     arn:aws:iam::777777777777:role/<name>-aws-load-balancer-operator-aws-load-balancer-operator
     ```
 
-4. Install the operator using the OpenShift OperatorHub web UI or by running the following commands:
-
-    ```bash
-    $ oc create namespace aws-load-balancer-operator
-
-    $ cat <<EOF | oc apply -f -
-    apiVersion: operators.coreos.com/v1
-    kind: OperatorGroup
-    metadata:
-      name: aws-load-balancer-operator
-      namespace: aws-load-balancer-operator
-    spec:
-      targetNamespaces: []
-    EOF
-
-    $ cat <<EOF | oc apply -f -
-    apiVersion: operators.coreos.com/v1alpha1
-    kind: Subscription
-    metadata:
-      name: aws-load-balancer-operator
-      namespace: aws-load-balancer-operator
-    spec:
-      channel: stable-v1
-      name: aws-load-balancer-operator
-      source: redhat-operators
-      sourceNamespace: openshift-marketplace
-      config:
-        env:
-        - name: ROLEARN
-          value: "${ROLEARN}"
-    EOF
-    ```
-
 ### Option 2. Using the AWS CLI
 
-1. Create AWS Load Balancer Operator's namespace:
-
-    ```bash
-    oc create namespace aws-load-balancer-operator
-    ```
-
-2. Generate a trusted policy file using your identity provider (e.g. OpenID Connect):
+1. Generate a trusted policy file using your identity provider (e.g. OpenID Connect):
 
     ```bash
     IDP="<my-oidc-provider-name>"
@@ -121,7 +80,7 @@ If you prefer not to use `ccoctl`, or your system doesn't support it, the AWS CL
     EOF
     ```
 
-3. Create and verify the role with the generated trusted policy:
+2. Create and verify the role with the generated trusted policy:
 
     ```bash
     aws iam create-role --role-name albo-operator --assume-role-policy-document file://albo-operator-trusted-policy.json
@@ -129,45 +88,13 @@ If you prefer not to use `ccoctl`, or your system doesn't support it, the AWS CL
     echo $ROLEARN
     ```
 
-4. Attach the operator's permission policy to the role:
+3. Attach the operator's permission policy to the role:
 
     ```bash
     curl -o albo-operator-permission-policy.json https://raw.githubusercontent.com/openshift/aws-load-balancer-operator/main/hack/operator-permission-policy.json
     aws iam put-role-policy --role-name albo-operator --policy-name perms-policy-albo-operator --policy-document file://albo-operator-permission-policy.json
     ```
 
-4. Install the operator using the OpenShift OperatorHub web UI or by running the following commands:
-
-    ```bash
-    $ oc create namespace aws-load-balancer-operator
-
-    $ cat <<EOF | oc apply -f -
-    apiVersion: operators.coreos.com/v1
-    kind: OperatorGroup
-    metadata:
-      name: aws-load-balancer-operator
-      namespace: aws-load-balancer-operator
-    spec:
-      targetNamespaces: []
-    EOF
-
-    $ cat <<EOF | oc apply -f -
-    apiVersion: operators.coreos.com/v1alpha1
-    kind: Subscription
-    metadata:
-      name: aws-load-balancer-operator
-      namespace: aws-load-balancer-operator
-    spec:
-      channel: stable-v1
-      name: aws-load-balancer-operator
-      source: redhat-operators
-      sourceNamespace: openshift-marketplace
-      config:
-        env:
-        - name: ROLEARN
-          value: "${ROLEARN}"
-    EOF
-    ```
 ## VPC and Subnets
 
 The **aws-load-balancer-operator** requires specific tags on some AWS

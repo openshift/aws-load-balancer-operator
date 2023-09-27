@@ -1,0 +1,7 @@
+apiVersion: networking.olm.openshift.io/v1
+kind: AWSLoadBalancerController
+metadata:
+  name: cluster
+spec:
+  credentialsRequestConfig:
+    stsIAMRoleARN: "arn:aws:iam::999999999999:role/myuser-controller"

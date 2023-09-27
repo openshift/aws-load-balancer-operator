@@ -3,6 +3,7 @@ package awsloadbalancercontroller
 import (
 	"context"
 	"fmt"
+	"path"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -53,7 +54,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 	// The secret created will be in the operator namespace.
 	secretRef := createCredentialsSecretRef(credentialRequestSecretName, namespace)
 
-	desired, err := desiredCredentialsRequest(credReq, secretRef, name)
+	desired, err := desiredCredentialsRequest(credReq, secretRef, name, controller.Spec.CredentialsRequestConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build desired credentials request: %w", err)
 	}
@@ -115,7 +116,7 @@ func (r *AWSLoadBalancerControllerReconciler) createCredentialsRequest(ctx conte
 	return nil
 }
 
-func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.ObjectReference, saName string) (*cco.CredentialsRequest, error) {
+func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.ObjectReference, saName string, config *albo.AWSLoadBalancerCredentialsRequestConfig) (*cco.CredentialsRequest, error) {
 	credentialsRequest := &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.Name,
@@ -127,7 +128,11 @@ func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.Objec
 		},
 	}
 
-	providerSpec, err := createProviderConfig(cco.Codec)
+	if config != nil && config.STSIAMRoleARN != "" {
+		credentialsRequest.Spec.CloudTokenPath = path.Join(boundSATokenDir, "token")
+	}
+
+	providerSpec, err := createProviderConfig(cco.Codec, config)
 	if err != nil {
 		return nil, err
 	}
@@ -135,10 +140,14 @@ func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.Objec
 	return credentialsRequest, nil
 }
 
-func createProviderConfig(codec *cco.ProviderCodec) (*runtime.RawExtension, error) {
-	return codec.EncodeProviderSpec(&cco.AWSProviderSpec{
+func createProviderConfig(codec *cco.ProviderCodec, config *albo.AWSLoadBalancerCredentialsRequestConfig) (*runtime.RawExtension, error) {
+	providerSpec := &cco.AWSProviderSpec{
 		StatementEntries: GetIAMPolicy().Statement,
-	})
+	}
+	if config != nil && config.STSIAMRoleARN != "" {
+		providerSpec.STSIAMRoleARN = config.STSIAMRoleARN
+	}
+	return codec.EncodeProviderSpec(providerSpec)
 }
 
 // createCredentialsRequestName will always return a fixed namespaced resource, so as to

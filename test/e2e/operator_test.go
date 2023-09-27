@@ -54,9 +54,11 @@ const (
 	// unlike the operator and the controller which use the service account token signed by OpenShift.
 	wafv2WebACLARNVarName = "ALBO_E2E_WAFV2_WEBACL_ARN"
 	wafWebACLIDVarName    = "ALBO_E2E_WAF_WEBACL_ID"
+	// controllerRoleARNVarName contains IAM role ARN to be used by the controller on a ROSA/STS cluster.
+	controllerRoleARNVarName = "ALBO_E2E_CONTROLLER_ROLE_ARN"
 
 	// controllerSecretName is the name of the controller's cloud credential secret provisioned by the CI.
-	controllerSecretName = "aws-load-balancer-controller-manual-cluster"
+	controllerSecretName = "aws-load-balancer-controller-cluster"
 )
 
 var (
@@ -64,7 +66,6 @@ var (
 	kubeClient         client.Client
 	kubeClientSet      *kubernetes.Clientset
 	scheme             = kscheme.Scheme
-	infraConfig        configv1.Infrastructure
 	operatorName       = "aws-load-balancer-operator-controller-manager"
 	operatorNamespace  = "aws-load-balancer-operator"
 	defaultTimeout     = 15 * time.Minute
@@ -79,6 +80,7 @@ var (
 		Name:      "aws-load-balancer-operator-e2e",
 		Namespace: operatorNamespace,
 	}
+	controllerRoleARN string
 )
 
 func init() {
@@ -100,51 +102,43 @@ func TestMain(m *testing.M) {
 		fmt.Printf("failed to get kube config: %s\n", err)
 		os.Exit(1)
 	}
-	cl, err := client.New(kubeConfig, client.Options{})
+	kubeClient, err = client.New(kubeConfig, client.Options{})
 	if err != nil {
 		fmt.Printf("failed to create kube client: %s\n", err)
 		os.Exit(1)
 	}
-	kubeClient = cl
-
-	if err := kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &infraConfig); err != nil {
-		fmt.Printf("failed to get infrastructure config: %v\n", err)
-		os.Exit(1)
-	}
-
 	kubeClientSet, err = kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		fmt.Printf("failed to create kube clientset: %s\n", err)
 		os.Exit(1)
 	}
 
-	if !isOnROSA() {
-		if err := ensureCredentialsRequest(e2eSecretName); err != nil {
-			fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
-			os.Exit(1)
-		}
-	} // ROSA forbids the creation of CredentialsRequests by non cluster admins.
-
 	var infra configv1.Infrastructure
-	clusterInfrastructureName := types.NamespacedName{Name: "cluster"}
-	err = kubeClient.Get(context.TODO(), clusterInfrastructureName, &infra)
+	err = kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &infra)
 	if err != nil {
-		fmt.Printf("failed to fetch infrastructure: %v", err)
+		fmt.Printf("failed to fetch infrastructure: %v\n", err)
 		os.Exit(1)
 	}
 
 	if infra.Status.PlatformStatus == nil || infra.Status.PlatformStatus.AWS == nil || infra.Status.PlatformStatus.AWS.Region == "" {
-		fmt.Printf("could not get AWS region from Infrastructure %q status", clusterInfrastructureName.Name)
+		fmt.Println("could not get AWS region from Infrastructure status")
 		os.Exit(1)
 	}
 
-	if !isOnROSA() {
-		cfg, err = awsConfigWithCredentials(context.TODO(), kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
-		if err != nil {
-			fmt.Printf("failed to load aws config %v", err)
+	if !stsModeRequested() {
+		if err := ensureCredentialsRequest(e2eSecretName); err != nil {
+			fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
 			os.Exit(1)
 		}
-	} // No need to get AWS config on ROSA cluster: the CI provisions all the required AWS resources.
+		cfg, err = awsConfigWithCredentials(context.TODO(), kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
+		if err != nil {
+			fmt.Printf("failed to load aws config %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Println("Controller role is expected to exist when the test is run on a ROSA STS cluster")
+		controllerRoleARN = mustGetEnv(controllerRoleARNVarName)
+	}
 
 	os.Exit(m.Run())
 }
@@ -171,7 +165,7 @@ func TestOperatorAvailable(t *testing.T) {
 func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -395,7 +389,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
 
-	alb := newALBCBuilder().withIngressClass(ingclassName.Name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withIngressClass(ingclassName.Name).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -465,7 +459,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -556,7 +550,7 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv2).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv2).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -579,7 +573,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	}()
 
 	var aclARN string
-	if !isOnROSA() {
+	if !stsModeRequested() {
 		wafClient := wafv2.NewFromConfig(cfg)
 		webACLName := "echoserver-acl"
 		acl, err := findAWSWebACL(wafClient, webACLName)
@@ -605,7 +599,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		}
 
 		aclARN = *acl.ARN
-		t.Logf("Got AWS WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
+		t.Logf("Found AWS WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
 
 		defer func() {
 			_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
@@ -624,8 +618,9 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		if aclARN == "" {
 			t.Fatalf("no wafv2 webacl arn provided")
 		}
-		t.Logf("Got AWS WAFv2 WebACL. ARN: %s", aclARN)
 	}
+
+	t.Logf("Got AWS WAFv2 WebACL. ARN: %s", aclARN)
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
@@ -676,7 +671,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -699,7 +694,7 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 	}()
 
 	var webACLID string
-	if !isOnROSA() {
+	if !stsModeRequested() {
 		wafClient := waf.NewFromConfig(cfg)
 
 		token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
@@ -824,7 +819,7 @@ func TestIngressGroup(t *testing.T) {
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
 
-	alb := newALBCBuilder().withIngressClass(ingressClassName.Name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withIngressClass(ingressClassName.Name).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -928,7 +923,7 @@ func TestIngressGroup(t *testing.T) {
 func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance")
 
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -986,7 +981,7 @@ func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
 // the service reconciliation done by aws-load-balancer-controller.
 func TestAWSLoadBalancerControllerWithInternalNLB(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance")
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -1056,7 +1051,7 @@ func TestAWSLoadBalancerControllerWithInternalNLB(t *testing.T) {
 // the usage of the service port different from the standard HTTP (80).
 func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testing.T) {
 	t.Log("Creating aws load balancer controller instance")
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -1108,6 +1103,25 @@ func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testi
 	})
 	if err != nil {
 		t.Fatalf("failed to verify condition with external client: %v", err)
+	}
+}
+
+// TestAWSLoadBalancerControllerOpenAPIValidation tests validations added to AWSLoadBalancerController CRD.
+func TestAWSLoadBalancerControllerOpenAPIValidation(t *testing.T) {
+	alb1 := newALBCBuilder().withCredSecret("dummy").withRoleARN("arn:aws:iam::777777777777:role/test").build()
+	if err := kubeClient.Create(context.TODO(), alb1); err == nil {
+		defer func() {
+			waitForDeletion(context.TODO(), t, kubeClient, alb1, defaultTimeout)
+		}()
+		t.Fatalf("didn't fail to create aws load balancer controller with conflicting credentials")
+	}
+
+	alb2 := newALBCBuilder().withRoleARN("arn:aws:iam::777777777777:rolex/test").build()
+	if err := kubeClient.Create(context.TODO(), alb2); err == nil {
+		defer func() {
+			waitForDeletion(context.TODO(), t, kubeClient, alb2, defaultTimeout)
+		}()
+		t.Fatalf("didn't fail to create aws load balancer controller with invalid role arn")
 	}
 }
 
@@ -1185,6 +1199,11 @@ func createTestWorkloadWithCustomize(t *testing.T, namespace string, customize f
 	return echosvc, ns
 }
 
-func isOnROSA() bool {
-	return strings.ToUpper(os.Getenv(e2ePlatformVarName)) == "ROSA"
+// stsModeRequested returns true if the specified e2e platform is STS enabled.
+func stsModeRequested() bool {
+	switch strings.ToUpper(os.Getenv(e2ePlatformVarName)) {
+	case "OCPSTS", "ROSASTS", "ROSA" /*ROSA uses STS mode by default*/ :
+		return true
+	}
+	return false
 }
