@@ -1113,12 +1113,7 @@ func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testi
 
 // ensureCredentialsRequest creates CredentialsRequest to provision a secret with the cloud credentials required by this e2e test.
 func ensureCredentialsRequest(secret types.NamespacedName) error {
-	codec, err := cco.NewCodec()
-	if err != nil {
-		return err
-	}
-
-	providerSpec, err := codec.EncodeProviderSpec(&cco.AWSProviderSpec{
+	providerSpec, err := cco.Codec.EncodeProviderSpec(&cco.AWSProviderSpec{
 		StatementEntries: []cco.StatementEntry{
 			{
 				Action:   []string{"wafv2:CreateWebACL", "wafv2:DeleteWebACL", "wafv2:ListWebACLs"},

@@ -33,8 +33,8 @@ type EC2Client interface {
 	SubnetClient
 }
 
-func NewClient(ctx context.Context, awsRegion string) (EC2Client, error) {
-	awsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion))
+func NewClient(ctx context.Context, awsRegion, sharedCredFileName string) (EC2Client, error) {
+	awsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(awsRegion), config.WithSharedCredentialsFiles([]string{sharedCredFileName}))
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS config: %w", err)
 	}

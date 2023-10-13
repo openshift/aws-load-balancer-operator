@@ -31,6 +31,22 @@ type AzureProviderSpec struct {
 
 	// RoleBindings contains a list of roles that should be associated with the minted credential.
 	RoleBindings []RoleBinding `json:"roleBindings"`
+
+	// Permissions is the list of Azure permissions required to create a more fine-grained custom role to
+	// satisfy the CredentialsRequest.
+	// The Permissions field may be provided in addition to RoleBindings. When both fields are specified,
+	// the user-assigned managed identity will have union of permissions defined from both Permissions
+	// and RoleBindings.
+	// +optional
+	Permissions []string `json:"permissions,omitempty"`
+
+	// DataPermissions is the list of Azure data permissions required to create a more fine-grained custom
+	// role to satisfy the CredentialsRequest.
+	// The DataPermissions field may be provided in addition to RoleBindings. When both fields are specified,
+	// the user-assigned managed identity will have union of permissions defined from both DataPermissions
+	// and RoleBindings.
+	// +optional
+	DataPermissions []string `json:"dataPermissions,omitempty"`
 }
 
 // RoleBinding models part of the Azure RBAC Role Binding

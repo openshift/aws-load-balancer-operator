@@ -45,6 +45,14 @@ spec:
           capabilities:
             drop:
               - ALL
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          # operator waits 5 mins for self provisioned secret
+          failureThreshold: 15
         livenessProbe:
           httpGet:
             path: /healthz
@@ -67,8 +75,6 @@ spec:
             cpu: 10m
             memory: 64Mi
         env:
-          - name: AWS_SHARED_CREDENTIALS_FILE
-            value: /etc/aws-credentials/credentials
           - name: RELATED_IMAGE_CONTROLLER
             value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:f359f63169432cf8029b189f6605f21d660f0f805b91d55fe964185d0b8ae0b2
           - name: TARGET_NAMESPACE
@@ -77,20 +83,12 @@ spec:
                 fieldPath: metadata.namespace
           - name: TRUSTED_CA_CONFIGMAP_NAME
         volumeMounts:
-          - mountPath: /etc/aws-credentials
-            name: aws-credentials
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
             readOnly: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
-        - name: aws-credentials
-          secret:
-            secretName: aws-load-balancer-operator
-            items:
-              - key: credentials
-                path: credentials
         - name: bound-sa-token
           projected:
             defaultMode: 292

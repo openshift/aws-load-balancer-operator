@@ -18,6 +18,9 @@ var (
 
 	// pkg specifies the package with which the code is generated.
 	pkg string
+
+	// skipMinify specifies whether the minification of the AWS policy has to be skipped.
+	skipMinify bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -55,4 +58,6 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&pkg, "package", "p", "main", "Used to specify output Go file path.")
 	_ = rootCmd.MarkPersistentFlagRequired("package")
+
+	rootCmd.PersistentFlags().BoolVarP(&skipMinify, "no-minify", "n", false, "Used to skip the minification of the output AWS policy.")
 }

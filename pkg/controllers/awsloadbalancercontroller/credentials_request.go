@@ -3,7 +3,6 @@ package awsloadbalancercontroller
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/utils/resource/update"
 )
 
 const (
@@ -77,7 +77,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureCredentialsRequest(ctx conte
 		return created, nil
 	}
 
-	gotUpdated, err := r.updateCredentialsRequest(ctx, current, desired)
+	gotUpdated, err := update.UpdateCredentialsRequest(ctx, r.Client, current, desired)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update credentials request %q: %w", credReq.Name, err)
 	}
@@ -115,26 +115,6 @@ func (r *AWSLoadBalancerControllerReconciler) createCredentialsRequest(ctx conte
 	return nil
 }
 
-// updateCredentialsRequest updates the CredentialsRequest if needed
-func (r *AWSLoadBalancerControllerReconciler) updateCredentialsRequest(ctx context.Context, current *cco.CredentialsRequest, desired *cco.CredentialsRequest) (bool, error) {
-	var updated *cco.CredentialsRequest
-	changed, err := isCredentialsRequestChanged(current, desired)
-	if err != nil {
-		return false, err
-	}
-	if !changed {
-		return false, nil
-	}
-	updated = current.DeepCopy()
-	updated.Name = desired.Name
-	updated.Namespace = desired.Namespace
-	updated.Spec = desired.Spec
-	if err := r.Client.Update(ctx, updated); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.ObjectReference, saName string) (*cco.CredentialsRequest, error) {
 	credentialsRequest := &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
@@ -147,12 +127,7 @@ func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.Objec
 		},
 	}
 
-	codec, err := cco.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-
-	providerSpec, err := createProviderConfig(codec)
+	providerSpec, err := createProviderConfig(cco.Codec)
 	if err != nil {
 		return nil, err
 	}
@@ -180,45 +155,4 @@ func createCredentialsSecretRef(name string, namespace string) corev1.ObjectRefe
 		Name:      name,
 		Namespace: namespace,
 	}
-}
-
-func isCredentialsRequestChanged(current, desired *cco.CredentialsRequest) (bool, error) {
-	if current.Name != desired.Name {
-		return true, nil
-	}
-
-	if current.Namespace != desired.Namespace {
-		return true, nil
-	}
-
-	if !reflect.DeepEqual(current.Spec.SecretRef, desired.Spec.SecretRef) {
-		return true, nil
-	}
-
-	if !equalStrings(current.Spec.ServiceAccountNames, desired.Spec.ServiceAccountNames) {
-		return true, nil
-	}
-
-	codec, err := cco.NewCodec()
-	if err != nil {
-		return false, err
-	}
-
-	currentAwsSpec := cco.AWSProviderSpec{}
-	err = codec.DecodeProviderSpec(current.Spec.ProviderSpec, &currentAwsSpec)
-	if err != nil {
-		return false, err
-	}
-
-	desiredAwsSpec := cco.AWSProviderSpec{}
-	err = codec.DecodeProviderSpec(desired.Spec.ProviderSpec, &desiredAwsSpec)
-	if err != nil {
-		return false, err
-	}
-
-	if !(reflect.DeepEqual(currentAwsSpec, desiredAwsSpec)) {
-		return true, nil
-	}
-
-	return false, nil
 }

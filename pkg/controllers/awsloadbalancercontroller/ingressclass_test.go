@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
-	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/utils/test"
+	"github.com/openshift/aws-load-balancer-operator/pkg/utils/test"
 )
 
 func TestDesiredIngressClass(t *testing.T) {

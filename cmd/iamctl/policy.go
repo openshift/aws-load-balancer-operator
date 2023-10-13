@@ -79,9 +79,11 @@ func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg s
 		panic(fmt.Errorf("failed to parse policy JSON %v", err))
 	}
 
-	// Minifying here as a workaround for current limitations
-	// in credential requests length (2048 max bytes).
-	miniPoliicy := minify(policy)
+	if !skipMinify {
+		// Minifying here as a workaround for current limitations
+		// in credential requests length (2048 max bytes).
+		policy = minify(policy)
+	}
 
 	opFs, err := os.Create(output)
 	if err != nil {
@@ -91,8 +93,8 @@ func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg s
 	var in bytes.Buffer
 	err = tmpl.Execute(&in, struct {
 		Package   string
-		Statement policyStatement
-	}{Package: pkg, Statement: miniPoliicy.Statement[0]})
+		Statement []policyStatement
+	}{Package: pkg, Statement: policy.Statement})
 	if err != nil {
 		panic(err)
 	}
