@@ -21,6 +21,9 @@ var (
 
 	// skipMinify specifies whether the minification of the AWS policy has to be skipped.
 	skipMinify bool
+
+	// splitResource splits IAM policy's statement into many with one resource per statement.
+	splitResource bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -60,4 +63,6 @@ func init() {
 	_ = rootCmd.MarkPersistentFlagRequired("package")
 
 	rootCmd.PersistentFlags().BoolVarP(&skipMinify, "no-minify", "n", false, "Used to skip the minification of the output AWS policy.")
+
+	rootCmd.PersistentFlags().BoolVarP(&splitResource, "split-resource", "s", false, "Used to split AWS policy's statement into many with one resource per statement.")
 }

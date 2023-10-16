@@ -45,7 +45,7 @@ func (v *AWSValue) UnmarshalJSON(input []byte) error {
 
 type iamPolicyCondition map[string]iamPolicyConditionKeyValue
 
-type iamPolicyConditionKeyValue map[string]string
+type iamPolicyConditionKeyValue map[string]interface{}
 
 // compressionPrefixes defines a list of action prefixes in the policy
 // that are going to be compressed using wildcards.
@@ -62,7 +62,26 @@ func generateIAMPolicy(inputFile, output, outputCR, pkg string) {
 }
 
 func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg string) {
-	tmpl, err := template.New("").Parse(filetemplate)
+	funcMap := template.FuncMap{
+		"stringOrSlice": func(value interface{}, yaml bool) string {
+			if values, slice := value.([]interface{}); slice {
+				result := ""
+				for i, v := range values {
+					if i > 0 {
+						result += ","
+					}
+					result += fmt.Sprintf("%q", v)
+				}
+				if yaml {
+					return "[" + result + "]"
+				}
+				return "[]string{" + result + "}"
+			}
+			return fmt.Sprintf("%q", value)
+		},
+	}
+
+	tmpl, err := template.New("").Funcs(funcMap).Parse(filetemplate)
 	if err != nil {
 		panic(err)
 	}
@@ -77,6 +96,12 @@ func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg s
 	err = json.Unmarshal([]byte(jsFs), &policy)
 	if err != nil {
 		panic(fmt.Errorf("failed to parse policy JSON %v", err))
+	}
+
+	if splitResource {
+		// Splitting policy statement into many with one resource per statement
+		// because credentials request's resource is not a slice.
+		policy = split(policy)
 	}
 
 	if !skipMinify {
@@ -147,4 +172,28 @@ func minify(policy iamPolicy) iamPolicy {
 		},
 	}
 	return miniPolicy
+}
+
+func split(policy iamPolicy) iamPolicy {
+	var splitPolicy iamPolicy
+	splitPolicy.Version = policy.Version
+
+	for _, statement := range policy.Statement {
+		if len(statement.Resource) > 1 {
+			newStatements := []policyStatement{}
+			for _, resource := range statement.Resource {
+				newStatement := policyStatement{
+					Effect:    statement.Effect,
+					Action:    statement.Action,
+					Resource:  AWSValue{resource},
+					Condition: statement.Condition,
+				}
+				newStatements = append(newStatements, newStatement)
+			}
+			splitPolicy.Statement = append(splitPolicy.Statement, newStatements...)
+		} else {
+			splitPolicy.Statement = append(splitPolicy.Statement, statement)
+		}
+	}
+	return splitPolicy
 }

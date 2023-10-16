@@ -14,22 +14,33 @@ type IAMPolicy struct {
 func GetIAMPolicy() IAMPolicy {
 	return IAMPolicy{
 		Statement: []cco.StatementEntry{
-            {{range .Statement -}}
-            {
-				Effect: {{.Effect|printf "%q"}},
-				Resource: {{range .Resource}}{{printf "%q" .}}{{end}},
-				PolicyCondition: cco.IAMPolicyCondition{},
+		{{- range .Statement }}
+			{
+				Effect: "{{ .Effect }}",
+				Resource: {{ range  .Resource }}"{{ . }}"{{ end }},
+				PolicyCondition: cco.IAMPolicyCondition{
+ 				{{- with .Condition }}
+				{{- range $key, $value := . }}
+					"{{ $key }}": cco.IAMPolicyConditionKeyValue{
+					{{- range $innerKey, $innerValue := $value }}
+						"{{ $innerKey }}": {{ stringOrSlice $innerValue false }},
+					{{- end }}
+					},
+				{{- end }}
+				{{- end }}
+				},
 				Action: []string{
-					{{range $index, $element := .Action -}}
-					{{.|printf "%q"}},{{printf "\n"}}
-					{{- end}}
+				{{- range .Action }}
+					"{{ . }}",
+				{{- end }}
 				},
 			},
-            {{end}}
+		{{- end }}
 		},
 	}
 }
 `
+
 	credentialsRequestTemplate = `apiVersion: cloudcredential.openshift.io/v1
 kind: CredentialsRequest
 metadata:
@@ -40,14 +51,23 @@ spec:
     apiVersion: cloudcredential.openshift.io/v1
     kind: AWSProviderSpec
     statementEntries:
-    {{range .Statement -}}
+    {{- range .Statement }}
     - action:
-      {{range $index, $element := .Action}}- {{$element}}
-      {{end -}}
-
-      effect: {{.Effect}}
+      {{- range .Action }}
+      - {{ . }}
+      {{- end }}
+      effect: {{ .Effect }}
       resource: {{range .Resource}}{{printf "%q" .}}{{end}}
-    {{- end}}
+      {{- with .Condition }}
+      policyCondition:
+        {{- range $key, $value := . }}
+          "{{ $key }}":
+            {{- range $innerKey, $innerValue := $value }}
+              "{{ $innerKey }}": {{ stringOrSlice $innerValue true }}
+            {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
   secretRef:
     name: aws-load-balancer-controller-cluster
     namespace: aws-load-balancer-operator
