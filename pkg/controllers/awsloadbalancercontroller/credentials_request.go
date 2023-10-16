@@ -142,7 +142,7 @@ func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.Objec
 
 func createProviderConfig(codec *cco.ProviderCodec, config *albo.AWSLoadBalancerCredentialsRequestConfig) (*runtime.RawExtension, error) {
 	providerSpec := &cco.AWSProviderSpec{
-		StatementEntries: GetIAMPolicy().Statement,
+		StatementEntries: GetIAMPolicyMinify().Statement,
 	}
 	if config != nil && config.STSIAMRoleARN != "" {
 		providerSpec.STSIAMRoleARN = config.STSIAMRoleARN

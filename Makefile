@@ -75,11 +75,15 @@ IAMCTL_OUTPUT_DIR ?= ./pkg/controllers/awsloadbalancercontroller
 # Generated file name.
 IAMCTL_OUTPUT_FILE ?= iam_policy.go
 
+IAMCTL_OUTPUT_MINIFY_FILE ?= iam_policy_minify.go
+
 # Go Package of the generated file.
 IAMCTL_GO_PACKAGE ?= awsloadbalancercontroller
 
 # File name of the generated CredentialsRequest CR.
 IAMCTL_OUTPUT_CR_FILE ?= ./hack/controller/controller-credentials-request.yaml
+
+IAMCTL_OUTPUT_MINIFY_CR_FILE ?= ./hack/controller/controller-credentials-request-minify.yaml
 
 # Built go binary path.
 IAMCTL_BINARY ?= ./bin/iamctl
@@ -127,13 +131,27 @@ vet: ## Run go vet against code.
 
 .PHONY: iamctl-gen
 iamctl-gen: iamctl-build iam-gen
-	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE) -c $(IAMCTL_OUTPUT_CR_FILE)
-	go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
-	go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE)
+	# generate controller's IAM policy without minify.
+	@# This policy is for STS clusters as it's turned into a role policy which is limited to 10240 by AWS.
+	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) -p $(IAMCTL_GO_PACKAGE) -c $(IAMCTL_OUTPUT_CR_FILE) -n -s
+
+	# generate controller's IAM policy with minify.
+	@# This policy is for non STS clusters as it's turned into an inline policy which is limited to 2048 by AWS.
+	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/iam-policy.json -o $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_MINIFY_FILE) -p $(IAMCTL_GO_PACKAGE) -f GetIAMPolicyMinify  -c $(IAMCTL_OUTPUT_MINIFY_CR_FILE)
+
+	go fmt -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_MINIFY_FILE)
+	go vet -mod=vendor $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_FILE) $(IAMCTL_OUTPUT_DIR)/$(IAMCTL_OUTPUT_MINIFY_FILE)
+
+	# generate operator's IAM policy.
+	@# The operator's policy is small enough to fit into both limits: inline and role.
 	$(IAMCTL_BINARY) -i $(IAMCTL_ASSETS_DIR)/operator-iam-policy.json -o ./pkg/operator/$(IAMCTL_OUTPUT_FILE) -p operator -n
 	go fmt -mod=vendor ./pkg/operator/$(IAMCTL_OUTPUT_FILE)
 	go vet -mod=vendor ./pkg/operator/$(IAMCTL_OUTPUT_FILE)
 
+# The operator's CredentialsRequest is the source of truth for the operator's IAM policy.
+# It's required to generate IAM role for STS clusters using ccoctl (docs/prerequisites.md#option-1-using-ccoctl).
+# The below rule generates a corresponding AWS IAM policy JSON which can be used in AWS CLI commands (docs/prerequisites.md#option-2-using-the-aws-cli).
+# The operator's IAM policy as go code is generated from the JSON policy and used in the operator to self provision credentials at startup.
 .PHONY: iam-gen
 iam-gen:
 	./hack/generate-iam-from-credrequest.sh ./hack/operator-credentials-request.yaml ./hack/operator-permission-policy.json
