@@ -6,6 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	defaultFunction = "GetIAMPolicy"
+)
+
 var (
 	// input file specifies the location for the input json.
 	inputFile string
@@ -18,6 +22,9 @@ var (
 
 	// pkg specifies the package with which the code is generated.
 	pkg string
+
+	// function specifies the function name with which the code is generated.
+	function string
 
 	// skipMinify specifies whether the minification of the AWS policy has to be skipped.
 	skipMinify bool
@@ -35,7 +42,7 @@ var rootCmd = &cobra.Command{
     Also it can produce a CredentialsRequest YAML file which can provision the secret for the controller.
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		generateIAMPolicy(inputFile, outputFile, outputCRFile, pkg)
+		generateIAMPolicy(inputFile, outputFile, outputCRFile, pkg, function)
 	},
 }
 
@@ -59,8 +66,10 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&outputCRFile, "output-cr-file", "c", "", "Used to specify output CredentialsRequest YAML file path.")
 
-	rootCmd.PersistentFlags().StringVarP(&pkg, "package", "p", "main", "Used to specify output Go file path.")
+	rootCmd.PersistentFlags().StringVarP(&pkg, "package", "p", "main", "Used to specify the Go package in the output file.")
 	_ = rootCmd.MarkPersistentFlagRequired("package")
+
+	rootCmd.PersistentFlags().StringVarP(&function, "function", "f", defaultFunction, "Used to specify the Go function name in the output file.")
 
 	rootCmd.PersistentFlags().BoolVarP(&skipMinify, "no-minify", "n", false, "Used to skip the minification of the output AWS policy.")
 

@@ -54,14 +54,14 @@ var compressionPrefixes = map[string]string{
 	"elasticloadbalancing:Describe": "elasticloadbalancing:Describe*",
 }
 
-func generateIAMPolicy(inputFile, output, outputCR, pkg string) {
-	generateIAMPolicyFromTemplate(filetemplate, inputFile, output, pkg)
+func generateIAMPolicy(inputFile, output, outputCR, pkg, function string) {
+	generateIAMPolicyFromTemplate(filetemplate, inputFile, output, pkg, function)
 	if outputCR != "" {
-		generateIAMPolicyFromTemplate(credentialsRequestTemplate, inputFile, outputCR, pkg)
+		generateIAMPolicyFromTemplate(credentialsRequestTemplate, inputFile, outputCR, pkg, function)
 	}
 }
 
-func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg string) {
+func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg, function string) {
 	funcMap := template.FuncMap{
 		"stringOrSlice": func(value interface{}, yaml bool) string {
 			if values, slice := value.([]interface{}); slice {
@@ -117,9 +117,16 @@ func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg s
 
 	var in bytes.Buffer
 	err = tmpl.Execute(&in, struct {
-		Package   string
-		Statement []policyStatement
-	}{Package: pkg, Statement: policy.Statement})
+		Package    string
+		Function   string
+		Definition bool
+		Statement  []policyStatement
+	}{
+		Package:    pkg,
+		Function:   function,
+		Definition: function == defaultFunction,
+		Statement:  policy.Statement,
+	})
 	if err != nil {
 		panic(err)
 	}

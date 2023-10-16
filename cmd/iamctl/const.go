@@ -6,12 +6,14 @@ package {{.Package}}
 
 import cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
+{{- with .Definition }}
 type IAMPolicy struct {
 	Version   string
 	Statement []cco.StatementEntry
 }
+{{- end }}
 
-func GetIAMPolicy() IAMPolicy {
+func {{ .Function }}() IAMPolicy {
 	return IAMPolicy{
 		Statement: []cco.StatementEntry{
 		{{- range .Statement }}
