@@ -508,3 +508,24 @@ func mustGetEnv(name string) string {
 	}
 	return val
 }
+
+// copySecret makes a copy of a secret in the operator's namespace.
+func copySecret(ctx context.Context, kubeClient client.Client, nameIn, nameOut string) error {
+	secretIn := &corev1.Secret{}
+	if err := kubeClient.Get(ctx, types.NamespacedName{Name: nameIn, Namespace: operatorNamespace}, secretIn); err != nil {
+		return err
+	}
+
+	secretOut := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nameOut,
+			Namespace: operatorNamespace,
+		},
+		Data: secretIn.Data,
+	}
+	if err := kubeClient.Create(ctx, secretOut); err != nil {
+		return err
+	}
+
+	return nil
+}
