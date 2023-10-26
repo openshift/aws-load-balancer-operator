@@ -10,7 +10,7 @@ describes the design and implementation of the operator in more detail.
 ## Table of contents
 
 1. [Prerequisites](docs/prerequisites.md)
-   1. [CredentialsRequest](docs/prerequisites.md#credentialsrequest)
+   1. [IAM Role for STS clusters](docs/prerequisites.md#iam-role-for-sts-clusters)
    2. [VPC and Subnets](docs/prerequisites.md#vpc-and-subnets)
 2. [Installation](docs/install.md)
    1. [STS Clusters](docs/install.md#sts-clusters)
@@ -19,7 +19,7 @@ describes the design and implementation of the operator in more detail.
     1. [Build the operand image](#build-the-operand-image)
     2. [Running the operator](#running-the-operator)
     3. [Running the end-to-end tests](#running-the-end-to-end-tests)
-    4. [Running the end-to-end tests on ROSA STS cluster](#running-the-end-to-end-tests-on-rosa-sts-cluster)
+    4. [Running the end-to-end tests on an STS cluster](#running-the-end-to-end-tests-on-an-sts-cluster)
 5. [Proxy support](#proxy-support)
 
 ## Local Development
@@ -75,11 +75,11 @@ tests with the following command:
 make test-e2e
 ```
 
-### Running the end-to-end tests on ROSA STS cluster
+### Running the end-to-end tests on an STS cluster
 
-**Prerequisistes**:
-- The operator has to be deployed with [the prerequisites for the STS cluster](./docs/prerequisites.md#for-sts-clusters).
-- The controller's secret needs to be created as described in [the installation instructions for the STS cluster](./docs/install.md#post-operator-installation).
+**Prerequisites**:
+- The operator has to be deployed with [the prerequisites for the STS cluster](./docs/prerequisites.md#iam-role-for-sts-clusters).
+- The controller's IAM role needs to be created as described in [the installation instructions for the STS cluster](./docs/install.md#post-operator-installation-on-sts-cluster).
 - The test WAFv2 and WAF regional WebACLs need to be created. You can use the following commands:
 ```bash
 aws wafv2 create-web-acl --name "echoserver-acl" --scope REGIONAL --default-action '{"Block":{}}'  --visibility-config '{"MetricName":"echoserver","CloudWatchMetricsEnabled": false,"SampledRequestsEnabled":false}'
@@ -89,7 +89,8 @@ aws waf-regional create-web-acl --name "echoserverclassicacl" --metric-name "ech
 
 Now you can run the e2e test with the following commands:
 ```bash
-export ALBO_E2E_PLATFORM=ROSA
+export ALBO_E2E_PLATFORM=OCPSTS
+export ALBO_E2E_CONTROLLER_ROLE_ARN=<controller-iamrole-arn>
 export ALBO_E2E_WAFV2_WEBACL_ARN=<wafv2-webacl-arn>
 export ALBO_E2E_WAF_WEBACL_ID=<wafregional-webacl-id>
 make test-e2e

@@ -5,7 +5,9 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -166,7 +168,7 @@ func buildEchoPod(name, namespace string) *corev1.Pod {
 						`EXEC:'/bin/bash -c \"printf \\\"HTTP/1.0 200 OK\r\n\r\n\\\"; sed -e \\\"/^\r/q\\\"\"'`,
 					},
 					Command: []string{"/bin/socat"},
-					Image:   "openshift/origin-node",
+					Image:   "image-registry.openshift-image-registry.svc:5000/openshift/tools:latest",
 					Name:    "echo",
 					Ports: []corev1.ContainerPort{
 						{
@@ -229,7 +231,7 @@ func buildCurlPod(name, namespace, host, address string, extraArgs ...string) *c
 			Containers: []corev1.Container{
 				{
 					Name:    "curl",
-					Image:   "openshift/origin-node",
+					Image:   "image-registry.openshift-image-registry.svc:5000/openshift/tools:latest",
 					Command: []string{"/bin/curl"},
 					Args:    curlArgs,
 					SecurityContext: &corev1.SecurityContext{
@@ -369,12 +371,13 @@ func buildEchoIngress(name types.NamespacedName, ingClass string, annotations ma
 
 // albcBuilder is a helper to build ALBC CRs.
 type albcBuilder struct {
-	name         string
-	tagPolicy    albo.SubnetTaggingPolicy
-	ingressClass string
-	addons       []albo.AWSAddon
-	credentials  *configv1.SecretNameReference
-	tags         map[string]string
+	name                     string
+	tagPolicy                albo.SubnetTaggingPolicy
+	ingressClass             string
+	addons                   []albo.AWSAddon
+	credentials              *configv1.SecretNameReference
+	credentialsRequestConfig *albo.AWSLoadBalancerCredentialsRequestConfig
+	tags                     map[string]string
 }
 
 func newALBCBuilder() *albcBuilder {
@@ -401,10 +404,21 @@ func (b *albcBuilder) withCredSecret(name string) *albcBuilder {
 	return b
 }
 
-// withCredSecretIf adds the credentials secret only if the given condition is true.
-func (b *albcBuilder) withCredSecretIf(condition bool, name string) *albcBuilder {
+func (b *albcBuilder) withRoleARN(roleARN string) *albcBuilder {
+	if b.credentialsRequestConfig == nil {
+		b.credentialsRequestConfig = &albo.AWSLoadBalancerCredentialsRequestConfig{
+			STSIAMRoleARN: roleARN,
+		}
+	} else {
+		b.credentialsRequestConfig.STSIAMRoleARN = roleARN
+	}
+	return b
+}
+
+// withRoleARNIf adds given role ARN to the credentials request config if the given condition is true.
+func (b *albcBuilder) withRoleARNIf(condition bool, roleARN string) *albcBuilder {
 	if condition {
-		b.credentials = &configv1.SecretNameReference{Name: name}
+		return b.withRoleARN(roleARN)
 	}
 	return b
 }
@@ -438,10 +452,11 @@ func (b *albcBuilder) build() *albo.AWSLoadBalancerController {
 			Name: b.name,
 		},
 		Spec: albo.AWSLoadBalancerControllerSpec{
-			SubnetTagging: b.tagPolicy,
-			IngressClass:  b.ingressClass,
-			EnabledAddons: b.addons,
-			Credentials:   b.credentials,
+			SubnetTagging:            b.tagPolicy,
+			IngressClass:             b.ingressClass,
+			EnabledAddons:            b.addons,
+			Credentials:              b.credentials,
+			CredentialsRequestConfig: b.credentialsRequestConfig,
 		},
 	}
 	for k, v := range b.tags {
@@ -483,4 +498,34 @@ func findAWSWebACLRecursive(wafClient *wafv2.Client, aclName string, nextMarker 
 		return findAWSWebACLRecursive(wafClient, aclName, output.NextMarker)
 	}
 	return nil, nil
+}
+
+// mustGetEnv returns the value of the given environment variable or panics if the value is empty.
+func mustGetEnv(name string) string {
+	val := os.Getenv(name)
+	if val == "" {
+		panic(fmt.Sprintf("environment variable %q must be set", name))
+	}
+	return val
+}
+
+// copySecret makes a copy of a secret in the operator's namespace.
+func copySecret(ctx context.Context, kubeClient client.Client, nameIn, nameOut string) error {
+	secretIn := &corev1.Secret{}
+	if err := kubeClient.Get(ctx, types.NamespacedName{Name: nameIn, Namespace: operatorNamespace}, secretIn); err != nil {
+		return err
+	}
+
+	secretOut := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nameOut,
+			Namespace: operatorNamespace,
+		},
+		Data: secretIn.Data,
+	}
+	if err := kubeClient.Create(ctx, secretOut); err != nil {
+		return err
+	}
+
+	return nil
 }

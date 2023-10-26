@@ -154,7 +154,7 @@ func TestEnsureCredentialsRequest(t *testing.T) {
 }
 
 func testCompleteCredentialsRequest() *cco.CredentialsRequest {
-	cfg, _ := createProviderConfig(cco.Codec)
+	cfg, _ := createProviderConfig(cco.Codec, nil)
 	return &cco.CredentialsRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "aws-load-balancer-controller-cluster",

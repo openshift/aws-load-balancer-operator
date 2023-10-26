@@ -116,11 +116,19 @@ type AWSLoadBalancerControllerSpec struct {
 	// The secret is required to be in the operator namespace.
 	// If this field is empty, the credentials will be
 	// requested using the Cloud Credentials API,
-	// see https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
+	// see https://docs.openshift.com/container-platform/4.13/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
 	//
 	// +kubebuilder:validation:Optional
 	// +optional
 	Credentials *configv1.SecretNameReference `json:"credentials,omitempty"`
+
+	// credentialsRequestConfig specifies further customization options for the controller's CredentialsRequest.
+	// This field won't have any effect if credentials have already been provided through the `Credentials` field,
+	// as a request for credentials from the Cloud Credentials Operator will not be triggered.
+	//
+	// +kubebuilder:validation:Optional
+	// +optional
+	CredentialsRequestConfig *AWSLoadBalancerCredentialsRequestConfig `json:"credentialsRequestConfig,omitempty"`
 }
 
 // AWSResourceTag is a tag to apply to AWS resources created by the controller.
@@ -160,6 +168,19 @@ type AWSLoadBalancerDeploymentConfig struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
+}
+
+// AWSLoadBalancerCredentialsRequestConfig defines customization options for the controller's CredentialsRequest.
+type AWSLoadBalancerCredentialsRequestConfig struct {
+	// stsIAMRoleARN is the Amazon Resource Name (ARN) of an IAM Role
+	// which must be manually created for the controller's CredentialsRequest.
+	// This ARN is added to AWSProviderSpec initiating the creation of a secret containing IAM
+	// Role details necessary for assuming the IAM Role via Amazon's Secure Token Service (STS).
+	//
+	// +kubebuilder:validation:Pattern:=`^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role\/.*$`
+	// +kubebuilder:validation:Optional
+	// +optional
+	STSIAMRoleARN string `json:"stsIAMRoleARN,omitempty"`
 }
 
 // AWSLoadBalancerControllerStatus defines the observed state of AWSLoadBalancerController.
@@ -244,6 +265,7 @@ type AWSLoadBalancerController struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// +kubebuilder:validation:XValidation:rule="!has(self.credentials) || !has(self.credentialsRequestConfig)", message="credentialsRequestConfig has no effect if credentials is provided"
 	Spec   AWSLoadBalancerControllerSpec   `json:"spec,omitempty"`
 	Status AWSLoadBalancerControllerStatus `json:"status,omitempty"`
 }

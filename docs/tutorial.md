@@ -57,7 +57,7 @@ on User-Provisioned Infrastructure then you should manually tag the subnets with
 the appropriate role tags and set the subnet tagging policy to `Manual`
 
 * Additional information for subnet tagging if your cluster is installed
-on User-Provisioned Infrastructure can be found in [tagging.md](/docs/tagging/tagging.md).
+on User-Provisioned Infrastructure can be found in [prerequisites.md](prerequisites.md#vpc-and-subnets).
 
 ### additionalResourceTags
 
@@ -104,6 +104,32 @@ The secret specified must be created in the namespace where the operator was ins
 `credentials` is an optional field. If it's not set, the controller's credentials will be requested using the Cloud Credentials API;
 see [Cloud Credentials Operator](https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html).   
 The IAM policy required for the controller can be found in [`assets/iam-policy.json`](../assets/iam-policy.json) in this repository.
+
+```yaml
+apiVersion: networking.olm.openshift.io/v1
+kind: AWSLoadBalancerController
+metadata:
+  name: cluster
+spec:
+  credentials:
+    name: controller-aws-creds
+```
+
+### credentialsRequestConfig.stsIAMRoleARN
+This field can be used to specify the IAM role be set in `CredentialsRequest` created for the controller. While this field can be specified on both STS and non-STS clusters, its effect is relevant only for STS clusters.
+The operator will wait until the secret is provisioned by the Cloud Credentials Operator before spawning the controller pod.
+The secret will be in the STS format, containing the ARN set in this field. Note that the user must create the role, it's not created by the Cloud Credentials Operator.
+The IAM policy required for the controller can be found in [`assets/iam-policy.json`](../assets/iam-policy.json) in this repository.
+
+```yaml
+apiVersion: networking.olm.openshift.io/v1
+kind: AWSLoadBalancerController
+metadata:
+  name: cluster
+spec:
+  credentialsRequestConfig:
+    stsIAMRoleARN: "arn:aws:iam::777777777777:role/albo-controller"
+```
 
 ## Creating an Ingress
 

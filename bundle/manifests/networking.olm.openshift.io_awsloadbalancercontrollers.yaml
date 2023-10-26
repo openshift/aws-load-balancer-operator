@@ -110,13 +110,30 @@ spec:
                   file (static or STS), for examples, see https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html
                   under the "credentials" data key. The secret is required to be in
                   the operator namespace. If this field is empty, the credentials
-                  will be requested using the Cloud Credentials API, see https://docs.openshift.com/container-platform/4.11/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
+                  will be requested using the Cloud Credentials API, see https://docs.openshift.com/container-platform/4.13/authentication/managing_cloud_provider_credentials/about-cloud-credential-operator.html.
                 properties:
                   name:
                     description: name is the metadata.name of the referenced secret
                     type: string
                 required:
                 - name
+                type: object
+              credentialsRequestConfig:
+                description: credentialsRequestConfig specifies further customization
+                  options for the controller's CredentialsRequest. This field won't
+                  have any effect if credentials have already been provided through
+                  the `Credentials` field, as a request for credentials from the Cloud
+                  Credentials Operator will not be triggered.
+                properties:
+                  stsIAMRoleARN:
+                    description: stsIAMRoleARN is the Amazon Resource Name (ARN) of
+                      an IAM Role which must be manually created for the controller's
+                      CredentialsRequest. This ARN is added to AWSProviderSpec initiating
+                      the creation of a secret containing IAM Role details necessary
+                      for assuming the IAM Role via Amazon's Secure Token Service
+                      (STS).
+                    pattern: ^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role\/.*$
+                    type: string
                 type: object
               enabledAddons:
                 description: enabledAddons describes the AWS services that can be
@@ -161,6 +178,9 @@ spec:
                 - Manual
                 type: string
             type: object
+            x-kubernetes-validations:
+            - message: credentialsRequestConfig has no effect if credentials is provided
+              rule: '!has(self.credentials) || !has(self.credentialsRequestConfig)'
           status:
             description: AWSLoadBalancerControllerStatus defines the observed state
               of AWSLoadBalancerController.

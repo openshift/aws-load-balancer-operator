@@ -54,9 +54,11 @@ const (
 	// unlike the operator and the controller which use the service account token signed by OpenShift.
 	wafv2WebACLARNVarName = "ALBO_E2E_WAFV2_WEBACL_ARN"
 	wafWebACLIDVarName    = "ALBO_E2E_WAF_WEBACL_ID"
+	// controllerRoleARNVarName contains IAM role ARN to be used by the controller on a ROSA/STS cluster.
+	controllerRoleARNVarName = "ALBO_E2E_CONTROLLER_ROLE_ARN"
 
 	// controllerSecretName is the name of the controller's cloud credential secret provisioned by the CI.
-	controllerSecretName = "aws-load-balancer-controller-manual-cluster"
+	controllerSecretName = "aws-load-balancer-controller-cluster"
 )
 
 var (
@@ -64,7 +66,6 @@ var (
 	kubeClient         client.Client
 	kubeClientSet      *kubernetes.Clientset
 	scheme             = kscheme.Scheme
-	infraConfig        configv1.Infrastructure
 	operatorName       = "aws-load-balancer-operator-controller-manager"
 	operatorNamespace  = "aws-load-balancer-operator"
 	defaultTimeout     = 15 * time.Minute
@@ -79,6 +80,7 @@ var (
 		Name:      "aws-load-balancer-operator-e2e",
 		Namespace: operatorNamespace,
 	}
+	controllerRoleARN string
 )
 
 func init() {
@@ -100,51 +102,49 @@ func TestMain(m *testing.M) {
 		fmt.Printf("failed to get kube config: %s\n", err)
 		os.Exit(1)
 	}
-	cl, err := client.New(kubeConfig, client.Options{})
+	kubeClient, err = client.New(kubeConfig, client.Options{})
 	if err != nil {
 		fmt.Printf("failed to create kube client: %s\n", err)
 		os.Exit(1)
 	}
-	kubeClient = cl
-
-	if err := kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &infraConfig); err != nil {
-		fmt.Printf("failed to get infrastructure config: %v\n", err)
-		os.Exit(1)
-	}
-
 	kubeClientSet, err = kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		fmt.Printf("failed to create kube clientset: %s\n", err)
 		os.Exit(1)
 	}
 
-	if !isOnROSA() {
-		if err := ensureCredentialsRequest(e2eSecretName); err != nil {
-			fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
-			os.Exit(1)
-		}
-	} // ROSA forbids the creation of CredentialsRequests by non cluster admins.
-
 	var infra configv1.Infrastructure
-	clusterInfrastructureName := types.NamespacedName{Name: "cluster"}
-	err = kubeClient.Get(context.TODO(), clusterInfrastructureName, &infra)
+	err = kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &infra)
 	if err != nil {
-		fmt.Printf("failed to fetch infrastructure: %v", err)
+		fmt.Printf("failed to fetch infrastructure: %v\n", err)
 		os.Exit(1)
 	}
 
 	if infra.Status.PlatformStatus == nil || infra.Status.PlatformStatus.AWS == nil || infra.Status.PlatformStatus.AWS.Region == "" {
-		fmt.Printf("could not get AWS region from Infrastructure %q status", clusterInfrastructureName.Name)
+		fmt.Println("could not get AWS region from Infrastructure status")
 		os.Exit(1)
 	}
 
-	if !isOnROSA() {
-		cfg, err = awsConfigWithCredentials(context.TODO(), kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
-		if err != nil {
-			fmt.Printf("failed to load aws config %v", err)
+	if !stsModeRequested() {
+		if err := ensureCredentialsRequest(e2eSecretName); err != nil {
+			fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
 			os.Exit(1)
 		}
-	} // No need to get AWS config on ROSA cluster: the CI provisions all the required AWS resources.
+		cfg, err = awsConfigWithCredentials(context.TODO(), kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
+		if err != nil {
+			fmt.Printf("failed to load aws config %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		fmt.Println("Controller role is expected to exist when the test is run on a ROSA STS cluster")
+		controllerRoleARN = mustGetEnv(controllerRoleARNVarName)
+		// TODO: remove the copying once ROSA can provision 4.14 clusters
+		// which support stsIAMRoleARN field in CredentialsRequest.
+		if err := copySecret(context.TODO(), kubeClient, controllerSecretName, "aws-load-balancer-controller-credentialsrequest-cluster"); err != nil {
+			fmt.Printf("failed to copy controller secret: %v", err)
+			os.Exit(1)
+		}
+	}
 
 	os.Exit(m.Run())
 }
@@ -169,9 +169,19 @@ func TestOperatorAvailable(t *testing.T) {
 // TestAWSLoadBalancerControllerWithDefaultIngressClass tests the basic happy flow for the operator, mostly
 // using the default values.
 func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
+	// The test namespace should be created earlier
+	// to let the pull secret for internal registry images to be created.
+	// The test workload uses the tools image from the internal image registry.
+	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -187,11 +197,8 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
-	}()
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
@@ -240,6 +247,13 @@ func TestAWSLoadBalancerControllerWithDefaultIngressClass(t *testing.T) {
 
 // TestAWSLoadBalancerControllersV1Alpha1 tests the basic happy flow for the operator using v1alpha1 ALBC.
 func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-v1alpha1"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating v1alpha1 aws load balancer controller instance with default ingress class, additional resource tags and credentials secret")
 
 	// The additional resource tags and the credentials secret are added to ALBC
@@ -260,10 +274,10 @@ func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-default-ing"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
@@ -314,6 +328,13 @@ func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
 // TestAWSLoadBalancerControllerWithCredentialsSecret tests the basic happy flow for the operator
 // using the explicitly specified credentials secret.
 func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-cred-secret"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance with credentials secret")
 	alb := newALBCBuilder().withCredSecret(controllerSecretName).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
@@ -331,10 +352,10 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-cred-secret"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
@@ -383,6 +404,13 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating a custom ingress class")
 	ingclassName := types.NamespacedName{Name: "custom-alb", Namespace: "aws-load-balancer-operator"}
 	ingclass := buildIngressClass(ingclassName, "ingress.k8s.aws/alb")
@@ -395,7 +423,7 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
 
-	alb := newALBCBuilder().withIngressClass(ingclassName.Name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withIngressClass(ingclassName.Name).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -411,10 +439,10 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource with custom ingress class")
@@ -463,9 +491,16 @@ func TestAWSLoadBalancerControllerWithCustomIngressClass(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-internal-ing"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -481,10 +516,10 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-internal-ing"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	t.Log("Creating Internal Ingress Resource with default ingress class")
@@ -554,9 +589,16 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-wafv2"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv2).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv2).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -572,14 +614,14 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-wafv2"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	var aclARN string
-	if !isOnROSA() {
+	if !stsModeRequested() {
 		wafClient := wafv2.NewFromConfig(cfg)
 		webACLName := "echoserver-acl"
 		acl, err := findAWSWebACL(wafClient, webACLName)
@@ -605,7 +647,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		}
 
 		aclARN = *acl.ARN
-		t.Logf("Got AWS WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
+		t.Logf("Found AWS WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
 
 		defer func() {
 			_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
@@ -624,8 +666,9 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 		if aclARN == "" {
 			t.Fatalf("no wafv2 webacl arn provided")
 		}
-		t.Logf("Got AWS WAFv2 WebACL. ARN: %s", aclARN)
 	}
+
+	t.Logf("Got AWS WAFv2 WebACL. ARN: %s", aclARN)
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
@@ -674,9 +717,16 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance with default ingress class")
 
-	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -692,14 +742,13 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	var webACLID string
-	if !isOnROSA() {
+	if !stsModeRequested() {
 		wafClient := waf.NewFromConfig(cfg)
 
 		token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
@@ -787,7 +836,13 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 }
 
 func TestIngressGroup(t *testing.T) {
-	ctx := context.TODO()
+	testWorkloadNamespace := "aws-load-balancer-test-ing-group"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Logf("Creating a custom IngressClassParams")
 	ingressClassParams := &elbv1beta1.IngressClassParams{
 		ObjectMeta: v1.ObjectMeta{
@@ -800,7 +855,7 @@ func TestIngressGroup(t *testing.T) {
 		},
 	}
 
-	if err := kubeClient.Create(ctx, ingressClassParams); err != nil {
+	if err := kubeClient.Create(context.TODO(), ingressClassParams); err != nil {
 		t.Fatalf("failed to create IngressClassParams %s: %v", ingressClassParams.Name, err)
 	}
 	defer func() {
@@ -824,7 +879,7 @@ func TestIngressGroup(t *testing.T) {
 
 	t.Log("Creating aws load balancer controller instance with custom ingress class")
 
-	alb := newALBCBuilder().withIngressClass(ingressClassName.Name).withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withIngressClass(ingressClassName.Name).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -840,10 +895,10 @@ func TestIngressGroup(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	testWorkloadNamespace := "aws-load-balancer-test-custom-ing"
-	echoSvc, echoNs := createTestWorkload(t, testWorkloadNamespace)
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	t.Log("Creating Ingress Resource 1 with custom ingress class")
@@ -926,9 +981,16 @@ func TestIngressGroup(t *testing.T) {
 // "service.k8s.aws/nlb" load balancer class is used as the default for
 // the service reconciliation done by aws-load-balancer-controller.
 func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-default-lb-class"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance")
 
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -944,8 +1006,7 @@ func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	t.Log("Creating test workload")
-	testWorkloadNamespace := "aws-load-balancer-test-default-lb-class"
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
 	customize := func(svc *corev1.Service) {
 		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
 		svc.Spec.LoadBalancerClass = pointer.String("service.k8s.aws/nlb")
@@ -954,9 +1015,9 @@ func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
 		}
 		// by default ALBC uses instance target type if there is LoadBalancerClass
 	}
-	echoSvc, echoNs := createTestWorkloadWithCustomize(t, testWorkloadNamespace, customize)
+	echoSvc := createTestWorkloadWithCustomize(t, testWorkloadNamespace, customize)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	address, err := getService(context.TODO(), t, kubeClient, defaultTimeout, types.NamespacedName{
@@ -985,8 +1046,15 @@ func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
 // "service.k8s.aws/nlb" load balancer class is used as the default for
 // the service reconciliation done by aws-load-balancer-controller.
 func TestAWSLoadBalancerControllerWithInternalNLB(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-internal-nlb"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance")
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -1002,17 +1070,16 @@ func TestAWSLoadBalancerControllerWithInternalNLB(t *testing.T) {
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	t.Log("Creating test workload")
-	testWorkloadNamespace := "aws-load-balancer-test-internal-nlb"
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
 	customize := func(svc *corev1.Service) {
 		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
 		svc.Spec.LoadBalancerClass = pointer.String("service.k8s.aws/nlb")
 		// by default ALBC uses instance target type if there is LoadBalancerClass
 		// by default ALBC creates internal NLB
 	}
-	echoSvc, echoNs := createTestWorkloadWithCustomize(t, testWorkloadNamespace, customize)
+	echoSvc := createTestWorkloadWithCustomize(t, testWorkloadNamespace, customize)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	address, err := getService(context.TODO(), t, kubeClient, defaultTimeout, types.NamespacedName{
@@ -1055,8 +1122,15 @@ func TestAWSLoadBalancerControllerWithInternalNLB(t *testing.T) {
 // which uses the legacy "service.beta.kubernetes.io/aws-load-balancer-type" annotation as well as
 // the usage of the service port different from the standard HTTP (80).
 func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testing.T) {
+	testWorkloadNamespace := "aws-load-balancer-test-lb-nonstd-port"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
 	t.Log("Creating aws load balancer controller instance")
-	alb := newALBCBuilder().withCredSecretIf(isOnROSA(), controllerSecretName).build()
+	alb := newALBCBuilder().withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -1072,8 +1146,7 @@ func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testi
 		t.Fatalf("did not get expected available condition for deployment: %v", err)
 	}
 
-	t.Log("Creating test workload")
-	testWorkloadNamespace := "aws-load-balancer-test-default-lb-class"
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
 	nonStandardPort := int32(8880)
 	customize := func(svc *corev1.Service) {
 		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
@@ -1084,9 +1157,9 @@ func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testi
 			"service.beta.kubernetes.io/aws-load-balancer-scheme":          "internet-facing",
 		}
 	}
-	echoSvc, echoNs := createTestWorkloadWithCustomize(t, testWorkloadNamespace, customize)
+	echoSvc := createTestWorkloadWithCustomize(t, testWorkloadNamespace, customize)
 	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
 
 	address, err := getService(context.TODO(), t, kubeClient, defaultTimeout, types.NamespacedName{
@@ -1108,6 +1181,25 @@ func TestAWSLoadBalancerControllerWithExternalTypeNLBAndNonStandardPort(t *testi
 	})
 	if err != nil {
 		t.Fatalf("failed to verify condition with external client: %v", err)
+	}
+}
+
+// TestAWSLoadBalancerControllerOpenAPIValidation tests validations added to AWSLoadBalancerController CRD.
+func TestAWSLoadBalancerControllerOpenAPIValidation(t *testing.T) {
+	alb1 := newALBCBuilder().withCredSecret("dummy").withRoleARN("arn:aws:iam::777777777777:role/test").build()
+	if err := kubeClient.Create(context.TODO(), alb1); err == nil {
+		defer func() {
+			waitForDeletion(context.TODO(), t, kubeClient, alb1, defaultTimeout)
+		}()
+		t.Fatalf("didn't fail to create aws load balancer controller with conflicting credentials")
+	}
+
+	alb2 := newALBCBuilder().withRoleARN("arn:aws:iam::777777777777:rolex/test").build()
+	if err := kubeClient.Create(context.TODO(), alb2); err == nil {
+		defer func() {
+			waitForDeletion(context.TODO(), t, kubeClient, alb2, defaultTimeout)
+		}()
+		t.Fatalf("didn't fail to create aws load balancer controller with invalid role arn")
 	}
 }
 
@@ -1153,24 +1245,17 @@ func ensureCredentialsRequest(secret types.NamespacedName) error {
 	return nil
 }
 
-func createTestWorkload(t *testing.T, namespace string) (*corev1.Service, *corev1.Namespace) {
+func createTestWorkload(t *testing.T, namespace string) *corev1.Service {
 	t.Helper()
 	return createTestWorkloadWithCustomize(t, namespace, nil)
 }
 
-func createTestWorkloadWithCustomize(t *testing.T, namespace string, customize func(*corev1.Service)) (*corev1.Service, *corev1.Namespace) {
+func createTestWorkloadWithCustomize(t *testing.T, namespace string, customize func(*corev1.Service)) *corev1.Service {
 	t.Helper()
-	t.Logf("Ensuring test workload namespace %s", namespace)
-	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace}}
-	err := kubeClient.Create(context.TODO(), ns)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		t.Fatalf("failed to ensure namespace %s: %v", namespace, err)
-	}
-
 	echopod := buildEchoPod("echoserver", namespace)
-	err = kubeClient.Create(context.TODO(), echopod)
+	err := kubeClient.Create(context.TODO(), echopod)
 	if err != nil && !errors.IsAlreadyExists(err) {
-		t.Fatalf("failed to ensure pod %s: %v", echopod.Name, err)
+		t.Fatalf("failed to create pod %s: %v", echopod.Name, err)
 	}
 
 	echosvc := buildEchoService("echoserver", namespace)
@@ -1179,12 +1264,27 @@ func createTestWorkloadWithCustomize(t *testing.T, namespace string, customize f
 	}
 	err = kubeClient.Create(context.TODO(), echosvc)
 	if err != nil && !errors.IsAlreadyExists(err) {
-		t.Fatalf("failed to ensure service %s: %v", echosvc.Name, err)
+		t.Fatalf("failed to create service %s: %v", echosvc.Name, err)
 	}
 
-	return echosvc, ns
+	return echosvc
 }
 
-func isOnROSA() bool {
-	return strings.ToUpper(os.Getenv(e2ePlatformVarName)) == "ROSA"
+func createTestNamespace(t *testing.T, namespace string) *corev1.Namespace {
+	t.Helper()
+	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace}}
+	err := kubeClient.Create(context.TODO(), ns)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to create namespace %s: %v", namespace, err)
+	}
+	return ns
+}
+
+// stsModeRequested returns true if the specified e2e platform is STS enabled.
+func stsModeRequested() bool {
+	switch strings.ToUpper(os.Getenv(e2ePlatformVarName)) {
+	case "OCPSTS", "ROSASTS", "ROSA" /*ROSA uses STS mode by default*/ :
+		return true
+	}
+	return false
 }

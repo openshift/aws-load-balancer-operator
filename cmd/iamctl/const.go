@@ -49,7 +49,7 @@ spec:
       resource: {{range .Resource}}{{printf "%q" .}}{{end}}
     {{- end}}
   secretRef:
-    name: aws-load-balancer-controller-manual-cluster
+    name: aws-load-balancer-controller-cluster
     namespace: aws-load-balancer-operator
   serviceAccountNames:
   - aws-load-balancer-controller-cluster
