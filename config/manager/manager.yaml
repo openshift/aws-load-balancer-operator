@@ -38,6 +38,7 @@ spec:
         - "--image=$(RELATED_IMAGE_CONTROLLER)"
         - "--namespace=$(TARGET_NAMESPACE)"
         - "--trusted-ca-configmap=$(TRUSTED_CA_CONFIGMAP_NAME)"
+        - "--webhook-disable-http2"
         image: controller:latest
         name: manager
         securityContext:
@@ -76,7 +77,9 @@ spec:
             memory: 64Mi
         env:
           - name: RELATED_IMAGE_CONTROLLER
-            value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:f359f63169432cf8029b189f6605f21d660f0f805b91d55fe964185d0b8ae0b2
+            # openshift/aws-load-balancer-controller commit: 0ae6e1a96d44f67fe852e91ec31a79d138022cd2
+            # manifest link: https://quay.io/repository/aws-load-balancer-operator/aws-load-balancer-controller/manifest/sha256:d8b5e9a91aca2a4a4de7f9bd2b614c5ba3d4cc62fa8967e94e9539fd7c1940a9
+            value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:d8b5e9a91aca2a4a4de7f9bd2b614c5ba3d4cc62fa8967e94e9539fd7c1940a9
           - name: TARGET_NAMESPACE
             valueFrom:
               fieldRef:
