@@ -11,60 +11,316 @@ func GetIAMPolicy() IAMPolicy {
 	return IAMPolicy{
 		Statement: []cco.StatementEntry{
 			{
+				Effect:   "Allow",
+				Resource: "*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"StringEquals": cco.IAMPolicyConditionKeyValue{
+						"iam:AWSServiceName": "elasticloadbalancing.amazonaws.com",
+					},
+				},
+				Action: []string{
+					"iam:CreateServiceLinkedRole",
+				},
+			},
+			{
 				Effect:          "Allow",
 				Resource:        "*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
-					"acm:DescribeCertificate",
-					"acm:ListCertificates",
-					"cognito-idp:DescribeUserPoolClient",
-					"ec2:AuthorizeSecurityGroupIngress",
-					"ec2:CreateSecurityGroup",
-					"ec2:CreateTags",
-					"ec2:DeleteSecurityGroup",
-					"ec2:DeleteTags",
-					"ec2:Describe*",
+					"ec2:DescribeAccountAttributes",
+					"ec2:DescribeAddresses",
+					"ec2:DescribeAvailabilityZones",
+					"ec2:DescribeInternetGateways",
+					"ec2:DescribeVpcs",
+					"ec2:DescribeVpcPeeringConnections",
+					"ec2:DescribeSubnets",
+					"ec2:DescribeSecurityGroups",
+					"ec2:DescribeInstances",
+					"ec2:DescribeNetworkInterfaces",
+					"ec2:DescribeTags",
 					"ec2:GetCoipPoolUsage",
+					"ec2:DescribeCoipPools",
+					"elasticloadbalancing:DescribeLoadBalancers",
+					"elasticloadbalancing:DescribeLoadBalancerAttributes",
+					"elasticloadbalancing:DescribeListeners",
+					"elasticloadbalancing:DescribeListenerCertificates",
+					"elasticloadbalancing:DescribeSSLPolicies",
+					"elasticloadbalancing:DescribeRules",
+					"elasticloadbalancing:DescribeTargetGroups",
+					"elasticloadbalancing:DescribeTargetGroupAttributes",
+					"elasticloadbalancing:DescribeTargetHealth",
+					"elasticloadbalancing:DescribeTags",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"cognito-idp:DescribeUserPoolClient",
+					"acm:ListCertificates",
+					"acm:DescribeCertificate",
+					"iam:ListServerCertificates",
+					"iam:GetServerCertificate",
+					"waf-regional:GetWebACL",
+					"waf-regional:GetWebACLForResource",
+					"waf-regional:AssociateWebACL",
+					"waf-regional:DisassociateWebACL",
+					"wafv2:GetWebACL",
+					"wafv2:GetWebACLForResource",
+					"wafv2:AssociateWebACL",
+					"wafv2:DisassociateWebACL",
+					"shield:GetSubscriptionState",
+					"shield:DescribeProtection",
+					"shield:CreateProtection",
+					"shield:DeleteProtection",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"ec2:AuthorizeSecurityGroupIngress",
 					"ec2:RevokeSecurityGroupIngress",
-					"elasticloadbalancing:AddListenerCertificates",
-					"elasticloadbalancing:AddTags",
-					"elasticloadbalancing:CreateListener",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"ec2:CreateSecurityGroup",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:ec2:*:*:security-group/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
+					},
+					"StringEquals": cco.IAMPolicyConditionKeyValue{
+						"ec2:CreateAction": "CreateSecurityGroup",
+					},
+				},
+				Action: []string{
+					"ec2:CreateTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:ec2:*:*:security-group/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
+						"aws:ResourceTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
+					"ec2:CreateTags",
+					"ec2:DeleteTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:ResourceTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
+					"ec2:AuthorizeSecurityGroupIngress",
+					"ec2:RevokeSecurityGroupIngress",
+					"ec2:DeleteSecurityGroup",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
 					"elasticloadbalancing:CreateLoadBalancer",
-					"elasticloadbalancing:CreateRule",
 					"elasticloadbalancing:CreateTargetGroup",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"elasticloadbalancing:CreateListener",
 					"elasticloadbalancing:DeleteListener",
-					"elasticloadbalancing:DeleteLoadBalancer",
+					"elasticloadbalancing:CreateRule",
 					"elasticloadbalancing:DeleteRule",
-					"elasticloadbalancing:DeleteTargetGroup",
-					"elasticloadbalancing:DeregisterTargets",
-					"elasticloadbalancing:Describe*",
-					"elasticloadbalancing:ModifyListener",
-					"elasticloadbalancing:ModifyLoadBalancerAttributes",
-					"elasticloadbalancing:ModifyRule",
-					"elasticloadbalancing:ModifyTargetGroup",
-					"elasticloadbalancing:ModifyTargetGroupAttributes",
-					"elasticloadbalancing:RegisterTargets",
-					"elasticloadbalancing:RemoveListenerCertificates",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
+						"aws:ResourceTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
 					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
+						"aws:ResourceTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
+						"aws:ResourceTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+					"elasticloadbalancing:RemoveTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
+					},
+					"StringEquals": cco.IAMPolicyConditionKeyValue{
+						"elasticloadbalancing:CreateAction": []string{"CreateTargetGroup", "CreateLoadBalancer"},
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
+					},
+					"StringEquals": cco.IAMPolicyConditionKeyValue{
+						"elasticloadbalancing:CreateAction": []string{"CreateTargetGroup", "CreateLoadBalancer"},
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
+					},
+					"StringEquals": cco.IAMPolicyConditionKeyValue{
+						"elasticloadbalancing:CreateAction": []string{"CreateTargetGroup", "CreateLoadBalancer"},
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:AddTags",
+				},
+			},
+			{
+				Effect:   "Allow",
+				Resource: "*",
+				PolicyCondition: cco.IAMPolicyCondition{
+					"Null": cco.IAMPolicyConditionKeyValue{
+						"aws:ResourceTag/elbv2.k8s.aws/cluster": "false",
+					},
+				},
+				Action: []string{
+					"elasticloadbalancing:ModifyLoadBalancerAttributes",
 					"elasticloadbalancing:SetIpAddressType",
 					"elasticloadbalancing:SetSecurityGroups",
 					"elasticloadbalancing:SetSubnets",
+					"elasticloadbalancing:DeleteLoadBalancer",
+					"elasticloadbalancing:ModifyTargetGroup",
+					"elasticloadbalancing:ModifyTargetGroupAttributes",
+					"elasticloadbalancing:DeleteTargetGroup",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
+					"elasticloadbalancing:RegisterTargets",
+					"elasticloadbalancing:DeregisterTargets",
+				},
+			},
+			{
+				Effect:          "Allow",
+				Resource:        "*",
+				PolicyCondition: cco.IAMPolicyCondition{},
+				Action: []string{
 					"elasticloadbalancing:SetWebAcl",
-					"iam:CreateServiceLinkedRole",
-					"iam:GetServerCertificate",
-					"iam:ListServerCertificates",
-					"shield:CreateProtection",
-					"shield:DeleteProtection",
-					"shield:DescribeProtection",
-					"shield:GetSubscriptionState",
-					"waf-regional:AssociateWebACL",
-					"waf-regional:DisassociateWebACL",
-					"waf-regional:GetWebACL",
-					"waf-regional:GetWebACLForResource",
-					"wafv2:AssociateWebACL",
-					"wafv2:DisassociateWebACL",
-					"wafv2:GetWebACL",
-					"wafv2:GetWebACLForResource",
+					"elasticloadbalancing:ModifyListener",
+					"elasticloadbalancing:AddListenerCertificates",
+					"elasticloadbalancing:RemoveListenerCertificates",
+					"elasticloadbalancing:ModifyRule",
 				},
 			},
 		},

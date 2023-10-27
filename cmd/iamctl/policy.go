@@ -45,7 +45,7 @@ func (v *AWSValue) UnmarshalJSON(input []byte) error {
 
 type iamPolicyCondition map[string]iamPolicyConditionKeyValue
 
-type iamPolicyConditionKeyValue map[string]string
+type iamPolicyConditionKeyValue map[string]interface{}
 
 // compressionPrefixes defines a list of action prefixes in the policy
 // that are going to be compressed using wildcards.
@@ -54,15 +54,34 @@ var compressionPrefixes = map[string]string{
 	"elasticloadbalancing:Describe": "elasticloadbalancing:Describe*",
 }
 
-func generateIAMPolicy(inputFile, output, outputCR, pkg string) {
-	generateIAMPolicyFromTemplate(filetemplate, inputFile, output, pkg)
+func generateIAMPolicy(inputFile, output, outputCR, pkg, function string) {
+	generateIAMPolicyFromTemplate(filetemplate, inputFile, output, pkg, function)
 	if outputCR != "" {
-		generateIAMPolicyFromTemplate(credentialsRequestTemplate, inputFile, outputCR, pkg)
+		generateIAMPolicyFromTemplate(credentialsRequestTemplate, inputFile, outputCR, pkg, function)
 	}
 }
 
-func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg string) {
-	tmpl, err := template.New("").Parse(filetemplate)
+func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg, function string) {
+	funcMap := template.FuncMap{
+		"stringOrSlice": func(value interface{}, yaml bool) string {
+			if values, slice := value.([]interface{}); slice {
+				result := ""
+				for i, v := range values {
+					if i > 0 {
+						result += ","
+					}
+					result += fmt.Sprintf("%q", v)
+				}
+				if yaml {
+					return "[" + result + "]"
+				}
+				return "[]string{" + result + "}"
+			}
+			return fmt.Sprintf("%q", value)
+		},
+	}
+
+	tmpl, err := template.New("").Funcs(funcMap).Parse(filetemplate)
 	if err != nil {
 		panic(err)
 	}
@@ -79,6 +98,12 @@ func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg s
 		panic(fmt.Errorf("failed to parse policy JSON %v", err))
 	}
 
+	if splitResource {
+		// Splitting policy statement into many with one resource per statement
+		// because credentials request's resource is not a slice.
+		policy = split(policy)
+	}
+
 	if !skipMinify {
 		// Minifying here as a workaround for current limitations
 		// in credential requests length (2048 max bytes).
@@ -92,9 +117,16 @@ func generateIAMPolicyFromTemplate(filetemplate string, inputFile, output, pkg s
 
 	var in bytes.Buffer
 	err = tmpl.Execute(&in, struct {
-		Package   string
-		Statement []policyStatement
-	}{Package: pkg, Statement: policy.Statement})
+		Package    string
+		Function   string
+		Definition bool
+		Statement  []policyStatement
+	}{
+		Package:    pkg,
+		Function:   function,
+		Definition: function == defaultFunction,
+		Statement:  policy.Statement,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -147,4 +179,28 @@ func minify(policy iamPolicy) iamPolicy {
 		},
 	}
 	return miniPolicy
+}
+
+func split(policy iamPolicy) iamPolicy {
+	var splitPolicy iamPolicy
+	splitPolicy.Version = policy.Version
+
+	for _, statement := range policy.Statement {
+		if len(statement.Resource) > 1 {
+			newStatements := []policyStatement{}
+			for _, resource := range statement.Resource {
+				newStatement := policyStatement{
+					Effect:    statement.Effect,
+					Action:    statement.Action,
+					Resource:  AWSValue{resource},
+					Condition: statement.Condition,
+				}
+				newStatements = append(newStatements, newStatement)
+			}
+			splitPolicy.Statement = append(splitPolicy.Statement, newStatements...)
+		} else {
+			splitPolicy.Statement = append(splitPolicy.Statement, statement)
+		}
+	}
+	return splitPolicy
 }
