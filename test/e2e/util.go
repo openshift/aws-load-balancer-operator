@@ -90,6 +90,7 @@ func getIngress(ctx context.Context, t *testing.T, cl client.Client, timeout tim
 			return false, nil
 		}
 		if len(ing.Status.LoadBalancer.Ingress) <= 0 || len(ing.Status.LoadBalancer.Ingress[0].Hostname) <= 0 {
+			t.Logf("no load balancer found for ingress %s (retrying)", ingressName.Name)
 			return false, nil
 		}
 		address = ing.Status.LoadBalancer.Ingress[0].Hostname
