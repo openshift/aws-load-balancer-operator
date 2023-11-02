@@ -138,12 +138,6 @@ func TestMain(m *testing.M) {
 	} else {
 		fmt.Println("Controller role is expected to exist when the test is run on a ROSA STS cluster")
 		controllerRoleARN = mustGetEnv(controllerRoleARNVarName)
-		// TODO: remove the copying once ROSA can provision 4.14 clusters
-		// which support stsIAMRoleARN field in CredentialsRequest.
-		if err := copySecret(context.TODO(), kubeClient, controllerSecretName, "aws-load-balancer-controller-credentialsrequest-cluster"); err != nil {
-			fmt.Printf("failed to copy controller secret: %v", err)
-			os.Exit(1)
-		}
 	}
 
 	os.Exit(m.Run())
