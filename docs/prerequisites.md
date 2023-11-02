@@ -54,12 +54,12 @@ The operator's `CredentialsRequest` is maintained in [hack/operator-credentials-
 
 ### Option 2. Using the AWS CLI
 
-1. Generate a trusted policy file using your identity provider (e.g. OpenID Connect):
+1. Generate a trust policy file using your identity provider (e.g. OpenID Connect):
 
     ```bash
     IDP="<my-oidc-provider-name>"
     IDP_ARN="arn:aws:iam::<my-aws-account>:oidc-provider/${IDP}"
-    cat <<EOF > albo-operator-trusted-policy.json
+    cat <<EOF > albo-operator-trust-policy.json
     {
         "Version": "2012-10-17",
         "Statement": [
@@ -80,10 +80,10 @@ The operator's `CredentialsRequest` is maintained in [hack/operator-credentials-
     EOF
     ```
 
-2. Create and verify the role with the generated trusted policy:
+2. Create and verify the role with the generated trust policy:
 
     ```bash
-    aws iam create-role --role-name albo-operator --assume-role-policy-document file://albo-operator-trusted-policy.json
+    aws iam create-role --role-name albo-operator --assume-role-policy-document file://albo-operator-trust-policy.json
     ROLEARN=$(aws iam get-role --role-name albo-operator | \grep '^ROLE' | \grep -Po 'arn:aws:iam[0-9a-z/:\-_]+')
     echo $ROLEARN
     ```
