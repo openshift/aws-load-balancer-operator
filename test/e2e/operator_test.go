@@ -138,12 +138,6 @@ func TestMain(m *testing.M) {
 	} else {
 		fmt.Println("Controller role is expected to exist when the test is run on a ROSA STS cluster")
 		controllerRoleARN = mustGetEnv(controllerRoleARNVarName)
-		// TODO: remove the copying once ROSA can provision 4.14 clusters
-		// which support stsIAMRoleARN field in CredentialsRequest.
-		if err := copySecret(context.TODO(), kubeClient, controllerSecretName, "aws-load-balancer-controller-credentialsrequest-cluster"); err != nil {
-			fmt.Printf("failed to copy controller secret: %v", err)
-			os.Exit(1)
-		}
 	}
 
 	os.Exit(m.Run())
@@ -589,6 +583,58 @@ func TestAWSLoadBalancerControllerWithInternalLoadBalancer(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
+	// Creating the Web ACL as early as possible as it's not available immediately
+	// for the association with a load balancer.
+	t.Logf("Getting WAFv2 WebACL")
+	var aclARN string
+	if !stsModeRequested() {
+		wafClient := wafv2.NewFromConfig(cfg)
+		webACLName := "echoserver-acl"
+		acl, err := findAWSWebACL(wafClient, webACLName)
+		if err != nil {
+			t.Logf("failed to find %q aws wafv2 acl due to %v, continue to creation anyway", webACLName, err)
+		}
+		if acl == nil {
+			t.Logf("WAFv2 ACL %q was not found, creating one", webACLName)
+			createdACL, err := wafClient.CreateWebACL(context.Background(), &wafv2.CreateWebACLInput{
+				DefaultAction: &wafv2types.DefaultAction{Block: &wafv2types.BlockAction{}},
+				Name:          aws.String(webACLName),
+				Scope:         wafv2types.ScopeRegional,
+				VisibilityConfig: &wafv2types.VisibilityConfig{
+					CloudWatchMetricsEnabled: false,
+					MetricName:               aws.String("echoserver"),
+					SampledRequestsEnabled:   false,
+				},
+			})
+			if err != nil {
+				t.Fatalf("failed to create aws wafv2 acl due to %v", err)
+			}
+			acl = createdACL.Summary
+		}
+
+		aclARN = *acl.ARN
+		t.Logf("Found WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
+
+		defer func() {
+			_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
+				Id:        aws.String(*acl.Id),
+				Name:      aws.String(webACLName),
+				LockToken: acl.LockToken,
+				Scope:     wafv2types.ScopeRegional,
+			})
+			if err != nil {
+				t.Fatalf("failed to delete aws wafv2 acl due to %v", err)
+			}
+		}()
+	} else {
+		// Web ACLs are provisioned by CI on ROSA cluster.
+		aclARN = os.Getenv(wafv2WebACLARNVarName)
+		if aclARN == "" {
+			t.Fatalf("no wafv2 webacl arn provided")
+		}
+	}
+	t.Logf("Got WAFv2 WebACL. ARN: %s", aclARN)
+
 	testWorkloadNamespace := "aws-load-balancer-test-wafv2"
 	t.Logf("Creating test namespace %q", testWorkloadNamespace)
 	echoNs := createTestNamespace(t, testWorkloadNamespace)
@@ -619,56 +665,6 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	defer func() {
 		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
 	}()
-
-	var aclARN string
-	if !stsModeRequested() {
-		wafClient := wafv2.NewFromConfig(cfg)
-		webACLName := "echoserver-acl"
-		acl, err := findAWSWebACL(wafClient, webACLName)
-		if err != nil {
-			t.Logf("failed to find %q aws wafv2 acl due to %v, continue to creation anyway", webACLName, err)
-		}
-		if acl == nil {
-			t.Logf("AWS WAFv2 ACL %q was not found, creating one", webACLName)
-			createdACL, err := wafClient.CreateWebACL(context.Background(), &wafv2.CreateWebACLInput{
-				DefaultAction: &wafv2types.DefaultAction{Block: &wafv2types.BlockAction{}},
-				Name:          aws.String(webACLName),
-				Scope:         wafv2types.ScopeRegional,
-				VisibilityConfig: &wafv2types.VisibilityConfig{
-					CloudWatchMetricsEnabled: false,
-					MetricName:               aws.String("echoserver"),
-					SampledRequestsEnabled:   false,
-				},
-			})
-			if err != nil {
-				t.Fatalf("failed to create aws wafv2 acl due to %v", err)
-			}
-			acl = createdACL.Summary
-		}
-
-		aclARN = *acl.ARN
-		t.Logf("Found AWS WAFv2 WebACL. ID: %s, Name: %s, ARN: %s", *acl.Id, *acl.Name, aclARN)
-
-		defer func() {
-			_, err = wafClient.DeleteWebACL(context.TODO(), &wafv2.DeleteWebACLInput{
-				Id:        aws.String(*acl.Id),
-				Name:      aws.String(webACLName),
-				LockToken: acl.LockToken,
-				Scope:     wafv2types.ScopeRegional,
-			})
-			if err != nil {
-				t.Fatalf("failed to delete aws wafv2 acl due to %v", err)
-			}
-		}()
-	} else {
-		// Web ACLs are provisioned by CI on ROSA cluster.
-		aclARN = os.Getenv(wafv2WebACLARNVarName)
-		if aclARN == "" {
-			t.Fatalf("no wafv2 webacl arn provided")
-		}
-	}
-
-	t.Logf("Got AWS WAFv2 WebACL. ARN: %s", aclARN)
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
@@ -717,36 +713,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
-	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
-	t.Logf("Creating test namespace %q", testWorkloadNamespace)
-	echoNs := createTestNamespace(t, testWorkloadNamespace)
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
-	}()
-
-	t.Log("Creating aws load balancer controller instance with default ingress class")
-
-	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
-	if err := kubeClient.Create(context.TODO(), alb); err != nil {
-		t.Fatalf("failed to create aws load balancer controller: %v", err)
-	}
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
-	}()
-
-	expected := []appsv1.DeploymentCondition{
-		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
-	}
-	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
-		t.Fatalf("did not get expected available condition for deployment: %v", err)
-	}
-
-	echoSvc := createTestWorkload(t, testWorkloadNamespace)
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
-	}()
-
+	t.Log("Getting WAFRegional WebACL")
 	var webACLID string
 	if !stsModeRequested() {
 		wafClient := waf.NewFromConfig(cfg)
@@ -786,8 +753,37 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 			t.Fatalf("no wafregional webacl id provided")
 		}
 	}
+	t.Logf("Got WAFRegional WebACL. ID: %s", webACLID)
 
-	t.Logf("Got AWS WAFRegional WebACL. ID: %s", webACLID)
+	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
+	t.Log("Creating aws load balancer controller instance with default ingress class")
+
+	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
+	if err := kubeClient.Create(context.TODO(), alb); err != nil {
+		t.Fatalf("failed to create aws load balancer controller: %v", err)
+	}
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
+	}()
+
+	expected := []appsv1.DeploymentCondition{
+		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+	}
+	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
+	}
+
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
+	}()
 
 	t.Log("Creating Ingress Resource with default ingress class")
 	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
@@ -835,7 +831,7 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 	}
 }
 
-func TestIngressGroup(t *testing.T) {
+func TestAWSLoadBalancerControllerWithIngressGroup(t *testing.T) {
 	testWorkloadNamespace := "aws-load-balancer-test-ing-group"
 	t.Logf("Creating test namespace %q", testWorkloadNamespace)
 	echoNs := createTestNamespace(t, testWorkloadNamespace)

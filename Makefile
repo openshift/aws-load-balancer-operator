@@ -56,7 +56,9 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
-E2E_TIMEOUT ?= 1h
+# The E2E has 11 tests which interact with AWS (LB provisioning), each one taking approximately 5 minutes.
+# The previous timeout (1 hour) was too close to the time required for a run.
+E2E_TIMEOUT ?= 90m
 
 # Use docker as the default container engine
 CONTAINER_ENGINE ?= docker
