@@ -1,5 +1,6 @@
 # AWS Load Balancer Operator
 
+
 This operator is used to install, manage and configure an instance of
 [aws-load-balancer-controller](https://github.com/kubernetes-sigs/aws-load-balancer-controller/)
 in a OpenShift cluster.
