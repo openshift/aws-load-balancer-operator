@@ -21,6 +21,7 @@ describes the design and implementation of the operator in more detail.
     3. [Running the end-to-end tests](#running-the-end-to-end-tests)
     4. [Running the end-to-end tests on an STS cluster](#running-the-end-to-end-tests-on-an-sts-cluster)
 5. [Proxy support](#proxy-support)
+6. [Versioning](docs/versioning.md)
 
 ## Local Development
 
