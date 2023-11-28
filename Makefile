@@ -79,7 +79,7 @@ IAMCTL_OUTPUT_FILE ?= iam_policy.go
 IAMCTL_GO_PACKAGE ?= awsloadbalancercontroller
 
 # File name of the generated CredentialsRequest CR.
-IAMCTL_OUTPUT_CR_FILE ?= ./hack/controller/controller-credentials-request.yaml
+IAMCTL_OUTPUT_CR_FILE ?= ./hack/controller/controller-credentials-request-minify.yaml
 
 # Built go binary path.
 IAMCTL_BINARY ?= ./bin/iamctl
