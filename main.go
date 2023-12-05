@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -43,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	networkingolmv1 "github.com/openshift/aws-load-balancer-operator/api/v1"
 	networkingolmv1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
@@ -90,6 +92,7 @@ func main() {
 		namespace              string
 		image                  string
 		trustedCAConfigMapName string
+		webhookDisableHTTP2    bool
 	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -99,6 +102,7 @@ func main() {
 	flag.StringVar(&namespace, "namespace", "aws-load-balancer-operator", "The namespace where operands should be installed")
 	flag.StringVar(&image, "image", "quay.io/aws-load-balancer-operator/aws-load-balancer-controller:latest", "The image to be used for the operand")
 	flag.StringVar(&trustedCAConfigMapName, "trusted-ca-configmap", "", "The name of the config map containing TLS CA(s) which should be trusted by the controller's containers. PEM encoded file under \"ca-bundle.crt\" key is expected.")
+	flag.BoolVar(&webhookDisableHTTP2, "webhook-disable-http2", false, "Disable HTTP/2 for the webhook server.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -106,6 +110,16 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	webhookSrv := webhook.NewServer(webhook.Options{
+		TLSOpts: []func(config *tls.Config){
+			func(config *tls.Config) {
+				if webhookDisableHTTP2 {
+					config.NextProtos = []string{"http/1.1"}
+				}
+			},
+		},
+	})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -124,6 +138,7 @@ func main() {
 		Cache: cache.Options{
 			Namespaces: []string{namespace},
 		},
+		WebhookServer: webhookSrv,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
