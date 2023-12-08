@@ -130,12 +130,12 @@ Its contents are identical to the ones requested by **aws-load-balancer-operator
 
 #### Option 2. Using the AWS CLI
 
-1. Generate a trusted policy file using your identity provider (e.g. OpenID Connect):
+1. Generate a trust policy file using your identity provider (e.g. OpenID Connect):
 
     ```bash
     IDP="<my-oidc-provider-name>"
     IDP_ARN="arn:aws:iam::<my-aws-account>:oidc-provider/${IDP}"
-    cat <<EOF > albo-controller-trusted-policy.json
+    cat <<EOF > albo-controller-trust-policy.json
     {
         "Version": "2012-10-17",
         "Statement": [
@@ -156,10 +156,10 @@ Its contents are identical to the ones requested by **aws-load-balancer-operator
     EOF
     ```
 
-2. Create and verify the role with the generated trusted policy:
+2. Create and verify the role with the generated trust policy:
 
     ```bash
-    aws iam create-role --role-name albo-controller --assume-role-policy-document file://albo-controller-trusted-policy.json
+    aws iam create-role --role-name albo-controller --assume-role-policy-document file://albo-controller-trust-policy.json
     CONTROLLER_ROLEARN=$(aws iam get-role --role-name albo-controller | grep '^ROLE' | grep -Po 'arn:aws:iam[0-9a-z/:\-_]+')
     echo $CONTROLLER_ROLEARN
     ```
