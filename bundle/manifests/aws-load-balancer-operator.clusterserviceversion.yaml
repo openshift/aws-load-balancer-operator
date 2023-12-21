@@ -292,7 +292,8 @@ spec:
                 - --upstream=http://127.0.0.1:8080/
                 - --logtostderr=true
                 - --v=0
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+                - --http2-disable
+                image: quay.io/openshift/origin-kube-rbac-proxy:latest
                 name: kube-rbac-proxy
                 ports:
                 - containerPort: 8443
@@ -317,13 +318,14 @@ spec:
                 - --image=$(RELATED_IMAGE_CONTROLLER)
                 - --namespace=$(TARGET_NAMESPACE)
                 - --trusted-ca-configmap=$(TRUSTED_CA_CONFIGMAP_NAME)
+                - --webhook-disable-http2
                 command:
                 - /manager
                 env:
                 - name: AWS_SHARED_CREDENTIALS_FILE
                   value: /etc/aws-credentials/credentials
                 - name: RELATED_IMAGE_CONTROLLER
-                  value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:95d71cc4e7e594fd7cca52c5904c3cf86837bf1e90955eecee6b5cd0862eb501
+                  value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:41bb8bdcd548a4368bb5e60cd94b2e745e914aabd6c3787a8fc1113fa10f6df8
                 - name: TARGET_NAMESPACE
                   valueFrom:
                     fieldRef:
