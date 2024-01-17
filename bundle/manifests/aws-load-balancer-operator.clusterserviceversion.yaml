@@ -66,9 +66,15 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    features.operators.openshift.io/disconnected: "false"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "true"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "true"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
     olm.skipRange: <1.1.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
-    operators.openshift.io/infrastructure-features: '["proxy-aware"]'
     operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/openshift/aws-load-balancer-operator
