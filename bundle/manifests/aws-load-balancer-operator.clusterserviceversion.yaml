@@ -66,10 +66,11 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    createdAt: "2024-01-30T17:55:43Z"
     olm.skipRange: <1.1.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
     operators.openshift.io/infrastructure-features: '["proxy-aware"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.33.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
@@ -229,7 +230,9 @@ spec:
           - create
         serviceAccountName: aws-load-balancer-operator-controller-manager
       deployments:
-      - name: aws-load-balancer-operator-controller-manager
+      - label:
+          control-plane: controller-manager
+        name: aws-load-balancer-operator-controller-manager
         spec:
           replicas: 1
           selector:
@@ -286,6 +289,7 @@ spec:
                     fieldRef:
                       fieldPath: metadata.namespace
                 - name: TRUSTED_CA_CONFIGMAP_NAME
+                  value: aws-load-balancer-operator-trusted-cabundle
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
@@ -327,6 +331,9 @@ spec:
                 - mountPath: /var/run/secrets/openshift/serviceaccount
                   name: bound-sa-token
                   readOnly: true
+                - mountPath: /etc/pki/tls/certs/albo-tls-ca-bundle.crt
+                  name: trusted-cabundle
+                  subPath: ca-bundle.crt
               securityContext:
                 runAsNonRoot: true
                 seccompProfile:
@@ -342,6 +349,10 @@ spec:
                       audience: openshift
                       expirationSeconds: 3600
                       path: token
+              - configMap:
+                  defaultMode: 420
+                  name: aws-load-balancer-operator-trusted-cabundle
+                name: trusted-cabundle
       permissions:
       - rules:
         - apiGroups:
@@ -457,6 +468,9 @@ spec:
   provider:
     name: Red Hat Inc.
     url: https://redhat.com
+  relatedImages:
+  - image: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:d8b5e9a91aca2a4a4de7f9bd2b614c5ba3d4cc62fa8967e94e9539fd7c1940a9
+    name: controller
   version: 1.1.0
   webhookdefinitions:
   - admissionReviewVersions:
