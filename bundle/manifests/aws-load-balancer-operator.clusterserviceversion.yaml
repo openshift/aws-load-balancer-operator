@@ -66,7 +66,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-01-30T17:55:43Z"
+    createdAt: "2024-01-30T18:03:20Z"
     olm.skipRange: <1.1.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
     operators.openshift.io/infrastructure-features: '["proxy-aware"]'
