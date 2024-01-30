@@ -26,16 +26,19 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-# IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for remote images.
+# BUNDLE_TAG_BASE defines the quay.io namespace and part of the image name for remote images.
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# openshift.io/aws-load-balancer-operator-bundle:$BUNDLE_VERSION and openshift.io/aws-load-balancer-operator-catalog:$BUNDLE_VERSION.
-IMAGE_TAG_BASE ?= openshift.io/aws-load-balancer-operator
+# quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:$BUNDLE_VERSION and quay.io/aws-load-balancer-operator/aws-load-balancer-operator-catalog:$BUNDLE_VERSION.
+BUNDLE_TAG_BASE ?= quay.io/aws-load-balancer-operator/aws-load-balancer-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(BUNDLE_VERSION)
+BUNDLE_IMG ?= $(BUNDLE_TAG_BASE)-bundle:v$(BUNDLE_VERSION)
+
+# IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for the operator image.
+IMAGE_TAG_BASE ?= openshift.io/aws-load-balancer-operator
 
 # Image version to to build/push
 IMG_VERSION ?= latest
@@ -64,6 +67,8 @@ E2E_TIMEOUT ?= 90m
 CONTAINER_ENGINE ?= docker
 
 OPERATOR_SDK_VERSION = v1.17.0
+
+OPM_VERSION = v1.31.0
 
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
 ## iamctl vars
@@ -241,7 +246,7 @@ bundle: operator-sdk manifests ## Generate bundle manifests and metadata, then v
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	${CONTAINER_ENGINE} build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	$(CONTAINER_ENGINE) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
@@ -256,7 +261,7 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.19.1/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
@@ -264,28 +269,26 @@ OPM = $(shell which opm)
 endif
 endif
 
-# A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
-# These images MUST exist in a registry and be pull-able.
-BUNDLE_IMGS ?= $(BUNDLE_IMG)
-
 # The image tag given to the resulting catalog image (e.g. make catalog-build CATALOG_IMG=example.com/operator-catalog:v0.2.0).
-CATALOG_IMG ?= $(IMAGE_TAG_BASE)-catalog:v$(BUNDLE_VERSION)
+CATALOG_IMG ?= $(BUNDLE_TAG_BASE)-catalog:v$(BUNDLE_VERSION)
 
-# Set CATALOG_BASE_IMG to an existing catalog image tag to add $BUNDLE_IMGS to that image.
-ifneq ($(origin CATALOG_BASE_IMG), undefined)
-FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
-endif
+# Directory for the file based catalog.
+CATALOG_DIR := catalog
 
-# Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
-# This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
-# https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
+# Directory for the aws-load-balancer-operator package files.
+PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
+
+.PHONY: catalog
+catalog: opm
+	$(OPM) render $(BUNDLE_IMG) -o yaml > $(PACKAGE_DIR)/bundle.yaml
+	$(OPM) validate $(CATALOG_DIR)
+
 .PHONY: catalog-build
-catalog-build: opm ## Build a catalog image.
-	$(OPM) index add --container-tool ${CONTAINER_ENGINE} --mode semver --tag $(CATALOG_IMG) --bundles $(BUNDLE_IMGS) $(FROM_INDEX_OPT)
+catalog-build: catalog
+	$(CONTAINER_ENGINE) build -t $(CATALOG_IMG) -f catalog.Dockerfile .
 
-# Push the catalog image.
 .PHONY: catalog-push
-catalog-push: ## Push a catalog image.
+catalog-push:
 	$(MAKE) image-push IMG=$(CATALOG_IMG)
 
 .PHONY: verify
@@ -293,7 +296,7 @@ verify:
 	hack/verify-deps.sh
 	hack/verify-generated.sh
 	hack/verify-gofmt.sh
-	hack/verify-bundle.sh
+	hack/verify-olm.sh
 
 .PHONY: lint
 lint:
