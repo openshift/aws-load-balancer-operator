@@ -122,7 +122,7 @@ func Test_CredentialsRequest(t *testing.T) {
 				StatementEntries: []cco.StatementEntry{
 					{
 						Effect:          "Allow",
-						Resource:        "arn:aws:ec2:*:*:subnet/*",
+						Resource:        "arn:*:ec2:*:*:subnet/*",
 						PolicyCondition: cco.IAMPolicyCondition{},
 						Action: []string{
 							"ec2:DescribeSubnets",
