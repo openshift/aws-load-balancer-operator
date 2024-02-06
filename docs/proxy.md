@@ -5,5 +5,4 @@ Those variables are then propagated down to the managed controller by the AWS Lo
 
 ## Trusted Certificate Authority
 
-AWS Load Balancer Operator will make use of the OpenShift cluster global trust bundle. Should you need to trust a
-custom Certificate Authority (CA), follow the OpenShift documentation to add an global trusted CA.
+AWS Load Balancer Operator will make use of the OpenShift cluster-wide trusted CA bundle. Should you need to trust a custom Certificate Authority (CA), follow [the OpenShift documentation to configure a custom PKI](https://docs.openshift.com/container-platform/latest/networking/configuring-a-custom-pki.html).
