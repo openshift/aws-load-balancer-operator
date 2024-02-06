@@ -66,11 +66,10 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2024-01-30T18:03:20Z"
     olm.skipRange: <1.1.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
     operators.openshift.io/infrastructure-features: '["proxy-aware"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.33.0
+    operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
@@ -230,9 +229,7 @@ spec:
           - create
         serviceAccountName: aws-load-balancer-operator-controller-manager
       deployments:
-      - label:
-          control-plane: controller-manager
-        name: aws-load-balancer-operator-controller-manager
+      - name: aws-load-balancer-operator-controller-manager
         spec:
           replicas: 1
           selector:
@@ -468,9 +465,6 @@ spec:
   provider:
     name: Red Hat Inc.
     url: https://redhat.com
-  relatedImages:
-  - image: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:d8b5e9a91aca2a4a4de7f9bd2b614c5ba3d4cc62fa8967e94e9539fd7c1940a9
-    name: controller
   version: 1.1.0
   webhookdefinitions:
   - admissionReviewVersions:
