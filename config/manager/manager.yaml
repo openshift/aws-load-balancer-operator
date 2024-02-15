@@ -85,6 +85,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: TRUSTED_CA_CONFIGMAP_NAME
+        terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
