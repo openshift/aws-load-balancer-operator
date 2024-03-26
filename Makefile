@@ -95,6 +95,8 @@ IAMCTL_OUTPUT_MINIFY_CR_FILE ?= ./hack/controller/controller-credentials-request
 # Built go binary path.
 IAMCTL_BINARY ?= ./bin/iamctl
 
+CHECK_PAYLOAD_IMG ?= registry.ci.openshift.org/ci/check-payload:latest
+
 
 .PHONY: all
 all: build
@@ -189,10 +191,14 @@ image-build: build test ## Build container image with the manager.
 image-push: ## Push container image with the manager.
 	${CONTAINER_ENGINE} push ${IMG}
 
+.PHONY: image-fips-scan
+image-fips-scan: image-build image-push
+	$(CONTAINER_ENGINE) run --privileged $(CHECK_PAYLOAD_IMG) scan operator --spec $(IMG)
+
 .PHONY: iamctl-build
 iamctl-build: fmt vet ## Build iamctl binary.
 	mkdir -p ./bin
-	cd ./cmd/iamctl && go build -mod=vendor -o $(IAMCTL_BINARY) . 
+	cd ./cmd/iamctl && go build -mod=vendor -o $(IAMCTL_BINARY) .
 	mv ./cmd/iamctl/$(IAMCTL_BINARY) ./bin/
 
 ##@ Deployment
