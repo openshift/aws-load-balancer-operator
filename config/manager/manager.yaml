@@ -77,9 +77,9 @@ spec:
             memory: 64Mi
         env:
           - name: RELATED_IMAGE_CONTROLLER
-            # openshift/aws-load-balancer-controller commit: 0ae6e1a96d44f67fe852e91ec31a79d138022cd2
-            # manifest link: https://quay.io/repository/aws-load-balancer-operator/aws-load-balancer-controller/manifest/sha256:d8b5e9a91aca2a4a4de7f9bd2b614c5ba3d4cc62fa8967e94e9539fd7c1940a9
-            value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:d8b5e9a91aca2a4a4de7f9bd2b614c5ba3d4cc62fa8967e94e9539fd7c1940a9
+            # openshift/aws-load-balancer-controller commit: 105552ef8dc36f69988448e14a1ac46d3223fbb9
+            # manifest link: https://quay.io/repository/aws-load-balancer-operator/aws-load-balancer-controller/manifest/sha256:72a5057abe61e5e0de19cdaccba81326baf242bf087f74e10f303deeaae181a2
+            value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:72a5057abe61e5e0de19cdaccba81326baf242bf087f74e10f303deeaae181a2
           - name: TARGET_NAMESPACE
             valueFrom:
               fieldRef:
