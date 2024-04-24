@@ -85,11 +85,15 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: TRUSTED_CA_CONFIGMAP_NAME
+            value: aws-load-balancer-operator-trusted-cabundle
         terminationMessagePolicy: FallbackToLogsOnError
         volumeMounts:
           - name: bound-sa-token
             mountPath: /var/run/secrets/openshift/serviceaccount
             readOnly: true
+          - mountPath: /etc/pki/tls/certs/albo-tls-ca-bundle.crt
+            name: trusted-cabundle
+            subPath: ca-bundle.crt
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
@@ -101,3 +105,7 @@ spec:
                 audience: openshift
                 expirationSeconds: 3600
                 path: token
+        - name: trusted-cabundle
+          configMap:
+            defaultMode: 420
+            name: aws-load-balancer-operator-trusted-cabundle

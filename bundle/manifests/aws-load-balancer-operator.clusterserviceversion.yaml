@@ -293,6 +293,7 @@ spec:
                     fieldRef:
                       fieldPath: metadata.namespace
                 - name: TRUSTED_CA_CONFIGMAP_NAME
+                  value: aws-load-balancer-operator-trusted-cabundle
                 image: openshift.io/aws-load-balancer-operator:latest
                 livenessProbe:
                   httpGet:
@@ -335,6 +336,9 @@ spec:
                 - mountPath: /var/run/secrets/openshift/serviceaccount
                   name: bound-sa-token
                   readOnly: true
+                - mountPath: /etc/pki/tls/certs/albo-tls-ca-bundle.crt
+                  name: trusted-cabundle
+                  subPath: ca-bundle.crt
               securityContext:
                 runAsNonRoot: true
                 seccompProfile:
@@ -350,6 +354,10 @@ spec:
                       audience: openshift
                       expirationSeconds: 3600
                       path: token
+              - configMap:
+                  defaultMode: 420
+                  name: aws-load-balancer-operator-trusted-cabundle
+                name: trusted-cabundle
       permissions:
       - rules:
         - apiGroups:
