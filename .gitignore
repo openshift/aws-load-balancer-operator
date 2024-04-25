@@ -5,6 +5,12 @@
 *.so
 *.dylib
 
+# OSX
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
 # Test binary, built with `go test -c`
 *.test
 
