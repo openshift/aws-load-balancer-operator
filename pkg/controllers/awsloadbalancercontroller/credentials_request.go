@@ -142,6 +142,14 @@ func desiredCredentialsRequest(name types.NamespacedName, secretRef corev1.Objec
 
 func createProviderConfig(codec *cco.ProviderCodec, config *albo.AWSLoadBalancerCredentialsRequestConfig) (*runtime.RawExtension, error) {
 	providerSpec := &cco.AWSProviderSpec{
+		// NOTE:
+		// The minified version of the policy has to be added to the CredentialsRequest.
+		// The full policy exceeds the user inline policy size limit.
+		//
+		// On STS clusters: a drift between the statements from the STS IAM role (set below)
+		// and the CredentialsRequest can occur in case a roleARN is added to AWSLoadBalancerController CR.
+		// This doesn't impact the permissions granted to the service account though
+		// because they are taken from the role.
 		StatementEntries: GetIAMPolicyMinify().Statement,
 	}
 	if config != nil && config.STSIAMRoleARN != "" {
