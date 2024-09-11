@@ -97,7 +97,7 @@ IAMCTL_BINARY ?= ./bin/iamctl
 
 CHECK_PAYLOAD_IMG ?= registry.ci.openshift.org/ci/check-payload:latest
 
-SYNC_ARGS ?= ""
+SYNC_ARGS ?= -k
 
 
 .PHONY: all
