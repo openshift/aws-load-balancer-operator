@@ -16,5 +16,16 @@ func getLeaderElectionRules() []rbacv1.PolicyRule {
 			ResourceNames: []string{"aws-load-balancer-controller-leader"},
 			Verbs:         []string{"get", "update", "patch"},
 		},
+		{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{"leases"},
+			Verbs:     []string{"create"},
+		},
+		{
+			APIGroups:     []string{"coordination.k8s.io"},
+			Resources:     []string{"leases"},
+			ResourceNames: []string{"aws-load-balancer-controller-leader"},
+			Verbs:         []string{"get", "update", "patch"},
+		},
 	}
 }
