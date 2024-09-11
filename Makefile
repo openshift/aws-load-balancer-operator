@@ -97,6 +97,8 @@ IAMCTL_BINARY ?= ./bin/iamctl
 
 CHECK_PAYLOAD_IMG ?= registry.ci.openshift.org/ci/check-payload:latest
 
+SYNC_ARGS ?= ""
+
 
 .PHONY: all
 all: build
@@ -126,8 +128,8 @@ update: update-vendored-crds manifests generate
 .PHONY: manifests
 manifests: ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	hack/sync-upstream-crds.sh
-	hack/sync-upstream-rbac.sh
+	hack/sync-upstream-crds.sh $(SYNC_ARGS)
+	hack/sync-upstream-rbac.sh $(SYNC_ARGS)
 
 .PHONY: generate
 generate: iamctl-gen iam-gen## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
