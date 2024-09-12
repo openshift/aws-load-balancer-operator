@@ -50,6 +50,7 @@ func GetIAMPolicy() IAMPolicy {
 					"elasticloadbalancing:DescribeTargetGroupAttributes",
 					"elasticloadbalancing:DescribeTargetHealth",
 					"elasticloadbalancing:DescribeTags",
+					"elasticloadbalancing:DescribeTrustStores",
 				},
 			},
 			{

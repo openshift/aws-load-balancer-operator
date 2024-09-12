@@ -79,7 +79,7 @@ spec:
           - name: RELATED_IMAGE_CONTROLLER
             # openshift/aws-load-balancer-controller commit: 105552ef8dc36f69988448e14a1ac46d3223fbb9
             # manifest link: https://quay.io/repository/aws-load-balancer-operator/aws-load-balancer-controller/manifest/sha256:72a5057abe61e5e0de19cdaccba81326baf242bf087f74e10f303deeaae181a2
-            value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:72a5057abe61e5e0de19cdaccba81326baf242bf087f74e10f303deeaae181a2
+            value: quay.io/alebedev/aws-load-balancer-controller:09.11.1432
           - name: TARGET_NAMESPACE
             valueFrom:
               fieldRef:
