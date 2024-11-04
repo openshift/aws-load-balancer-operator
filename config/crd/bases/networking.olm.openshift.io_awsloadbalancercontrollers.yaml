@@ -123,7 +123,7 @@ spec:
                       the creation of a secret containing IAM Role details necessary
                       for assuming the IAM Role via Amazon's Secure Token Service
                       (STS).
-                    pattern: ^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role\/.*$
+                    pattern: ^arn:(aws|aws-cn|aws-us-gov|aws-iso|aws-iso-b|aws-iso-e|aws-iso-f):iam::[0-9]{12}:role\/.*$
                     type: string
                 type: object
               enabledAddons:
