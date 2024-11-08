@@ -18,6 +18,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	"github.com/openshift/aws-load-balancer-operator/pkg/utils/test"
 )
@@ -28,9 +30,11 @@ const (
 
 func TestDesiredArgs(t *testing.T) {
 	for _, tc := range []struct {
-		name         string
-		controller   *albo.AWSLoadBalancerController
-		expectedArgs sets.Set[string]
+		name           string
+		controller     *albo.AWSLoadBalancerController
+		platformStatus *configv1.PlatformStatus
+		expectedArgs   sets.Set[string]
+		expectedError  bool
 	}{
 		{
 			name: "non-default ingress class",
@@ -110,7 +114,7 @@ func TestDesiredArgs(t *testing.T) {
 			),
 		},
 		{
-			name: "resource tags specified",
+			name: "resource tags specified in the operator spec",
 			controller: &albo.AWSLoadBalancerController{
 				Spec: albo.AWSLoadBalancerControllerSpec{
 					AdditionalResourceTags: []albo.AWSResourceTag{
@@ -128,6 +132,99 @@ func TestDesiredArgs(t *testing.T) {
 				"--default-tags=test-key1=test-value1,test-key2=test-value2,test-key3=test-value3",
 			),
 		},
+		{
+			name: "resource tags specified in the platform status",
+			controller: &albo.AWSLoadBalancerController{
+				Spec: albo.AWSLoadBalancerControllerSpec{},
+			},
+			platformStatus: &configv1.PlatformStatus{
+				Type: configv1.AWSPlatformType,
+				AWS: &configv1.AWSPlatformStatus{
+					ResourceTags: []configv1.AWSResourceTag{
+						{Key: "key1", Value: "value1"},
+						{Key: "key2", Value: "value2"},
+					},
+				},
+			},
+			expectedArgs: sets.New[string](
+				"--enable-shield=false",
+				"--enable-waf=false",
+				"--enable-wafv2=false",
+				"--ingress-class=alb",
+				"--default-tags=key1=value1,key2=value2",
+			),
+		},
+		{
+			name: "conflicting resource tags specified in the platform status and operator spec",
+			controller: &albo.AWSLoadBalancerController{
+				Spec: albo.AWSLoadBalancerControllerSpec{
+					AdditionalResourceTags: []albo.AWSResourceTag{
+						{Key: "op-key1", Value: "op-value1"},
+						{Key: "conflict-key1", Value: "op-value2"},
+						{Key: "conflict-key2", Value: "op-value3"},
+					},
+				},
+			},
+			platformStatus: &configv1.PlatformStatus{
+				Type: configv1.AWSPlatformType,
+				AWS: &configv1.AWSPlatformStatus{
+					ResourceTags: []configv1.AWSResourceTag{
+						{Key: "plat-key1", Value: "plat-value1"},
+						{Key: "conflict-key1", Value: "plat-value2"},
+						{Key: "conflict-key2", Value: "plat-value3"},
+					},
+				},
+			},
+			expectedArgs: sets.New[string](
+				"--enable-shield=false",
+				"--enable-waf=false",
+				"--enable-wafv2=false",
+				"--ingress-class=alb",
+				"--default-tags=conflict-key1=op-value2,conflict-key2=op-value3,op-key1=op-value1,plat-key1=plat-value1",
+			),
+		},
+		{
+			name: "non-conflicting resource tags specified in the platform status and operator spec",
+			controller: &albo.AWSLoadBalancerController{
+				Spec: albo.AWSLoadBalancerControllerSpec{
+					AdditionalResourceTags: []albo.AWSResourceTag{
+						{Key: "op-key1", Value: "op-value1"},
+						{Key: "op-key2", Value: "op-value2"},
+					},
+				},
+			},
+			platformStatus: &configv1.PlatformStatus{
+				Type: configv1.AWSPlatformType,
+				AWS: &configv1.AWSPlatformStatus{
+					ResourceTags: []configv1.AWSResourceTag{
+						{Key: "plat-key1", Value: "plat-value1"},
+						{Key: "plat-key2", Value: "plat-value2"},
+					},
+				},
+			},
+			expectedArgs: sets.New[string](
+				"--enable-shield=false",
+				"--enable-waf=false",
+				"--enable-wafv2=false",
+				"--ingress-class=alb",
+				"--default-tags=op-key1=op-value1,op-key2=op-value2,plat-key1=plat-value1,plat-key2=plat-value2",
+			),
+		},
+		{
+			name: "when merged tags exceeded maximum of 24 allowed tags",
+			controller: &albo.AWSLoadBalancerController{
+				Spec: albo.AWSLoadBalancerControllerSpec{
+					AdditionalResourceTags: []albo.AWSResourceTag{},
+				},
+			},
+			platformStatus: &configv1.PlatformStatus{
+				Type: configv1.AWSPlatformType,
+				AWS: &configv1.AWSPlatformStatus{
+					ResourceTags: generateAWSResourceTags(25),
+				},
+			},
+			expectedError: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defaultArgs := sets.New[string](
@@ -142,12 +239,19 @@ func TestDesiredArgs(t *testing.T) {
 			if tc.controller.Spec.IngressClass == "" {
 				tc.controller.Spec.IngressClass = "alb"
 			}
-			args := desiredContainerArgs(tc.controller, "test-cluster", "test-vpc")
-
-			expected := sets.List(expectedArgs)
-			sort.Strings(expected)
-			if diff := cmp.Diff(expected, args); diff != "" {
-				t.Fatalf("unexpected arguments\n%s", diff)
+			if tc.platformStatus == nil {
+				tc.platformStatus = &configv1.PlatformStatus{}
+			}
+			args, gotErr := desiredContainerArgs(tc.controller, tc.platformStatus, "test-cluster", "test-vpc")
+			if (gotErr != nil) != tc.expectedError {
+				t.Fatalf("expected errors to be %t, but got %t", tc.expectedError, gotErr != nil)
+			}
+			if !tc.expectedError {
+				expected := sets.List(expectedArgs)
+				sort.Strings(expected)
+				if diff := cmp.Diff(expected, args); diff != "" {
+					t.Fatalf("unexpected arguments\n%s", diff)
+				}
 			}
 		})
 	}
@@ -743,11 +847,15 @@ func TestEnsureDeployment(t *testing.T) {
 				VPCID:       "test-vpc",
 				AWSRegion:   testAWSRegion,
 			}
-			_, err := r.ensureDeployment(context.Background(), tc.serviceAccount, "test-credentials", "test-serving", tc.controller, tc.trustedCAConfigMap)
+			_, err := r.ensureDeployment(context.Background(), tc.serviceAccount, "test-credentials", "test-serving", tc.controller, &configv1.PlatformStatus{}, tc.trustedCAConfigMap)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			tc.expectedDeployment.Spec.Template.Spec.Containers[0].Args = desiredContainerArgs(tc.controller, "test-cluster", "test-vpc")
+			args, err := desiredContainerArgs(tc.controller, &configv1.PlatformStatus{}, "test-cluster", "test-vpc")
+			if err != nil {
+				t.Fatalf("failed to get container args: %v", err)
+			}
+			tc.expectedDeployment.Spec.Template.Spec.Containers[0].Args = args
 			var deployment appsv1.Deployment
 			err = client.Get(context.Background(), types.NamespacedName{Namespace: "test-namespace", Name: fmt.Sprintf("%s-%s", controllerResourcePrefix, tc.controller.Name)}, &deployment)
 			if err != nil {
@@ -854,11 +962,15 @@ func TestEnsureDeploymentEnvVars(t *testing.T) {
 				VPCID:       "test-vpc",
 				AWSRegion:   testAWSRegion,
 			}
-			_, err := r.ensureDeployment(context.Background(), tc.serviceAccount, "test-credentials", "test-serving", tc.controller, nil)
+			_, err := r.ensureDeployment(context.Background(), tc.serviceAccount, "test-credentials", "test-serving", tc.controller, &configv1.PlatformStatus{}, nil)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			tc.expectedDeployment.Spec.Template.Spec.Containers[0].Args = desiredContainerArgs(tc.controller, "test-cluster", "test-vpc")
+			args, err := desiredContainerArgs(tc.controller, &configv1.PlatformStatus{}, "test-cluster", "test-vpc")
+			if err != nil {
+				t.Fatalf("failed to get container args: %v", err)
+			}
+			tc.expectedDeployment.Spec.Template.Spec.Containers[0].Args = args
 			var deployment appsv1.Deployment
 			err = client.Get(context.Background(), types.NamespacedName{Namespace: "test-namespace", Name: fmt.Sprintf("%s-%s", controllerResourcePrefix, tc.controller.Name)}, &deployment)
 			if err != nil {
@@ -1232,4 +1344,16 @@ func (b *testContainerBuilder) build() corev1.Container {
 		VolumeMounts:    b.volumeMounts,
 		SecurityContext: b.securityContext,
 	}
+}
+
+// generateAWSResourceTags generates AWSResourceTags with a length of `n`.
+func generateAWSResourceTags(n int) []configv1.AWSResourceTag {
+	tags := make([]configv1.AWSResourceTag, n)
+	for i := 0; i < n; i++ {
+		tags[i] = configv1.AWSResourceTag{
+			Key:   fmt.Sprintf("key-%d", i),
+			Value: fmt.Sprintf("value-%d", i),
+		}
+	}
+	return tags
 }

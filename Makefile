@@ -120,6 +120,9 @@ help: ## Display this help.
 
 ##@ Development
 
+.PHONY: update
+update: update-vendored-crds manifests generate
+
 .PHONY: manifests
 manifests: ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
@@ -129,6 +132,11 @@ manifests: ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefin
 .PHONY: generate
 generate: iamctl-gen iam-gen## Generate code containing DeepCopy, DeepCopyInto, DeepCopyObject method implementations and iamctl policies.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: update-vendored-crds
+update-vendored-crds:
+	## Copy infrastructure CRD from openshift/api
+	cp vendor/github.com/openshift/api/config/v1/0000_10_config-operator_01_infrastructure-Default.crd.yaml ./pkg/utils/test/crd/infrastructure-Default.yaml
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -301,8 +309,12 @@ catalog-build: catalog
 catalog-push:
 	$(MAKE) image-push IMG=$(CATALOG_IMG)
 
+.PHONY: verify-vendored-crds
+verify-vendored-crds:
+	diff vendor/github.com/openshift/api/config/v1/0000_10_config-operator_01_infrastructure-Default.crd.yaml ./pkg/utils/test/crd/infrastructure-Default.yaml
+
 .PHONY: verify
-verify:
+verify: verify-vendored-crds
 	hack/verify-deps.sh
 	hack/verify-generated.sh
 	hack/verify-gofmt.sh
