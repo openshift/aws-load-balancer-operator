@@ -287,7 +287,7 @@ spec:
                 - /manager
                 env:
                 - name: RELATED_IMAGE_CONTROLLER
-                  value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:72a5057abe61e5e0de19cdaccba81326baf242bf087f74e10f303deeaae181a2
+                  value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller@sha256:75c5e5c1c650b27c273875d6e9497ede335c0ded6719064b0db63a6da8369937
                 - name: TARGET_NAMESPACE
                   valueFrom:
                     fieldRef:
