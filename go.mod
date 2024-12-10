@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.13.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.8.0
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.29.0
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.13.0
 	github.com/aws/aws-sdk-go-v2/service/wafregional v1.12.3
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.19.0
 	github.com/golangci/golangci-lint v1.51.2
