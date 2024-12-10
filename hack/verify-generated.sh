@@ -11,6 +11,7 @@ function print_failure {
 if [ "${OPENSHIFT_CI:-false}" = true ]; then
   make generate
   make manifests
+  git diff
 
   test -z "$(git status --porcelain | \grep -v '^??')" || print_failure
   echo "verified generated manifests and deep copy"
