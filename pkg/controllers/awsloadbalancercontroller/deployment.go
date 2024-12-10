@@ -21,6 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 )
 
@@ -69,7 +71,7 @@ const (
 	allCapabilities = "ALL"
 )
 
-func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController, trustCAConfigMap *corev1.ConfigMap) (*appsv1.Deployment, error) {
+func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Context, sa *corev1.ServiceAccount, crSecretName, servingSecretName string, controller *albo.AWSLoadBalancerController, platformStatus *configv1.PlatformStatus, trustCAConfigMap *corev1.ConfigMap) (*appsv1.Deployment, error) {
 	deploymentName := fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name)
 
 	reqLogger := log.FromContext(ctx).WithValues("deployment", deploymentName)
@@ -90,7 +92,8 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 		trustCAConfigMapHash = configMapHash
 	}
 
-	desired := r.desiredDeployment(deploymentName, crSecretName, servingSecretName, controller, sa, trustCAConfigMapName, trustCAConfigMapHash)
+	desired := r.desiredDeployment(deploymentName, crSecretName, servingSecretName, controller, platformStatus, sa, trustCAConfigMapName, trustCAConfigMapHash)
+
 	err = controllerutil.SetControllerReference(controller, desired, r.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set owner reference on deployment %s: %w", deploymentName, err)
@@ -120,7 +123,7 @@ func (r *AWSLoadBalancerControllerReconciler) ensureDeployment(ctx context.Conte
 	return current, nil
 }
 
-func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credentialsRequestSecretName, servingSecret string, controller *albo.AWSLoadBalancerController, sa *corev1.ServiceAccount, trustedCAConfigMapName, trustedCAConfigMapHash string) *appsv1.Deployment {
+func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credentialsRequestSecretName, servingSecret string, controller *albo.AWSLoadBalancerController, platformStatus *configv1.PlatformStatus, sa *corev1.ServiceAccount, trustedCAConfigMapName, trustedCAConfigMapHash string) *appsv1.Deployment {
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -145,7 +148,7 @@ func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credential
 						{
 							Name:  awsLoadBalancerControllerContainerName,
 							Image: r.Image,
-							Args:  desiredContainerArgs(controller, r.ClusterName, r.VPCID),
+							Args:  desiredContainerArgs(controller, r.ClusterName, r.VPCID, platformStatus),
 							Env: append([]corev1.EnvVar{
 								{
 									Name:  awsRegionEnvVarName,
@@ -260,18 +263,14 @@ func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credential
 	return d
 }
 
-func desiredContainerArgs(controller *albo.AWSLoadBalancerController, clusterName, vpcID string) []string {
+func desiredContainerArgs(controller *albo.AWSLoadBalancerController, clusterName, vpcID string, platformStatus *configv1.PlatformStatus) []string {
 	var args []string
 	args = append(args, fmt.Sprintf("--webhook-cert-dir=%s", webhookTLSDir))
 	args = append(args, fmt.Sprintf("--aws-vpc-id=%s", vpcID))
 	args = append(args, fmt.Sprintf("--cluster-name=%s", clusterName))
 
-	// if additional keys are present then sort them and append it to the arguments
-	if controller.Spec.AdditionalResourceTags != nil {
-		var tags []string
-		for _, t := range controller.Spec.AdditionalResourceTags {
-			tags = append(tags, fmt.Sprintf("%s=%s", t.Key, t.Value))
-		}
+	tags := mergeTags(controller, platformStatus)
+	if len(tags) > 0 {
 		sort.Strings(tags)
 		args = append(args, fmt.Sprintf(`--default-tags=%s`, strings.Join(tags, ",")))
 	}
@@ -541,4 +540,36 @@ func buildMapHash(data map[string]string) (string, error) {
 		}
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// mergeTags merges tags from an AWSLoadBalancerController and PlatformStatus into a slice of strings.
+// Tags from `controller.Spec.AdditionalResourceTags` take precedence over those in `platformStatus.AWS.ResourceTags`.
+// If a tag key already exists, the value from AdditionalResourceTags will overwrite the one from ResourceTags.
+func mergeTags(controller *albo.AWSLoadBalancerController, platformStatus *configv1.PlatformStatus) []string {
+	// tagMap holds tags with unique keys
+	tagMap := make(map[string]string)
+
+	// Add tags from controller.Spec.AdditionalResourceTags since operator tags has higher precedence
+	if controller.Spec.AdditionalResourceTags != nil {
+		for _, t := range controller.Spec.AdditionalResourceTags {
+			tagMap[t.Key] = t.Value
+		}
+	}
+
+	// Add tags from platformStatus.AWS.ResourceTags to the map, only if the key doesn't exist
+	if platformStatus != nil && platformStatus.AWS != nil && len(platformStatus.AWS.ResourceTags) > 0 {
+		for _, t := range platformStatus.AWS.ResourceTags {
+			if _, exists := tagMap[t.Key]; !exists {
+				tagMap[t.Key] = t.Value
+			}
+		}
+	}
+
+	// Convert map back to a slice
+	var tags []string
+	for key, value := range tagMap {
+		tags = append(tags, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	return tags
 }

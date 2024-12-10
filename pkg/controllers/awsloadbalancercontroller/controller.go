@@ -31,6 +31,7 @@ import (
 
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
 
+	configv1 "github.com/openshift/api/config/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,6 +47,8 @@ import (
 const (
 	// the name of the AWSLoadBalancerController resource which will be reconciled
 	controllerName = "cluster"
+	// clusterInfrastructureName is the name of the 'cluster' infrastructure object.
+	clusterInfrastructureName = "cluster"
 	// the port on which controller metrics are served
 	controllerMetricsPort = 8080
 	// the port on which the controller webhook is served
@@ -120,6 +123,12 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		}
 	}
 
+	infraConfig := &configv1.Infrastructure{}
+	if err := r.Client.Get(ctx, types.NamespacedName{Name: clusterInfrastructureName}, infraConfig); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get infrastructure %q: %w", clusterInfrastructureName, err)
+	}
+	platformStatus := infraConfig.Status.PlatformStatus
+
 	if err := r.ensureIngressClass(ctx, lbController); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure default IngressClass for AWSLoadBalancerController %q: %v", req.Name, err)
 	}
@@ -187,7 +196,7 @@ func (r *AWSLoadBalancerControllerReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, fmt.Errorf("failed to ensure ClusterRole and Binding for AWSLoadBalancerController %q: %w", req.Name, err)
 	}
 
-	deployment, err := r.ensureDeployment(ctx, sa, credSecretNsName.Name, servingSecretName, lbController, trustCAConfigMap)
+	deployment, err := r.ensureDeployment(ctx, sa, credSecretNsName.Name, servingSecretName, lbController, platformStatus, trustCAConfigMap)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to ensure Deployment for AWSLoadbalancerController %q: %w", req.Name, err)
 	}
@@ -247,17 +256,17 @@ func (r *AWSLoadBalancerControllerReconciler) BuildManagedController(mgr ctrl.Ma
 		Owns(&arv1.ValidatingWebhookConfiguration{}).
 		Owns(&arv1.MutatingWebhookConfiguration{})
 
-	if r.TrustedCAConfigMapName != "" {
-		clusterALBCInstance := func(ctx context.Context, o client.Object) []reconcile.Request {
-			return []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Name: controllerName,
-					},
+	clusterALBCInstance := func(ctx context.Context, o client.Object) []reconcile.Request {
+		return []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Name: controllerName,
 				},
-			}
+			},
 		}
+	}
 
+	if r.TrustedCAConfigMapName != "" {
 		// Requeue the only (cluster) instance of AWSLoadBalancerController
 		// so that the main reconciliation loop can detect the changes in the trusted CA configmap's contents
 		// and redeploy the controller if needed.
@@ -270,6 +279,12 @@ func (r *AWSLoadBalancerControllerReconciler) BuildManagedController(mgr ctrl.Ma
 				predicate.NewPredicateFuncs(inNamespace(r.Namespace))),
 				predicate.NewPredicateFuncs(hasName(r.TrustedCAConfigMapName))))
 	}
+	// Watch Infrastructure object to detect changes in AWS user tags
+	bldr = bldr.Watches(&configv1.Infrastructure{},
+		handler.EnqueueRequestsFromMapFunc(clusterALBCInstance),
+		builder.WithPredicates(
+			predicate.NewPredicateFuncs(hasName(clusterInfrastructureName))))
+
 	return bldr
 }
 
