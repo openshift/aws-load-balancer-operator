@@ -16,8 +16,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
+	rgtTpye "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// arnToTagsMap maps ARNs to formatted tags.
+type arnToTagsMap map[string]map[string]string
 
 // awsConfigWithCredentials returns the default AWS config with the given region and static credentials.
 func awsConfigWithCredentials(ctx context.Context, kubeClient client.Client, awsRegion string, secretName types.NamespacedName) (aws.Config, error) {
@@ -41,4 +46,42 @@ func awsConfigWithCredentials(ctx context.Context, kubeClient client.Client, aws
 	return config.LoadDefaultConfig(ctx,
 		config.WithRegion(awsRegion),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(keyID, secretKey, "")))
+}
+
+// getLoadBalancerARNsByTags retrieves the ARNs and Tags of Elastic Load Balancers that match the specified tags.
+// It uses the Resource Groups Tagging API to filter load balancers based on tag criteria.
+func getLoadBalancerARNsByTags(ctx context.Context, rgtClient *resourcegroupstaggingapi.Client, tags map[string]string) (arnToTagsMap, error) {
+	var tagFilters []rgtTpye.TagFilter
+	for key, value := range tags {
+		tagFilters = append(tagFilters, rgtTpye.TagFilter{
+			Key:    aws.String(key),
+			Values: []string{value},
+		})
+	}
+
+	input := &resourcegroupstaggingapi.GetResourcesInput{
+		ResourceTypeFilters: []string{"elasticloadbalancing:loadbalancer"},
+		TagFilters:          tagFilters,
+	}
+
+	arnsAndTags := make(arnToTagsMap)
+	paginator := resourcegroupstaggingapi.NewGetResourcesPaginator(rgtClient, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed getting resources page: %w", err)
+		}
+
+		for _, resource := range page.ResourceTagMappingList {
+			formattedTags := make(map[string]string)
+			for _, tag := range resource.Tags {
+				formattedTags[*tag.Key] = *tag.Value
+			}
+
+			arnsAndTags[*resource.ResourceARN] = formattedTags
+		}
+
+	}
+
+	return arnsAndTags, nil
 }

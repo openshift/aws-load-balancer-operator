@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -24,11 +25,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	kscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
 	waf "github.com/aws/aws-sdk-go-v2/service/wafregional"
 	waftypes "github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
@@ -59,13 +60,17 @@ const (
 
 	// controllerSecretName is the name of the controller's cloud credential secret provisioned by the CI.
 	controllerSecretName = "aws-load-balancer-controller-cluster"
+
+	// awsLoadBalancerControllerContainerName is the name of the AWS load balancer controller's container.
+	awsLoadBalancerControllerContainerName = "controller"
 )
 
 var (
 	cfg                aws.Config
 	kubeClient         client.Client
 	kubeClientSet      *kubernetes.Clientset
-	scheme             = kscheme.Scheme
+	infra              configv1.Infrastructure
+	scheme             = clientgoscheme.Scheme
 	operatorName       = "aws-load-balancer-operator-controller-manager"
 	operatorNamespace  = "aws-load-balancer-operator"
 	defaultTimeout     = 15 * time.Minute
@@ -113,7 +118,6 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	var infra configv1.Infrastructure
 	err = kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, &infra)
 	if err != nil {
 		fmt.Printf("failed to fetch infrastructure: %v\n", err)
@@ -1199,6 +1203,180 @@ func TestAWSLoadBalancerControllerOpenAPIValidation(t *testing.T) {
 	}
 }
 
+// TestAWSLoadBalancerControllerUserTags verifies that the user-defined tags are correctly applied.
+// It verifies that the controller deployment's `--default-tags` argument is updated
+// to include the tags from both the controller spec and the infrastructure status,
+// giving precedence to the controller spec in case of key conflicts.
+func TestAWSLoadBalancerControllerUserTags(t *testing.T) {
+	managed, err := isManagedServiceCluster(context.TODO(), kubeClientSet)
+	if err != nil {
+		t.Fatalf("failed to check managed cluster %v", err)
+	}
+	if managed {
+		t.Skip("Infrastructure status cannot be directly updated on managed cluster, skipping...")
+	}
+
+	testWorkloadNamespace := "aws-load-balancer-test-user-tags"
+	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+	echoNs := createTestNamespace(t, testWorkloadNamespace)
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+	}()
+
+	t.Log("Creating aws load balancer controller instance with default ingress class and user tags")
+
+	// create albc with additional resource tags added in albc spec
+	albc := newALBCBuilder().
+		withRoleARNIf(stsModeRequested(), controllerRoleARN).
+		withResourceTags(map[string]string{
+			"op-key1":       "op-value1",
+			"conflict-key1": "op-value2",
+			"conflict-key2": "op-value3",
+		}).
+		build()
+
+	if err := kubeClient.Create(context.TODO(), albc); err != nil {
+		t.Fatalf("failed to create aws load balancer controller: %v", err)
+	}
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, albc, defaultTimeout)
+	}()
+
+	expected := []appsv1.DeploymentCondition{
+		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+	}
+	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
+	}
+
+	dep := &appsv1.Deployment{}
+	if err := kubeClient.Get(context.TODO(), deploymentName, dep); err != nil {
+		t.Fatalf("failed to get deployment %s: %v", deploymentName.Name, err)
+	}
+	depGeneration := dep.Generation
+
+	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
+	echoSvc := createTestWorkload(t, testWorkloadNamespace)
+
+	t.Log("Creating Ingress Resource with default ingress class")
+	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
+	ingAnnotations := map[string]string{
+		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
+		"alb.ingress.kubernetes.io/target-type": "instance",
+	}
+	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
+	err = retry.OnError(defaultRetryPolicy,
+		func(err error) bool {
+			if errors.IsAlreadyExists(err) {
+				return false
+			}
+			t.Logf("retrying creation of echo ingress due to %v", err)
+			return true
+		},
+		func() error { return kubeClient.Create(context.TODO(), echoIng) })
+	if err != nil && !errors.IsAlreadyExists(err) {
+		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
+	}
+	defer func() {
+		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
+	}()
+
+	_, err = getIngress(context.TODO(), t, kubeClient, defaultTimeout, ingName)
+	if err != nil {
+		t.Fatalf("did not get load balancer hostname for ingress: %v", err)
+	}
+
+	// Save a copy of the original infra Config, to revert changes before exiting.
+	originalInfra := infra.DeepCopy()
+	defer func() {
+		if err := updateInfrastructureConfigStatusWithRetryOnConflict(t, 5*time.Minute, kubeClient, func(infra *configv1.Infrastructure) {
+			infra.Status = originalInfra.Status
+		}); err != nil {
+			t.Fatalf("Unable to revert the infrastructure changes: %v", err)
+		}
+	}()
+
+	// Update infrastructure status with initialInfraTags
+	initialInfraTags := []configv1.AWSResourceTag{
+		{Key: "plat-key1", Value: "plat-value1"},
+		{Key: "conflict-key1", Value: "plat-value2"},
+		{Key: "conflict-key2", Value: "plat-value3"},
+	}
+	t.Logf("Updating cluster infrastructure config with resource tags: %v", initialInfraTags)
+	err = updateInfrastructureConfigStatusWithRetryOnConflict(t, 5*time.Minute, kubeClient, func(infra *configv1.Infrastructure) {
+		if infra.Status.PlatformStatus == nil {
+			infra.Status.PlatformStatus = &configv1.PlatformStatus{}
+		}
+		if infra.Status.PlatformStatus.AWS == nil {
+			infra.Status.PlatformStatus.AWS = &configv1.AWSPlatformStatus{}
+		}
+		infra.Status.PlatformStatus.AWS.ResourceTags = initialInfraTags
+	})
+	if err != nil {
+		t.Errorf("failed to update infrastructure status: %v", err)
+	}
+
+	// wait for the deployment to restart and become available
+	if err := waitForDeploymentRollout(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, depGeneration); err != nil {
+		t.Fatalf("deployment did not roll out within timeout: %v", err)
+	}
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
+	}
+
+	// get the updated deployment
+	if err := kubeClient.Get(context.TODO(), deploymentName, dep); err != nil {
+		t.Fatalf("failed to get deployment %s: %v", deploymentName.Name, err)
+	}
+	depGeneration = dep.Generation
+
+	t.Logf("Testing aws tags present in alb instance and infra status (initialInfraTags)")
+	expectedTags := map[string]string{
+		"conflict-key1": "op-value2", "conflict-key2": "op-value3", "op-key1": "op-value1", "plat-key1": "plat-value1",
+	}
+	// Check `--default-tags` container argument
+	assertContainerArgFromDeployment(t, dep, awsLoadBalancerControllerContainerName, "--default-tags", convertTagsMapToString(expectedTags))
+	// Check the actual AWS ELB instance
+	assertELBbyTags(t, expectedTags, []string{})
+
+	// Update the status again, removing one tag.
+	updatedInfraTags := []configv1.AWSResourceTag{
+		{Key: "conflict-key1", Value: "plat-value2"},
+		{Key: "conflict-key2", Value: "plat-value3"},
+	}
+	t.Logf("Updating AWS ResourceTags in the cluster infrastructure config: %v", updatedInfraTags)
+	err = updateInfrastructureConfigStatusWithRetryOnConflict(t, 5*time.Minute, kubeClient, func(infra *configv1.Infrastructure) {
+		infra.Status.PlatformStatus.AWS.ResourceTags = updatedInfraTags
+	})
+	if err != nil {
+		t.Errorf("failed to update infrastructure status: %v", err)
+	}
+
+	// wait for the deployment to restart and become available
+	if err := waitForDeploymentRollout(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, depGeneration); err != nil {
+		t.Fatalf("deployment did not roll out within timeout: %v", err)
+	}
+	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+		t.Fatalf("did not get expected available condition for deployment: %v", err)
+	}
+
+	// get the updated deployment
+	if err := kubeClient.Get(context.TODO(), deploymentName, dep); err != nil {
+		t.Fatalf("failed to get deployment %s: %v", deploymentName.Name, err)
+	}
+
+	t.Logf("Testing aws tags present in alb instance and infra status (updatedInfraTags)")
+	expectedTags = map[string]string{
+		"conflict-key1": "op-value2", "conflict-key2": "op-value3", "op-key1": "op-value1",
+	}
+	expectedAbsentTags := []string{"plat-key1"}
+	// Check `--default-tags` container argument
+	assertContainerArgFromDeployment(t, dep, awsLoadBalancerControllerContainerName, "--default-tags", convertTagsMapToString(expectedTags))
+	// Check the actual AWS ELB instance
+	assertELBbyTags(t, expectedTags, expectedAbsentTags)
+}
+
 // ensureCredentialsRequest creates CredentialsRequest to provision a secret with the cloud credentials required by this e2e test.
 func ensureCredentialsRequest(secret types.NamespacedName) error {
 	providerSpec, err := cco.Codec.EncodeProviderSpec(&cco.AWSProviderSpec{
@@ -1210,6 +1388,11 @@ func ensureCredentialsRequest(secret types.NamespacedName) error {
 			},
 			{
 				Action:   []string{"waf-regional:GetChangeToken", "waf-regional:CreateWebACL", "waf-regional:DeleteWebACL", "waf-regional:ListWebACLs"},
+				Effect:   "Allow",
+				Resource: "*",
+			},
+			{
+				Action:   []string{"tag:GetResources"},
 				Effect:   "Allow",
 				Resource: "*",
 			},
@@ -1283,4 +1466,105 @@ func stsModeRequested() bool {
 		return true
 	}
 	return false
+}
+
+// extractArg extracts the value of a specific argument from a list of container arguments.
+// Returns an error if the argument is present but malformed, or if not found.
+func extractArg(args []string, argKey string) (string, error) {
+	for _, arg := range args {
+		if strings.HasPrefix(arg, argKey+"=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) != 2 {
+				return "", fmt.Errorf("invalid format for argument %q: %q", argKey, arg)
+			}
+			return parts[1], nil
+		}
+	}
+	return "", fmt.Errorf("argument %q not found", argKey)
+}
+
+// assertContainerArgFromDeployment asserts that a container in a deployment has a
+// specific argument with an expected value.
+func assertContainerArgFromDeployment(t *testing.T, dep *appsv1.Deployment, containerName, argKey, expectedArgValue string) {
+	t.Helper()
+	t.Logf("Asserting container %q has argument %q with value %q", containerName, argKey, expectedArgValue)
+	for _, c := range dep.Spec.Template.Spec.Containers {
+		if c.Name == containerName {
+			actualArgValue, err := extractArg(c.Args, argKey)
+			if err != nil {
+				t.Fatalf("failed to extract argument %q for container %q: %v", argKey, containerName, err)
+			}
+
+			if actualArgValue != expectedArgValue {
+				t.Fatalf("container %q, argument %q: expected value %q, but got %q", containerName, argKey, expectedArgValue, actualArgValue)
+			}
+			return
+		}
+	}
+	t.Fatalf("container %q not found in deployment", containerName)
+}
+
+// assertELBbyTags asserts that an ELB instance has the expected tags and doesn't have the expected absent tags
+func assertELBbyTags(t *testing.T, expectedTags map[string]string, expectedAbsentTags []string) {
+	t.Helper()
+	t.Logf("Asserting ELBs by tags %v", expectedTags)
+
+	rgtClient := resourcegroupstaggingapi.NewFromConfig(cfg)
+
+	err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 5*time.Minute, false, func(ctx context.Context) (bool, error) {
+		lbARNsAndTags, err := getLoadBalancerARNsByTags(ctx, rgtClient, expectedTags)
+		if err != nil {
+			return false, fmt.Errorf("unable to get ELBs for %v tags: %v", expectedTags, err)
+		}
+		// There must be exactly 1 ELB with the given tags
+		if len(lbARNsAndTags) != 1 {
+			t.Logf("expected single ELB with %v tags, but got %d (with arns and tags: %v), retrying... ", expectedTags, len(lbARNsAndTags), lbARNsAndTags)
+			return false, nil
+		}
+
+		// expectedAbsentTags must not exist
+		for _, absentTagKey := range expectedAbsentTags {
+			for arn, tags := range lbARNsAndTags {
+				if _, exists := tags[absentTagKey]; exists {
+					t.Logf("found unexpected tag %s on ELB %s (with tags: %v), retrying...", absentTagKey, arn, tags)
+					return false, nil
+				}
+			}
+		}
+
+		t.Logf("found ELB with %v tags (with arn and tags: %v)", expectedTags, lbARNsAndTags)
+		return true, nil
+	})
+
+	if err != nil {
+		t.Fatalf("timed out waiting for %v tags to match an ELB: %v", expectedTags, err)
+	}
+}
+
+// This logic was inspired by
+// https://github.com/openshift/origin/pull/29216/files#diff-35a89a7a7362642eebb559fb8564e857b00d6f7dd6322c3adabaf1adbd609d35R2267-R2278
+// implementation.
+func isManagedServiceCluster(ctx context.Context, adminClient kubernetes.Interface) (bool, error) {
+	_, err := adminClient.CoreV1().Namespaces().Get(ctx, "openshift-backplane", v1.GetOptions{})
+	if err == nil {
+		return true, nil
+	}
+
+	if !errors.IsNotFound(err) {
+		return false, err
+	}
+
+	return false, nil
+}
+
+// convertTagsMapToString converts a map of tags into a sorted comma-separated string.
+// Eeach key-value pair is formatted as "key=value".
+func convertTagsMapToString(tagsMap map[string]string) string {
+	var tags []string
+	for key, value := range tagsMap {
+		tags = append(tags, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	sort.Strings(tags)
+	return strings.Join(tags, ",")
 }
