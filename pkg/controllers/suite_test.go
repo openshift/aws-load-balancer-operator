@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metrics "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	configv1 "github.com/openshift/api/config/v1"
 
@@ -94,9 +95,11 @@ var _ = BeforeSuite(func() {
 	Expect(k8sClient).NotTo(BeNil())
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme.Scheme,
-		LeaderElection:     false,
-		MetricsBindAddress: "0",
+		Scheme:         scheme.Scheme,
+		LeaderElection: false,
+		Metrics: metrics.Options{
+			BindAddress: "0",
+		},
 	})
 	Expect(err).NotTo(HaveOccurred())
 

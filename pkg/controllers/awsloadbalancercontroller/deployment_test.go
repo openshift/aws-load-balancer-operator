@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -464,23 +464,23 @@ func TestUpdateDeployment(t *testing.T) {
 				testContainer("controller", "controller:v1").build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)}).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)}).build(),
 			).build(),
 			expectUpdate: true,
 		},
 		{
 			name: "security context changed",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](false)}).build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)}).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
-				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)}).build(),
+				testContainer("controller", "controller:v1").withSecurityContext(corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)}).build(),
 			).build(),
 			expectUpdate: true,
 		},
@@ -488,17 +488,17 @@ func TestUpdateDeployment(t *testing.T) {
 			name: "security context is same",
 			existingDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withSecurityContext(
-					corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true), ReadOnlyRootFilesystem: pointer.Bool(false)},
+					corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true), ReadOnlyRootFilesystem: ptr.To[bool](false)},
 				).build(),
 			).build(),
 			desiredDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withSecurityContext(
-					corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
+					corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)},
 				).build(),
 			).build(),
 			expectedDeployment: testDeployment("operator", "test-namespace", "test-sa", "test-serving").withContainers(
 				testContainer("controller", "controller:v1").withSecurityContext(
-					corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true), ReadOnlyRootFilesystem: pointer.Bool(false)},
+					corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true), ReadOnlyRootFilesystem: ptr.To[bool](false)},
 				).build(),
 			).build(),
 			expectUpdate: false,
@@ -593,9 +593,9 @@ func TestEnsureDeployment(t *testing.T) {
 				"test-sa", "test-serving").withContainers(
 				testContainer("controller", "test-image").withSecurityContext(corev1.SecurityContext{
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-					Privileged:               pointer.Bool(false),
-					RunAsNonRoot:             pointer.Bool(true),
-					AllowPrivilegeEscalation: pointer.Bool(false),
+					Privileged:               ptr.To[bool](false),
+					RunAsNonRoot:             ptr.To[bool](true),
+					AllowPrivilegeEscalation: ptr.To[bool](false),
 					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 				}).withDefaultEnvs().withVolumeMounts(
 					corev1.VolumeMount{Name: "aws-credentials", MountPath: "/aws"},
@@ -606,11 +606,11 @@ func TestEnsureDeployment(t *testing.T) {
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: ptr.To[int32](420),
 					Sources: []corev1.VolumeProjection{{
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Audience:          "openshift",
-							ExpirationSeconds: pointer.Int64(3600),
+							ExpirationSeconds: ptr.To[int64](3600),
 							Path:              "token",
 						},
 					}},
@@ -645,20 +645,20 @@ func TestEnsureDeployment(t *testing.T) {
 					corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
 				).withSecurityContext(corev1.SecurityContext{
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-					Privileged:               pointer.Bool(false),
-					RunAsNonRoot:             pointer.Bool(true),
-					AllowPrivilegeEscalation: pointer.Bool(false),
+					Privileged:               ptr.To[bool](false),
+					RunAsNonRoot:             ptr.To[bool](true),
+					AllowPrivilegeEscalation: ptr.To[bool](false),
 					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 				}).build(),
 			).withResourceVersion("2").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: ptr.To[int32](420),
 					Sources: []corev1.VolumeProjection{{
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Audience:          "openshift",
-							ExpirationSeconds: pointer.Int64(3600),
+							ExpirationSeconds: ptr.To[int64](3600),
 							Path:              "token",
 						},
 					}},
@@ -704,20 +704,20 @@ func TestEnsureDeployment(t *testing.T) {
 						corev1.VolumeMount{Name: "trusted-ca", MountPath: "/etc/pki/tls/certs/albo-tls-ca-bundle.crt", SubPath: "ca-bundle.crt"},
 					).withSecurityContext(corev1.SecurityContext{
 						Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-						Privileged:               pointer.Bool(false),
-						RunAsNonRoot:             pointer.Bool(true),
-						AllowPrivilegeEscalation: pointer.Bool(false),
+						Privileged:               ptr.To[bool](false),
+						RunAsNonRoot:             ptr.To[bool](true),
+						AllowPrivilegeEscalation: ptr.To[bool](false),
 						SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 					}).build(),
 				).withResourceVersion("2").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: ptr.To[int32](420),
 					Sources: []corev1.VolumeProjection{{
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Audience:          "openshift",
-							ExpirationSeconds: pointer.Int64(3600),
+							ExpirationSeconds: ptr.To[int64](3600),
 							Path:              "token",
 						},
 					}},
@@ -747,20 +747,20 @@ func TestEnsureDeployment(t *testing.T) {
 							corev1.VolumeMount{Name: "trusted-ca", MountPath: "/etc/pki/tls/certs/albo-tls-ca-bundle.crt", SubPath: "ca-bundle.crt"},
 						).withSecurityContext(corev1.SecurityContext{
 							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-							Privileged:               pointer.Bool(false),
-							RunAsNonRoot:             pointer.Bool(true),
-							AllowPrivilegeEscalation: pointer.Bool(false),
+							Privileged:               ptr.To[bool](false),
+							RunAsNonRoot:             ptr.To[bool](true),
+							AllowPrivilegeEscalation: ptr.To[bool](false),
 							SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 						}).build(),
 					).withResourceVersion("2").withVolumes(
 					corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 					corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 					corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-						DefaultMode: pointer.Int32(420),
+						DefaultMode: ptr.To[int32](420),
 						Sources: []corev1.VolumeProjection{{
 							ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 								Audience:          "openshift",
-								ExpirationSeconds: pointer.Int64(3600),
+								ExpirationSeconds: ptr.To[int64](3600),
 								Path:              "token",
 							},
 						}},
@@ -791,20 +791,20 @@ func TestEnsureDeployment(t *testing.T) {
 						corev1.VolumeMount{Name: "trusted-ca", MountPath: "/etc/pki/tls/certs/albo-tls-ca-bundle.crt", SubPath: "ca-bundle.crt"},
 					).withSecurityContext(corev1.SecurityContext{
 						Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-						Privileged:               pointer.Bool(false),
-						RunAsNonRoot:             pointer.Bool(true),
-						AllowPrivilegeEscalation: pointer.Bool(false),
+						Privileged:               ptr.To[bool](false),
+						RunAsNonRoot:             ptr.To[bool](true),
+						AllowPrivilegeEscalation: ptr.To[bool](false),
 						SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 					}).build(),
 				).withResourceVersion("3").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: ptr.To[int32](420),
 					Sources: []corev1.VolumeProjection{{
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Audience:          "openshift",
-							ExpirationSeconds: pointer.Int64(3600),
+							ExpirationSeconds: ptr.To[int64](3600),
 							Path:              "token",
 						},
 					}},
@@ -891,20 +891,20 @@ func TestEnsureDeploymentEnvVars(t *testing.T) {
 						corev1.VolumeMount{Name: "bound-sa-token", MountPath: "/var/run/secrets/openshift/serviceaccount", ReadOnly: true},
 					).withSecurityContext(corev1.SecurityContext{
 					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-					Privileged:               pointer.Bool(false),
-					RunAsNonRoot:             pointer.Bool(true),
-					AllowPrivilegeEscalation: pointer.Bool(false),
+					Privileged:               ptr.To[bool](false),
+					RunAsNonRoot:             ptr.To[bool](true),
+					AllowPrivilegeEscalation: ptr.To[bool](false),
 					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 				}).build(),
 			).withResourceVersion("2").withVolumes(
 				corev1.Volume{Name: "aws-credentials", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-credentials"}}},
 				corev1.Volume{Name: "tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "test-serving"}}},
 				corev1.Volume{Name: "bound-sa-token", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{
-					DefaultMode: pointer.Int32(420),
+					DefaultMode: ptr.To[int32](420),
 					Sources: []corev1.VolumeProjection{{
 						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 							Audience:          "openshift",
-							ExpirationSeconds: pointer.Int64(3600),
+							ExpirationSeconds: ptr.To[int64](3600),
 							Path:              "token",
 						},
 					}},
@@ -962,94 +962,94 @@ func TestHasSecurityContextChanged(t *testing.T) {
 		{
 			name:      "current RunAsNonRoot is nil",
 			currentSC: &corev1.SecurityContext{},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			// should be ignored to handle defaulting
 			name:      "desired RunAsNonRoot is nil",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](false)},
 			desiredSC: &corev1.SecurityContext{},
 			changed:   false,
 		},
 		{
 			name:      "RunAsNonRoot changes true->false",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			name:      "RunAsNonRoot changes false->true",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			name:      "RunAsNonRoot changes is same",
-			currentSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{RunAsNonRoot: pointer.Bool(true)},
+			currentSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{RunAsNonRoot: ptr.To[bool](true)},
 			changed:   false,
 		},
 		{
 			name:      "current Privileged is nil",
 			currentSC: &corev1.SecurityContext{},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
+			desiredSC: &corev1.SecurityContext{Privileged: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			// should be ignored to handle defaulting
 			name:      "desired Privileged is nil",
 			desiredSC: &corev1.SecurityContext{},
-			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{Privileged: ptr.To[bool](false)},
 			changed:   false,
 		},
 		{
 			name:      "Privileged changes true->false",
-			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{Privileged: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{Privileged: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			name:      "Privileged changes false->true",
-			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{Privileged: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{Privileged: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			name:      "Privileged is same",
-			currentSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{Privileged: pointer.Bool(true)},
+			currentSC: &corev1.SecurityContext{Privileged: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{Privileged: ptr.To[bool](true)},
 			changed:   false,
 		},
 		{
 			name:      "current AllowPrivilegeEscalation is nil",
 			currentSC: &corev1.SecurityContext{},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			// should be ignored to handle defaulting
 			name:      "desired AllowPrivilegeEscalation is nil",
 			desiredSC: &corev1.SecurityContext{},
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](false)},
 			changed:   false,
 		},
 		{
 			name:      "AllowPrivilegeEscalation changes true->false",
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			name:      "AllowPrivilegeEscalation changes false->true",
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(false)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](false)},
 			changed:   true,
 		},
 		{
 			name:      "AllowPrivilegeEscalation is same",
-			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
-			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: pointer.Bool(true)},
+			currentSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](true)},
+			desiredSC: &corev1.SecurityContext{AllowPrivilegeEscalation: ptr.To[bool](true)},
 			changed:   false,
 		},
 		{
@@ -1172,7 +1172,7 @@ func testDeployment(name, namespace, serviceAccount string, certsSecret string) 
 }
 
 func (b *testDeploymentBuilder) withReplicas(replicas int32) *testDeploymentBuilder {
-	b.replicas = pointer.Int32(replicas)
+	b.replicas = ptr.To[int32](replicas)
 	return b
 }
 
@@ -1192,8 +1192,8 @@ func (b *testDeploymentBuilder) withControllerReference(name string) *testDeploy
 			APIVersion:         albo.GroupVersion.Identifier(),
 			Kind:               "AWSLoadBalancerController",
 			Name:               name,
-			Controller:         pointer.Bool(true),
-			BlockOwnerDeletion: pointer.Bool(true),
+			Controller:         ptr.To[bool](true),
+			BlockOwnerDeletion: ptr.To[bool](true),
 		},
 	}
 	return b
@@ -1214,10 +1214,6 @@ func (b *testDeploymentBuilder) withTemplateAnnotation(k, v string) *testDeploym
 
 func (b *testDeploymentBuilder) build() *appsv1.Deployment {
 	d := &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            fmt.Sprintf("%s-%s", controllerResourcePrefix, b.name),
 			Namespace:       "test-namespace",

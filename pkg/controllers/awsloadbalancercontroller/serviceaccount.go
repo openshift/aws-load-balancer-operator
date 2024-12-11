@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -75,7 +75,7 @@ func desiredAWSLoadBalancerServiceAccount(namespace string, controller *albo.AWS
 			Namespace: namespace,
 			Name:      fmt.Sprintf("%s-%s", controllerResourcePrefix, controller.Name),
 		},
-		AutomountServiceAccountToken: pointer.Bool(true),
+		AutomountServiceAccountToken: ptr.To[bool](true),
 	}
 }
 
