@@ -11,11 +11,11 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "true"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
-    olm.skipRange: <1.1.0
+    olm.skipRange: <1.2.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
-  name: aws-load-balancer-operator.v1.1.0
+  name: aws-load-balancer-operator.v1.2.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -76,4 +76,4 @@ spec:
   provider:
     name: Red Hat Inc.
     url: https://redhat.com
-  version: 1.1.0
+  version: 1.2.0
