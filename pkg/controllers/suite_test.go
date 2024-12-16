@@ -35,6 +35,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	configv1 "github.com/openshift/api/config/v1"
+
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	albc "github.com/openshift/aws-load-balancer-operator/pkg/controllers/awsloadbalancercontroller"
 	//+kubebuilder:scaffold:imports
@@ -80,6 +82,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = cco.Install(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = configv1.Install(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme

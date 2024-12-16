@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	configv1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -97,6 +98,38 @@ var _ = Describe("AWS Load Balancer Reconciler Watch Predicates", func() {
 			Expect(<-errCh).To(BeNil())
 			Expect(gotReq).To(Equal(expectedReq))
 		})
+	})
+
+	Context("Infrastructure", func() {
+		It("does not trigger reconciliation on 'wrong' Infrastructure changes", func() {
+			infra := &configv1.Infrastructure{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "wrong",
+				},
+			}
+			var gotReq ctrl.Request
+			errCh := waitForRequest(reconcileCollector.Requests, 1*time.Second, &gotReq)
+			Expect(k8sClient.Create(context.Background(), infra)).Should(Succeed())
+			Expect(<-errCh).NotTo(BeNil())
+		})
+		It("triggers reconciliation on 'cluster' Infrastructure changes", func() {
+			infra := &configv1.Infrastructure{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster",
+				},
+			}
+			expectedReq := ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name: "cluster",
+				},
+			}
+			var gotReq ctrl.Request
+			errCh := waitForRequest(reconcileCollector.Requests, 1*time.Second, &gotReq)
+			Expect(k8sClient.Create(context.Background(), infra)).Should(Succeed())
+			Expect(<-errCh).To(BeNil())
+			Expect(gotReq).To(Equal(expectedReq))
+		})
+
 	})
 })
 

@@ -41,6 +41,28 @@ var (
 	allowPrivilegeEscalation = false
 )
 
+// waitForDeploymentRollout waits for a deployment to complete a rollout restart
+// by observing its generation.
+func waitForDeploymentRollout(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, deploymentName types.NamespacedName, oldGeneration int64) error {
+	t.Helper()
+
+	return wait.PollUntilContextTimeout(ctx, time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		updatedDep := &appsv1.Deployment{}
+		if err := cl.Get(ctx, deploymentName, updatedDep); err != nil {
+			t.Logf("failed to get deployment %s: %v (retrying)", deploymentName.Name, err)
+			return false, err
+		}
+
+		// Check if the deployment has progressed to the next generation and has atleast one ready replica
+		if updatedDep.Status.ObservedGeneration > oldGeneration && updatedDep.Status.ReadyReplicas > 0 {
+			return true, nil
+		}
+
+		t.Logf("retrying for deployment rollout: observedGeneration: %d, readyReplicas: %d", updatedDep.Status.ObservedGeneration, updatedDep.Status.ReadyReplicas)
+		return false, nil
+	})
+}
+
 func waitForDeploymentStatusCondition(ctx context.Context, t *testing.T, cl client.Client, timeout time.Duration, deploymentName types.NamespacedName, conditions ...appsv1.DeploymentCondition) error {
 	t.Helper()
 
@@ -508,4 +530,33 @@ func mustGetEnv(name string) string {
 		panic(fmt.Sprintf("environment variable %q must be set", name))
 	}
 	return val
+}
+
+// updateInfrastructureStatus updates the Infrastructure status by applying
+// the given update function to the current Infrastructure object.
+// If there is a conflict error on update then the complete operation
+// is retried until timeout is reached.
+func updateInfrastructureConfigStatusWithRetryOnConflict(t *testing.T, timeout time.Duration, kubeClient client.Client, updateFunc func(*configv1.Infrastructure)) error {
+	t.Helper()
+
+	t.Log("Updating 'cluster' infrastructure config status")
+	return wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		infra := &configv1.Infrastructure{}
+		if err := kubeClient.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infra); err != nil {
+			t.Logf("error getting 'cluster' infrastructure config: %v, retrying...", err)
+			return false, nil
+		}
+
+		// Apply the update function to the Infrastructure object.
+		updateFunc(infra)
+
+		if err := kubeClient.Status().Update(context.TODO(), infra); err != nil {
+			if errors.IsConflict(err) {
+				t.Logf("conflict when updating 'cluster' infrastructure config: %v, retrying...", err)
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
 }
