@@ -593,7 +593,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	var aclARN string
 	if !stsModeRequested() {
 		wafClient := wafv2.NewFromConfig(cfg)
-		webACLName := "echoserver-acl"
+		webACLName := fmt.Sprintf("echoserver-acl-%d", time.Now().Unix())
 		acl, err := findAWSWebACL(wafClient, webACLName)
 		if err != nil {
 			t.Logf("failed to find %q aws wafv2 acl due to %v, continue to creation anyway", webACLName, err)
@@ -726,10 +726,11 @@ func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get change token for waf regional classic %v", err)
 		}
+		aclName := fmt.Sprintf("echoserverclassicacl%d", time.Now().Unix())
 		acl, err := wafClient.CreateWebACL(context.TODO(), &waf.CreateWebACLInput{
 			DefaultAction: &waftypes.WafAction{Type: waftypes.WafActionTypeBlock},
-			MetricName:    aws.String("echoserverclassicacl"),
-			Name:          aws.String("echoserverclassicacl"),
+			MetricName:    aws.String(aclName),
+			Name:          aws.String(aclName),
 			ChangeToken:   token.ChangeToken,
 		})
 		if err != nil {
