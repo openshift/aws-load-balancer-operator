@@ -136,7 +136,7 @@ generate: iamctl-gen iam-gen## Generate code containing DeepCopy, DeepCopyInto, 
 .PHONY: update-vendored-crds
 update-vendored-crds:
 	## Copy infrastructure CRD from openshift/api
-	cp vendor/github.com/openshift/api/config/v1/0000_10_config-operator_01_infrastructure-Default.crd.yaml ./pkg/utils/test/crd/infrastructure-Default.yaml
+	cp vendor/github.com/openshift/api/config/v1/zz_generated.crd-manifests/0000_10_config-operator_01_infrastructures-Default.crd.yaml ./pkg/utils/test/crd/infrastructure-Default.yaml
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -174,12 +174,13 @@ iam-gen:
 	./hack/generate-iam-from-credrequest.sh ./hack/operator-credentials-request.yaml ./hack/operator-permission-policy.json
 	cp ./hack/operator-permission-policy.json $(IAMCTL_ASSETS_DIR)/operator-iam-policy.json
 
+ENVTEST_K8S_VERSION ?= 1.30.3
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
 .PHONY: test
 test: manifests generate lint fmt vet ## Run tests.
 	mkdir -p "$(ENVTEST_ASSETS_DIR)"
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)")" go test -race ./... -coverprofile cover.out -covermode=atomic
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)" --index https://raw.githubusercontent.com/openshift/api/master/envtest-releases.yaml --use-deprecated-gcs=false)" go test -race ./... -coverprofile cover.out -covermode=atomic
 
 ##@ Build
 
@@ -251,7 +252,7 @@ endif
 
 CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen
 
-KUSTOMIZE ?= go run sigs.k8s.io/kustomize/kustomize/v4
+KUSTOMIZE ?= go run sigs.k8s.io/kustomize/kustomize/v5
 
 ENVTEST ?= go run sigs.k8s.io/controller-runtime/tools/setup-envtest
 
@@ -311,7 +312,7 @@ catalog-push:
 
 .PHONY: verify-vendored-crds
 verify-vendored-crds:
-	diff vendor/github.com/openshift/api/config/v1/0000_10_config-operator_01_infrastructure-Default.crd.yaml ./pkg/utils/test/crd/infrastructure-Default.yaml
+	diff vendor/github.com/openshift/api/config/v1/zz_generated.crd-manifests/0000_10_config-operator_01_infrastructures-Default.crd.yaml ./pkg/utils/test/crd/infrastructure-Default.yaml
 
 .PHONY: verify
 verify: verify-vendored-crds

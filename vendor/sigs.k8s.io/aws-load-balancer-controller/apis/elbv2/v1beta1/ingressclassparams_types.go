@@ -20,13 +20,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +kubebuilder:validation:Enum=ipv4;dualstack
+// +kubebuilder:validation:Enum=ipv4;dualstack;dualstack-without-public-ipv4
 // IPAddressType is the ip address type of load balancer.
 type IPAddressType string
 
 const (
-	IPAddressTypeIPV4      IPAddressType = "ipv4"
-	IPAddressTypeDualStack IPAddressType = "dualstack"
+	IPAddressTypeIPV4                       IPAddressType = "ipv4"
+	IPAddressTypeDualStack                  IPAddressType = "dualstack"
+	IPAddressTypeDualStackWithoutPublicIPV4 IPAddressType = "dualstack-without-public-ipv4"
 )
 
 // +kubebuilder:validation:Enum=internal;internet-facing
@@ -40,6 +41,25 @@ const (
 	LoadBalancerSchemeInternal       LoadBalancerScheme = "internal"
 	LoadBalancerSchemeInternetFacing LoadBalancerScheme = "internet-facing"
 )
+
+// SubnetID specifies a subnet ID.
+// +kubebuilder:validation:Pattern=subnet-[0-9a-f]+
+type SubnetID string
+
+// SubnetSelector selects one or more existing subnets.
+type SubnetSelector struct {
+	// IDs specify the resource IDs of subnets. Exactly one of this or `tags` must be specified.
+	// +kubebuilder:validation:MinItems=1
+	// +optional
+	IDs []SubnetID `json:"ids,omitempty"`
+
+	// Tags specifies subnets in the load balancer's VPC where each
+	// tag specified in the map key contains one of the values in the corresponding
+	// value list.
+	// Exactly one of this or `ids` must be specified.
+	// +optional
+	Tags map[string][]string `json:"tags,omitempty"`
+}
 
 // IngressGroup defines IngressGroup configuration.
 type IngressGroup struct {
@@ -67,6 +87,10 @@ type Attribute struct {
 
 // IngressClassParamsSpec defines the desired state of IngressClassParams
 type IngressClassParamsSpec struct {
+	// CertificateArn specifies the ARN of the certificates for all Ingresses that belong to IngressClass with this IngressClassParams.
+	// +optional
+	CertificateArn []string `json:"certificateArn,omitempty"`
+
 	// NamespaceSelector restrict the namespaces of Ingresses that are allowed to specify the IngressClass with this IngressClassParams.
 	// * if absent or present but empty, it selects all namespaces.
 	// +optional
@@ -79,6 +103,18 @@ type IngressClassParamsSpec struct {
 	// Scheme defines the scheme for all Ingresses that belong to IngressClass with this IngressClassParams.
 	// +optional
 	Scheme *LoadBalancerScheme `json:"scheme,omitempty"`
+
+	// InboundCIDRs specifies the CIDRs that are allowed to access the Ingresses that belong to IngressClass with this IngressClassParams.
+	// +optional
+	InboundCIDRs []string `json:"inboundCIDRs,omitempty"`
+
+	// SSLPolicy specifies the SSL Policy for all Ingresses that belong to IngressClass with this IngressClassParams.
+	// +optional
+	SSLPolicy string `json:"sslPolicy,omitEmpty"`
+
+	// Subnets defines the subnets for all Ingresses that belong to IngressClass with this IngressClassParams.
+	// +optional
+	Subnets *SubnetSelector `json:"subnets,omitempty"`
 
 	// IPAddressType defines the ip address type for all Ingresses that belong to IngressClass with this IngressClassParams.
 	// +optional

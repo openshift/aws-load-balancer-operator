@@ -7,7 +7,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -167,7 +167,7 @@ func TestUpdateStatus(t *testing.T) {
 			name: "deployment and credentials secret available and up-to-date",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
-				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
+				Spec:       appsv1.DeploymentSpec{Replicas: ptr.To[int32](1)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 1},
 			},
 			credentialsSecretName: "test",
@@ -204,7 +204,7 @@ func TestUpdateStatus(t *testing.T) {
 			controller: &albo.AWSLoadBalancerController{ObjectMeta: metav1.ObjectMeta{Name: "test", Generation: 5}},
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
-				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(2)},
+				Spec:       appsv1.DeploymentSpec{Replicas: ptr.To[int32](2)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 2, UpdatedReplicas: 1},
 			},
 			credentialsSecretName: "test",
@@ -237,7 +237,7 @@ func TestUpdateStatus(t *testing.T) {
 			name: "deployment is not available",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
-				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(2)},
+				Spec:       appsv1.DeploymentSpec{Replicas: ptr.To[int32](2)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 2},
 			},
 			credentialsSecretName: "test",
@@ -273,7 +273,7 @@ func TestUpdateStatus(t *testing.T) {
 			name: "credentials secret is not available",
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "test"},
-				Spec:       appsv1.DeploymentSpec{Replicas: pointer.Int32(1)},
+				Spec:       appsv1.DeploymentSpec{Replicas: ptr.To[int32](1)},
 				Status:     appsv1.DeploymentStatus{AvailableReplicas: 1, UpdatedReplicas: 1},
 			},
 			credentialsSecretName: "test",

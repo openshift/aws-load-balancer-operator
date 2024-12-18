@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
@@ -867,7 +867,7 @@ func TestAWSLoadBalancerControllerWithIngressGroup(t *testing.T) {
 	ingressClassName := types.NamespacedName{Name: "multi-ingress", Namespace: "aws-load-balancer-operator"}
 	ingressClass := buildIngressClass(ingressClassName, "ingress.k8s.aws/alb")
 	ingressClass.Spec.Parameters = &networkingv1.IngressClassParametersReference{
-		APIGroup: pointer.String(elbv1beta1.GroupVersion.Group),
+		APIGroup: ptr.To[string](elbv1beta1.GroupVersion.Group),
 		Kind:     "IngressClassParams",
 		Name:     ingressClassParams.Name,
 	}
@@ -1010,7 +1010,7 @@ func TestAWSLoadBalancerControllerWithDefaultLoadBalancerClass(t *testing.T) {
 	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
 	customize := func(svc *corev1.Service) {
 		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
-		svc.Spec.LoadBalancerClass = pointer.String("service.k8s.aws/nlb")
+		svc.Spec.LoadBalancerClass = ptr.To[string]("service.k8s.aws/nlb")
 		svc.Annotations = map[string]string{
 			"service.beta.kubernetes.io/aws-load-balancer-scheme": "internet-facing",
 		}
@@ -1074,7 +1074,7 @@ func TestAWSLoadBalancerControllerWithInternalNLB(t *testing.T) {
 	t.Logf("Creating test workload in %q namespace", testWorkloadNamespace)
 	customize := func(svc *corev1.Service) {
 		svc.Spec.Type = corev1.ServiceTypeLoadBalancer
-		svc.Spec.LoadBalancerClass = pointer.String("service.k8s.aws/nlb")
+		svc.Spec.LoadBalancerClass = ptr.To[string]("service.k8s.aws/nlb")
 		// by default ALBC uses instance target type if there is LoadBalancerClass
 		// by default ALBC creates internal NLB
 	}

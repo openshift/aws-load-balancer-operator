@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -186,9 +186,9 @@ func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credential
 								Capabilities: &corev1.Capabilities{
 									Drop: []corev1.Capability{allCapabilities},
 								},
-								Privileged:               pointer.Bool(false),
-								RunAsNonRoot:             pointer.Bool(true),
-								AllowPrivilegeEscalation: pointer.Bool(false),
+								Privileged:               ptr.To[bool](false),
+								RunAsNonRoot:             ptr.To[bool](true),
+								AllowPrivilegeEscalation: ptr.To[bool](false),
 								SeccompProfile: &corev1.SeccompProfile{
 									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
@@ -217,11 +217,11 @@ func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credential
 							Name: boundSATokenVolumeName,
 							VolumeSource: corev1.VolumeSource{
 								Projected: &corev1.ProjectedVolumeSource{
-									DefaultMode: pointer.Int32(420),
+									DefaultMode: ptr.To[int32](420),
 									Sources: []corev1.VolumeProjection{{
 										ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
 											Audience:          "openshift",
-											ExpirationSeconds: pointer.Int64(3600),
+											ExpirationSeconds: ptr.To[int64](3600),
 											Path:              "token",
 										},
 									}},
@@ -234,7 +234,7 @@ func (r *AWSLoadBalancerControllerReconciler) desiredDeployment(name, credential
 		},
 	}
 	if controller.Spec.Config != nil && controller.Spec.Config.Replicas != 0 {
-		d.Spec.Replicas = pointer.Int32(controller.Spec.Config.Replicas)
+		d.Spec.Replicas = ptr.To[int32](controller.Spec.Config.Replicas)
 	}
 	if trustedCAConfigMapName != "" {
 		if trustedCAConfigMapHash != "" {
@@ -329,7 +329,7 @@ func (r *AWSLoadBalancerControllerReconciler) updateDeployment(ctx context.Conte
 	// if replicas don't match then update
 	if desired.Spec.Replicas != nil {
 		if updated.Spec.Replicas == nil {
-			updated.Spec.Replicas = pointer.Int32(*desired.Spec.Replicas)
+			updated.Spec.Replicas = ptr.To[int32](*desired.Spec.Replicas)
 			outdated = true
 		}
 		if *desired.Spec.Replicas != *updated.Spec.Replicas {

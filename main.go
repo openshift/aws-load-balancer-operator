@@ -44,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metrics "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	networkingolmv1 "github.com/openshift/aws-load-balancer-operator/api/v1"
@@ -119,12 +120,14 @@ func main() {
 				}
 			},
 		},
+		Port: 9443,
 	})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Scheme: scheme,
+		Metrics: metrics.Options{
+			BindAddress: metricsAddr,
+		},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "7de51cf3.openshift.io",
@@ -136,7 +139,9 @@ func main() {
 			return client.New(config, options)
 		},
 		Cache: cache.Options{
-			Namespaces: []string{namespace},
+			DefaultNamespaces: map[string]cache.Config{
+				namespace: {},
+			},
 		},
 		WebhookServer: webhookSrv,
 	})

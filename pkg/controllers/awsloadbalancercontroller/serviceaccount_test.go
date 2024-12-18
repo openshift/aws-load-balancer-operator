@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -149,7 +149,7 @@ func testServiceAccount() *corev1.ServiceAccount {
 			Name:      "aws-load-balancer-controller-cluster",
 			Namespace: test.OperatorNamespace,
 		},
-		AutomountServiceAccountToken: pointer.Bool(true),
+		AutomountServiceAccountToken: ptr.To[bool](true),
 	}
 }
 
@@ -169,6 +169,6 @@ func testIncorrectServiceAccount() *corev1.ServiceAccount {
 			Name:      "aws-load-balancer-controller-cluster",
 			Namespace: test.OperatorNamespace,
 		},
-		AutomountServiceAccountToken: pointer.Bool(false),
+		AutomountServiceAccountToken: ptr.To[bool](false),
 	}
 }
