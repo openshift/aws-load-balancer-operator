@@ -1,6 +1,6 @@
 ---
-image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:v1.1.0
-name: aws-load-balancer-operator.v1.1.0
+image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:v1.2.0
+name: aws-load-balancer-operator.v1.2.0
 package: aws-load-balancer-operator
 properties:
 - type: olm.gvk
@@ -31,7 +31,7 @@ properties:
 - type: olm.package
   value:
     packageName: aws-load-balancer-operator
-    version: 1.1.0
+    version: 1.2.0
 - type: olm.csv.metadata
   value:
     annotations:
@@ -99,9 +99,15 @@ properties:
           }
         ]
       capabilities: Basic Install
-      olm.skipRange: <1.1.0
+      features.operators.openshift.io/disconnected: "false"
+      features.operators.openshift.io/fips-compliant: "true"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "true"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: <1.2.0
       operatorframework.io/suggested-namespace: aws-load-balancer-operator
-      operators.openshift.io/infrastructure-features: '["proxy-aware"]'
       operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
       operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
       repository: https://github.com/openshift/aws-load-balancer-operator
@@ -167,10 +173,10 @@ properties:
       name: Red Hat Inc.
       url: https://redhat.com
 relatedImages:
-- image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+- image: openshift.io/aws-load-balancer-operator:latest
   name: ""
-- image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:v1.1.0
+- image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:v1.2.0
   name: ""
-- image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator:latest
+- image: quay.io/openshift/origin-kube-rbac-proxy:latest
   name: ""
 schema: olm.bundle

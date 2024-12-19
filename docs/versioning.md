@@ -24,6 +24,7 @@ The table below illustrates the OpenShift versions for which various AWS Load Ba
 
 | OCP version | AWS Load Balancer Operator branch  | AWS Load Balancer Operator OLM channel |
 | :---------: | :-------------------------------:  | :------------------------------------: |
+| 4.17        | release-1.2                        | stable-v1.2, stable-v1                 |
 | 4.16        | release-1.1                        | stable-v1.1, stable-v1                 |
 | 4.15        | release-1.1                        | stable-v1.1, stable-v1                 |
 | 4.14        | release-1.1                        | stable-v1.1, stable-v1                 |
@@ -35,6 +36,7 @@ The table below illustrates the OpenShift versions for which various AWS Load Ba
 
 | AWS Load Balancer Operator release | Support model   |
 | :--------------------------------: | :-------------: |
+| 1.2                                | Full Support    |
 | 1.1                                | Full Support    |
 | 1.0                                | Full Support    |
 | 0.2                                | End of Life     |
