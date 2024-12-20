@@ -3,10 +3,10 @@ schema: olm.channel
 name: stable-v1
 package: aws-load-balancer-operator
 entries:
-  - name: aws-load-balancer-operator.v1.1.0
+  - name: aws-load-balancer-operator.v1.2.0
 ---
 schema: olm.channel
-name: stable-v1.1
+name: stable-v1.2
 package: aws-load-balancer-operator
 entries:
-  - name: aws-load-balancer-operator.v1.1.0
+  - name: aws-load-balancer-operator.v1.2.0
