@@ -116,9 +116,6 @@ github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
 # github.com/aws/aws-sdk-go-v2/service/wafregional v1.12.3
 ## explicit; go 1.15
-github.com/aws/aws-sdk-go-v2/service/wafregional
-github.com/aws/aws-sdk-go-v2/service/wafregional/internal/endpoints
-github.com/aws/aws-sdk-go-v2/service/wafregional/types
 # github.com/aws/aws-sdk-go-v2/service/wafv2 v1.19.0
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/wafv2

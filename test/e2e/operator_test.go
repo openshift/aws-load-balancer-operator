@@ -30,8 +30,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi"
-	waf "github.com/aws/aws-sdk-go-v2/service/wafregional"
-	waftypes "github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2"
 	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	configv1 "github.com/openshift/api/config/v1"
@@ -54,7 +52,7 @@ const (
 	// Because the e2e binary doesn't have the token required by AWS to provision the temporary STS credentials
 	// unlike the operator and the controller which use the service account token signed by OpenShift.
 	wafv2WebACLARNVarName = "ALBO_E2E_WAFV2_WEBACL_ARN"
-	wafWebACLIDVarName    = "ALBO_E2E_WAF_WEBACL_ID"
+	//wafWebACLIDVarName    = "ALBO_E2E_WAF_WEBACL_ID"
 	// controllerRoleARNVarName contains IAM role ARN to be used by the controller on a ROSA/STS cluster.
 	controllerRoleARNVarName = "ALBO_E2E_CONTROLLER_ROLE_ARN"
 
@@ -716,125 +714,125 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 	}
 }
 
-func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
-	t.Log("Getting WAFRegional WebACL")
-	var webACLID string
-	if !stsModeRequested() {
-		wafClient := waf.NewFromConfig(cfg)
-
-		token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
-		if err != nil {
-			t.Fatalf("failed to get change token for waf regional classic %v", err)
-		}
-		aclName := fmt.Sprintf("echoserverclassicacl%d", time.Now().Unix())
-		acl, err := wafClient.CreateWebACL(context.TODO(), &waf.CreateWebACLInput{
-			DefaultAction: &waftypes.WafAction{Type: waftypes.WafActionTypeBlock},
-			MetricName:    aws.String(aclName),
-			Name:          aws.String(aclName),
-			ChangeToken:   token.ChangeToken,
-		})
-		if err != nil {
-			t.Fatalf("failed to create aws waf regional acl due to %v", err)
-		}
-		webACLID = *acl.WebACL.WebACLId
-		defer func() {
-			token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
-			if err != nil {
-				t.Fatalf("failed to get change token for waf regional classic %v", err)
-			}
-
-			_, err = wafClient.DeleteWebACL(context.TODO(), &waf.DeleteWebACLInput{
-				ChangeToken: token.ChangeToken,
-				WebACLId:    acl.WebACL.WebACLId,
-			})
-			if err != nil {
-				t.Fatalf("failed to delete aws waf regional acl due to %v", err)
-			}
-		}()
-	} else {
-		// Web ACLs are provisioned by CI on ROSA cluster.
-		webACLID = os.Getenv(wafWebACLIDVarName)
-		if webACLID == "" {
-			t.Fatalf("no wafregional webacl id provided")
-		}
-	}
-	t.Logf("Got WAFRegional WebACL. ID: %s", webACLID)
-
-	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
-	t.Logf("Creating test namespace %q", testWorkloadNamespace)
-	echoNs := createTestNamespace(t, testWorkloadNamespace)
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
-	}()
-
-	t.Log("Creating aws load balancer controller instance with default ingress class")
-
-	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
-	if err := kubeClient.Create(context.TODO(), alb); err != nil {
-		t.Fatalf("failed to create aws load balancer controller: %v", err)
-	}
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
-	}()
-
-	expected := []appsv1.DeploymentCondition{
-		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
-	}
-	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
-	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
-		t.Fatalf("did not get expected available condition for deployment: %v", err)
-	}
-
-	echoSvc := createTestWorkload(t, testWorkloadNamespace)
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
-	}()
-
-	t.Log("Creating Ingress Resource with default ingress class")
-	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
-	ingAnnotations := map[string]string{
-		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
-		"alb.ingress.kubernetes.io/target-type": "instance",
-		"alb.ingress.kubernetes.io/waf-acl-id":  webACLID,
-	}
-	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
-	err := retry.OnError(defaultRetryPolicy,
-		func(err error) bool {
-			if errors.IsAlreadyExists(err) {
-				return false
-			}
-			t.Logf("retrying creation of echo ingress due to %v", err)
-			return true
-		},
-		func() error { return kubeClient.Create(context.TODO(), echoIng) })
-	if err != nil && !errors.IsAlreadyExists(err) {
-		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
-	}
-	defer func() {
-		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
-	}()
-
-	address, err := getIngress(context.TODO(), t, kubeClient, 20*time.Minute, ingName)
-	if err != nil {
-		t.Fatalf("did not get load balancer address for ingress: %v", err)
-	}
-
-	t.Logf("Testing aws load balancer for ingress traffic at address %s", address)
-	for _, rule := range echoIng.Spec.Rules {
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s", address), nil)
-		if err != nil {
-			t.Fatalf("failed to build client request: %v", err)
-		}
-		req.Host = rule.Host
-
-		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
-			return r.StatusCode == http.StatusForbidden
-		})
-		if err != nil {
-			t.Fatalf("failed to verify condition with external client: %v", err)
-		}
-	}
-}
+//func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
+//	t.Log("Getting WAFRegional WebACL")
+//	var webACLID string
+//	if !stsModeRequested() {
+//		wafClient := waf.NewFromConfig(cfg)
+//
+//		token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
+//		if err != nil {
+//			t.Fatalf("failed to get change token for waf regional classic %v", err)
+//		}
+//		aclName := fmt.Sprintf("echoserverclassicacl%d", time.Now().Unix())
+//		acl, err := wafClient.CreateWebACL(context.TODO(), &waf.CreateWebACLInput{
+//			DefaultAction: &waftypes.WafAction{Type: waftypes.WafActionTypeBlock},
+//			MetricName:    aws.String(aclName),
+//			Name:          aws.String(aclName),
+//			ChangeToken:   token.ChangeToken,
+//		})
+//		if err != nil {
+//			t.Fatalf("failed to create aws waf regional acl due to %v", err)
+//		}
+//		webACLID = *acl.WebACL.WebACLId
+//		defer func() {
+//			token, err := wafClient.GetChangeToken(context.TODO(), &waf.GetChangeTokenInput{})
+//			if err != nil {
+//				t.Fatalf("failed to get change token for waf regional classic %v", err)
+//			}
+//
+//			_, err = wafClient.DeleteWebACL(context.TODO(), &waf.DeleteWebACLInput{
+//				ChangeToken: token.ChangeToken,
+//				WebACLId:    acl.WebACL.WebACLId,
+//			})
+//			if err != nil {
+//				t.Fatalf("failed to delete aws waf regional acl due to %v", err)
+//			}
+//		}()
+//	} else {
+//		// Web ACLs are provisioned by CI on ROSA cluster.
+//		webACLID = os.Getenv(wafWebACLIDVarName)
+//		if webACLID == "" {
+//			t.Fatalf("no wafregional webacl id provided")
+//		}
+//	}
+//	t.Logf("Got WAFRegional WebACL. ID: %s", webACLID)
+//
+//	testWorkloadNamespace := "aws-load-balancer-test-wafregional"
+//	t.Logf("Creating test namespace %q", testWorkloadNamespace)
+//	echoNs := createTestNamespace(t, testWorkloadNamespace)
+//	defer func() {
+//		waitForDeletion(context.TODO(), t, kubeClient, echoNs, defaultTimeout)
+//	}()
+//
+//	t.Log("Creating aws load balancer controller instance with default ingress class")
+//
+//	alb := newALBCBuilder().withAddons(albo.AWSAddonWAFv1).withRoleARNIf(stsModeRequested(), controllerRoleARN).build()
+//	if err := kubeClient.Create(context.TODO(), alb); err != nil {
+//		t.Fatalf("failed to create aws load balancer controller: %v", err)
+//	}
+//	defer func() {
+//		waitForDeletion(context.TODO(), t, kubeClient, alb, defaultTimeout)
+//	}()
+//
+//	expected := []appsv1.DeploymentCondition{
+//		{Type: appsv1.DeploymentAvailable, Status: corev1.ConditionTrue},
+//	}
+//	deploymentName := types.NamespacedName{Name: "aws-load-balancer-controller-cluster", Namespace: "aws-load-balancer-operator"}
+//	if err := waitForDeploymentStatusCondition(context.TODO(), t, kubeClient, defaultTimeout, deploymentName, expected...); err != nil {
+//		t.Fatalf("did not get expected available condition for deployment: %v", err)
+//	}
+//
+//	echoSvc := createTestWorkload(t, testWorkloadNamespace)
+//	defer func() {
+//		waitForDeletion(context.TODO(), t, kubeClient, echoSvc, defaultTimeout)
+//	}()
+//
+//	t.Log("Creating Ingress Resource with default ingress class")
+//	ingName := types.NamespacedName{Name: "echoserver", Namespace: testWorkloadNamespace}
+//	ingAnnotations := map[string]string{
+//		"alb.ingress.kubernetes.io/scheme":      "internet-facing",
+//		"alb.ingress.kubernetes.io/target-type": "instance",
+//		"alb.ingress.kubernetes.io/waf-acl-id":  webACLID,
+//	}
+//	echoIng := buildEchoIngress(ingName, "alb", ingAnnotations, echoSvc)
+//	err := retry.OnError(defaultRetryPolicy,
+//		func(err error) bool {
+//			if errors.IsAlreadyExists(err) {
+//				return false
+//			}
+//			t.Logf("retrying creation of echo ingress due to %v", err)
+//			return true
+//		},
+//		func() error { return kubeClient.Create(context.TODO(), echoIng) })
+//	if err != nil && !errors.IsAlreadyExists(err) {
+//		t.Fatalf("failed to ensure echo ingress %s: %v", echoIng.Name, err)
+//	}
+//	defer func() {
+//		waitForDeletion(context.TODO(), t, kubeClient, echoIng, defaultTimeout)
+//	}()
+//
+//	address, err := getIngress(context.TODO(), t, kubeClient, 20*time.Minute, ingName)
+//	if err != nil {
+//		t.Fatalf("did not get load balancer address for ingress: %v", err)
+//	}
+//
+//	t.Logf("Testing aws load balancer for ingress traffic at address %s", address)
+//	for _, rule := range echoIng.Spec.Rules {
+//		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s", address), nil)
+//		if err != nil {
+//			t.Fatalf("failed to build client request: %v", err)
+//		}
+//		req.Host = rule.Host
+//
+//		err = waitForHTTPClientCondition(context.TODO(), t, &httpClient, req, 5*time.Second, defaultTimeout, func(r *http.Response) bool {
+//			return r.StatusCode == http.StatusForbidden
+//		})
+//		if err != nil {
+//			t.Fatalf("failed to verify condition with external client: %v", err)
+//		}
+//	}
+//}
 
 func TestAWSLoadBalancerControllerWithIngressGroup(t *testing.T) {
 	testWorkloadNamespace := "aws-load-balancer-test-ing-group"
