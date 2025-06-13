@@ -723,6 +723,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
+	t.Skip("Skipping this test for now as creation of WAF Classic ACLs is deprecated (OCPBUGS-57320)")
 	t.Log("Getting WAFRegional WebACL")
 	var webACLID string
 	if !stsModeRequested() {
