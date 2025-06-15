@@ -832,7 +832,7 @@ github.com/tdakkota/asciicheck
 # github.com/tetafro/godot v1.4.11
 ## explicit; go 1.16
 github.com/tetafro/godot
-# github.com/timakin/bodyclose v0.0.0-20221125081123-e39cf3fc478e
+# github.com/timakin/bodyclose v0.0.0-20241222091800-1db5c5ca4d67
 ## explicit; go 1.12
 github.com/timakin/bodyclose/passes/bodyclose
 # github.com/timonwong/loggercheck v0.9.3
