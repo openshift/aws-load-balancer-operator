@@ -25,4 +25,5 @@ LABEL version="1.2.0"
 WORKDIR /
 COPY --from=builder /usr/bin/manager /manager
 USER 65532:65532
+COPY LICENSE /licenses/
 ENTRYPOINT ["/manager"]
