@@ -24,7 +24,7 @@ require (
 	k8s.io/api v0.30.3
 	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.30.3
-	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
+	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	sigs.k8s.io/aws-load-balancer-controller v0.0.0-20240809195826-f39ae43121c3
 	sigs.k8s.io/controller-runtime v0.18.5
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20240812163513-75a38d2123d4
