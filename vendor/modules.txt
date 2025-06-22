@@ -124,9 +124,10 @@ github.com/aws/aws-sdk-go-v2/service/wafregional/types
 github.com/aws/aws-sdk-go-v2/service/wafv2
 github.com/aws/aws-sdk-go-v2/service/wafv2/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/wafv2/types
-# github.com/aws/smithy-go v1.11.2
-## explicit; go 1.15
+# github.com/aws/smithy-go v1.22.4
+## explicit; go 1.22
 github.com/aws/smithy-go
+github.com/aws/smithy-go/auth
 github.com/aws/smithy-go/document
 github.com/aws/smithy-go/encoding
 github.com/aws/smithy-go/encoding/httpbinding
@@ -134,10 +135,12 @@ github.com/aws/smithy-go/encoding/json
 github.com/aws/smithy-go/encoding/xml
 github.com/aws/smithy-go/io
 github.com/aws/smithy-go/logging
+github.com/aws/smithy-go/metrics
 github.com/aws/smithy-go/middleware
 github.com/aws/smithy-go/ptr
 github.com/aws/smithy-go/rand
 github.com/aws/smithy-go/time
+github.com/aws/smithy-go/tracing
 github.com/aws/smithy-go/transport/http
 github.com/aws/smithy-go/transport/http/internal/io
 github.com/aws/smithy-go/waiter
