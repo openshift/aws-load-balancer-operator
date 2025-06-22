@@ -451,7 +451,7 @@ github.com/hashicorp/hcl/json/token
 github.com/hexops/gotextdiff
 github.com/hexops/gotextdiff/myers
 github.com/hexops/gotextdiff/span
-# github.com/imdario/mergo v0.3.13
+# github.com/imdario/mergo v0.3.16
 ## explicit; go 1.13
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.1.0
