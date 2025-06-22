@@ -1,8 +1,8 @@
 module github.com/openshift/aws-load-balancer-operator
 
-go 1.22.3
+go 1.23.0
 
-toolchain go1.22.10
+toolchain go1.23.9
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.16.2
@@ -230,7 +230,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/exp/typeparams v0.0.0-20230203172020-98cc5a0785f9 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect

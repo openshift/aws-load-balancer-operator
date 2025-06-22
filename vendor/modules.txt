@@ -921,8 +921,8 @@ go.uber.org/zap/zapcore
 golang.org/x/exp/constraints
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/exp/typeparams v0.0.0-20230203172020-98cc5a0785f9
-## explicit; go 1.18
+# golang.org/x/exp/typeparams v0.0.0-20250620022241-b7579e27df2b
+## explicit; go 1.23.0
 golang.org/x/exp/typeparams
 # golang.org/x/mod v0.15.0
 ## explicit; go 1.18
