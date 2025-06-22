@@ -170,7 +170,7 @@ github.com/butuzov/ireturn/types
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/charithe/durationcheck v0.0.9
+# github.com/charithe/durationcheck v0.0.10
 ## explicit; go 1.14
 github.com/charithe/durationcheck
 # github.com/chavacava/garif v0.0.0-20221024190013-b3ef35877348
