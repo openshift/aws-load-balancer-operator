@@ -194,8 +194,8 @@ github.com/daixiang0/gci/pkg/utils
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/denis-tingaikin/go-header v0.4.3
-## explicit; go 1.17
+# github.com/denis-tingaikin/go-header v0.5.0
+## explicit; go 1.21
 github.com/denis-tingaikin/go-header
 # github.com/elliotchance/orderedmap v1.4.0
 ## explicit; go 1.12
