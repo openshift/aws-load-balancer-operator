@@ -763,7 +763,7 @@ github.com/shazow/go-diff/difflib
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
-# github.com/sivchari/containedctx v1.0.2
+# github.com/sivchari/containedctx v1.0.3
 ## explicit; go 1.17
 github.com/sivchari/containedctx
 # github.com/sivchari/nosnakecase v1.7.0
