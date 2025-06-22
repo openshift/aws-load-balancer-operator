@@ -176,8 +176,8 @@ github.com/charithe/durationcheck
 # github.com/chavacava/garif v0.0.0-20221024190013-b3ef35877348
 ## explicit; go 1.16
 github.com/chavacava/garif
-# github.com/curioswitch/go-reassign v0.2.0
-## explicit; go 1.18
+# github.com/curioswitch/go-reassign v0.3.0
+## explicit; go 1.21
 github.com/curioswitch/go-reassign
 github.com/curioswitch/go-reassign/internal/analyzer
 # github.com/daixiang0/gci v0.9.1
