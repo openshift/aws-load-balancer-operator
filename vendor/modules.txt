@@ -29,8 +29,8 @@ github.com/Masterminds/semver
 # github.com/OpenPeeDeeP/depguard v1.1.1
 ## explicit; go 1.13
 github.com/OpenPeeDeeP/depguard
-# github.com/a8m/envsubst v1.3.0
-## explicit; go 1.17
+# github.com/a8m/envsubst v1.4.3
+## explicit; go 1.24
 github.com/a8m/envsubst/parse
 # github.com/alexkohler/prealloc v1.0.0
 ## explicit; go 1.15

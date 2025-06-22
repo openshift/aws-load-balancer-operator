@@ -1,8 +1,8 @@
 module github.com/openshift/aws-load-balancer-operator
 
-go 1.22.3
+go 1.24
 
-toolchain go1.22.10
+toolchain go1.24.4
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.16.2
@@ -43,7 +43,7 @@ require (
 	github.com/GaijinEntertainment/go-exhaustruct/v2 v2.3.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/OpenPeeDeeP/depguard v1.1.1 // indirect
-	github.com/a8m/envsubst v1.3.0 // indirect
+	github.com/a8m/envsubst v1.4.3 // indirect
 	github.com/alexkohler/prealloc v1.0.0 // indirect
 	github.com/alingse/asasalint v0.0.11 // indirect
 	github.com/ashanbrown/forbidigo v1.4.0 // indirect
