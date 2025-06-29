@@ -10,19 +10,47 @@ const (
 	ActionValueBlock           ActionValue = "BLOCK"
 	ActionValueCount           ActionValue = "COUNT"
 	ActionValueCaptcha         ActionValue = "CAPTCHA"
+	ActionValueChallenge       ActionValue = "CHALLENGE"
 	ActionValueExcludedAsCount ActionValue = "EXCLUDED_AS_COUNT"
 )
 
 // Values returns all known values for ActionValue. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ActionValue) Values() []ActionValue {
 	return []ActionValue{
 		"ALLOW",
 		"BLOCK",
 		"COUNT",
 		"CAPTCHA",
+		"CHALLENGE",
 		"EXCLUDED_AS_COUNT",
+	}
+}
+
+type AssociatedResourceType string
+
+// Enum values for AssociatedResourceType
+const (
+	AssociatedResourceTypeCloudfront             AssociatedResourceType = "CLOUDFRONT"
+	AssociatedResourceTypeApiGateway             AssociatedResourceType = "API_GATEWAY"
+	AssociatedResourceTypeCognitoUserPool        AssociatedResourceType = "COGNITO_USER_POOL"
+	AssociatedResourceTypeAppRunnerService       AssociatedResourceType = "APP_RUNNER_SERVICE"
+	AssociatedResourceTypeVerifiedAccessInstance AssociatedResourceType = "VERIFIED_ACCESS_INSTANCE"
+)
+
+// Values returns all known values for AssociatedResourceType. Note that this can
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (AssociatedResourceType) Values() []AssociatedResourceType {
+	return []AssociatedResourceType{
+		"CLOUDFRONT",
+		"API_GATEWAY",
+		"COGNITO_USER_POOL",
+		"APP_RUNNER_SERVICE",
+		"VERIFIED_ACCESS_INSTANCE",
 	}
 }
 
@@ -37,6 +65,7 @@ const (
 
 // Values returns all known values for BodyParsingFallbackBehavior. Note that this
 // can be expanded in the future, and so it is only as up to date as the client.
+//
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (BodyParsingFallbackBehavior) Values() []BodyParsingFallbackBehavior {
 	return []BodyParsingFallbackBehavior{
@@ -59,8 +88,9 @@ const (
 )
 
 // Values returns all known values for ComparisonOperator. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ComparisonOperator) Values() []ComparisonOperator {
 	return []ComparisonOperator{
 		"EQ",
@@ -325,11 +355,13 @@ const (
 	CountryCodeYe CountryCode = "YE"
 	CountryCodeZm CountryCode = "ZM"
 	CountryCodeZw CountryCode = "ZW"
+	CountryCodeXk CountryCode = "XK"
 )
 
 // Values returns all known values for CountryCode. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (CountryCode) Values() []CountryCode {
 	return []CountryCode{
 		"AF",
@@ -581,6 +613,26 @@ func (CountryCode) Values() []CountryCode {
 		"YE",
 		"ZM",
 		"ZW",
+		"XK",
+	}
+}
+
+type DataProtectionAction string
+
+// Enum values for DataProtectionAction
+const (
+	DataProtectionActionSubstitution DataProtectionAction = "SUBSTITUTION"
+	DataProtectionActionHash         DataProtectionAction = "HASH"
+)
+
+// Values returns all known values for DataProtectionAction. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (DataProtectionAction) Values() []DataProtectionAction {
+	return []DataProtectionAction{
+		"SUBSTITUTION",
+		"HASH",
 	}
 }
 
@@ -588,17 +640,22 @@ type FailureReason string
 
 // Enum values for FailureReason
 const (
-	FailureReasonTokenMissing FailureReason = "TOKEN_MISSING"
-	FailureReasonTokenExpired FailureReason = "TOKEN_EXPIRED"
+	FailureReasonTokenMissing        FailureReason = "TOKEN_MISSING"
+	FailureReasonTokenExpired        FailureReason = "TOKEN_EXPIRED"
+	FailureReasonTokenInvalid        FailureReason = "TOKEN_INVALID"
+	FailureReasonTokenDomainMismatch FailureReason = "TOKEN_DOMAIN_MISMATCH"
 )
 
 // Values returns all known values for FailureReason. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (FailureReason) Values() []FailureReason {
 	return []FailureReason{
 		"TOKEN_MISSING",
 		"TOKEN_EXPIRED",
+		"TOKEN_INVALID",
+		"TOKEN_DOMAIN_MISMATCH",
 	}
 }
 
@@ -611,12 +668,38 @@ const (
 )
 
 // Values returns all known values for FallbackBehavior. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (FallbackBehavior) Values() []FallbackBehavior {
 	return []FallbackBehavior{
 		"MATCH",
 		"NO_MATCH",
+	}
+}
+
+type FieldToProtectType string
+
+// Enum values for FieldToProtectType
+const (
+	FieldToProtectTypeSingleHeader        FieldToProtectType = "SINGLE_HEADER"
+	FieldToProtectTypeSingleCookie        FieldToProtectType = "SINGLE_COOKIE"
+	FieldToProtectTypeSingleQueryArgument FieldToProtectType = "SINGLE_QUERY_ARGUMENT"
+	FieldToProtectTypeQueryString         FieldToProtectType = "QUERY_STRING"
+	FieldToProtectTypeBody                FieldToProtectType = "BODY"
+)
+
+// Values returns all known values for FieldToProtectType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (FieldToProtectType) Values() []FieldToProtectType {
+	return []FieldToProtectType{
+		"SINGLE_HEADER",
+		"SINGLE_COOKIE",
+		"SINGLE_QUERY_ARGUMENT",
+		"QUERY_STRING",
+		"BODY",
 	}
 }
 
@@ -629,8 +712,9 @@ const (
 )
 
 // Values returns all known values for FilterBehavior. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (FilterBehavior) Values() []FilterBehavior {
 	return []FilterBehavior{
 		"KEEP",
@@ -647,8 +731,9 @@ const (
 )
 
 // Values returns all known values for FilterRequirement. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (FilterRequirement) Values() []FilterRequirement {
 	return []FilterRequirement{
 		"MEETS_ALL",
@@ -666,13 +751,33 @@ const (
 )
 
 // Values returns all known values for ForwardedIPPosition. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ForwardedIPPosition) Values() []ForwardedIPPosition {
 	return []ForwardedIPPosition{
 		"FIRST",
 		"LAST",
 		"ANY",
+	}
+}
+
+type InspectionLevel string
+
+// Enum values for InspectionLevel
+const (
+	InspectionLevelCommon   InspectionLevel = "COMMON"
+	InspectionLevelTargeted InspectionLevel = "TARGETED"
+)
+
+// Values returns all known values for InspectionLevel. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (InspectionLevel) Values() []InspectionLevel {
+	return []InspectionLevel{
+		"COMMON",
+		"TARGETED",
 	}
 }
 
@@ -685,8 +790,9 @@ const (
 )
 
 // Values returns all known values for IPAddressVersion. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (IPAddressVersion) Values() []IPAddressVersion {
 	return []IPAddressVersion{
 		"IPV4",
@@ -704,8 +810,9 @@ const (
 )
 
 // Values returns all known values for JsonMatchScope. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (JsonMatchScope) Values() []JsonMatchScope {
 	return []JsonMatchScope{
 		"ALL",
@@ -723,12 +830,110 @@ const (
 )
 
 // Values returns all known values for LabelMatchScope. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (LabelMatchScope) Values() []LabelMatchScope {
 	return []LabelMatchScope{
 		"LABEL",
 		"NAMESPACE",
+	}
+}
+
+type LogScope string
+
+// Enum values for LogScope
+const (
+	LogScopeCustomer     LogScope = "CUSTOMER"
+	LogScopeSecurityLake LogScope = "SECURITY_LAKE"
+)
+
+// Values returns all known values for LogScope. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (LogScope) Values() []LogScope {
+	return []LogScope{
+		"CUSTOMER",
+		"SECURITY_LAKE",
+	}
+}
+
+type LogType string
+
+// Enum values for LogType
+const (
+	LogTypeWafLogs LogType = "WAF_LOGS"
+)
+
+// Values returns all known values for LogType. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (LogType) Values() []LogType {
+	return []LogType{
+		"WAF_LOGS",
+	}
+}
+
+type LowReputationMode string
+
+// Enum values for LowReputationMode
+const (
+	LowReputationModeActiveUnderDdos LowReputationMode = "ACTIVE_UNDER_DDOS"
+	LowReputationModeAlwaysOn        LowReputationMode = "ALWAYS_ON"
+)
+
+// Values returns all known values for LowReputationMode. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (LowReputationMode) Values() []LowReputationMode {
+	return []LowReputationMode{
+		"ACTIVE_UNDER_DDOS",
+		"ALWAYS_ON",
+	}
+}
+
+type MapMatchScope string
+
+// Enum values for MapMatchScope
+const (
+	MapMatchScopeAll   MapMatchScope = "ALL"
+	MapMatchScopeKey   MapMatchScope = "KEY"
+	MapMatchScopeValue MapMatchScope = "VALUE"
+)
+
+// Values returns all known values for MapMatchScope. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (MapMatchScope) Values() []MapMatchScope {
+	return []MapMatchScope{
+		"ALL",
+		"KEY",
+		"VALUE",
+	}
+}
+
+type OversizeHandling string
+
+// Enum values for OversizeHandling
+const (
+	OversizeHandlingContinue OversizeHandling = "CONTINUE"
+	OversizeHandlingMatch    OversizeHandling = "MATCH"
+	OversizeHandlingNoMatch  OversizeHandling = "NO_MATCH"
+)
+
+// Values returns all known values for OversizeHandling. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (OversizeHandling) Values() []OversizeHandling {
+	return []OversizeHandling{
+		"CONTINUE",
+		"MATCH",
+		"NO_MATCH",
 	}
 }
 
@@ -795,11 +1000,25 @@ const (
 	ParameterExceptionFieldLogDestination                 ParameterExceptionField = "LOG_DESTINATION"
 	ParameterExceptionFieldManagedRuleGroupConfig         ParameterExceptionField = "MANAGED_RULE_GROUP_CONFIG"
 	ParameterExceptionFieldPayloadType                    ParameterExceptionField = "PAYLOAD_TYPE"
+	ParameterExceptionFieldHeaderMatchPattern             ParameterExceptionField = "HEADER_MATCH_PATTERN"
+	ParameterExceptionFieldCookieMatchPattern             ParameterExceptionField = "COOKIE_MATCH_PATTERN"
+	ParameterExceptionFieldMapMatchScope                  ParameterExceptionField = "MAP_MATCH_SCOPE"
+	ParameterExceptionFieldOversizeHandling               ParameterExceptionField = "OVERSIZE_HANDLING"
+	ParameterExceptionFieldChallengeConfig                ParameterExceptionField = "CHALLENGE_CONFIG"
+	ParameterExceptionFieldTokenDomain                    ParameterExceptionField = "TOKEN_DOMAIN"
+	ParameterExceptionFieldAtpRuleSetResponseInspection   ParameterExceptionField = "ATP_RULE_SET_RESPONSE_INSPECTION"
+	ParameterExceptionFieldAssociatedResourceType         ParameterExceptionField = "ASSOCIATED_RESOURCE_TYPE"
+	ParameterExceptionFieldScopeDown                      ParameterExceptionField = "SCOPE_DOWN"
+	ParameterExceptionFieldCustomKeys                     ParameterExceptionField = "CUSTOM_KEYS"
+	ParameterExceptionFieldAcpRuleSetResponseInspection   ParameterExceptionField = "ACP_RULE_SET_RESPONSE_INSPECTION"
+	ParameterExceptionFieldDataProtectionConfig           ParameterExceptionField = "DATA_PROTECTION_CONFIG"
+	ParameterExceptionFieldLowReputationMode              ParameterExceptionField = "LOW_REPUTATION_MODE"
 )
 
 // Values returns all known values for ParameterExceptionField. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ParameterExceptionField) Values() []ParameterExceptionField {
 	return []ParameterExceptionField{
 		"WEB_ACL",
@@ -861,6 +1080,19 @@ func (ParameterExceptionField) Values() []ParameterExceptionField {
 		"LOG_DESTINATION",
 		"MANAGED_RULE_GROUP_CONFIG",
 		"PAYLOAD_TYPE",
+		"HEADER_MATCH_PATTERN",
+		"COOKIE_MATCH_PATTERN",
+		"MAP_MATCH_SCOPE",
+		"OVERSIZE_HANDLING",
+		"CHALLENGE_CONFIG",
+		"TOKEN_DOMAIN",
+		"ATP_RULE_SET_RESPONSE_INSPECTION",
+		"ASSOCIATED_RESOURCE_TYPE",
+		"SCOPE_DOWN",
+		"CUSTOM_KEYS",
+		"ACP_RULE_SET_RESPONSE_INSPECTION",
+		"DATA_PROTECTION_CONFIG",
+		"LOW_REPUTATION_MODE",
 	}
 }
 
@@ -873,8 +1105,9 @@ const (
 )
 
 // Values returns all known values for PayloadType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PayloadType) Values() []PayloadType {
 	return []PayloadType{
 		"JSON",
@@ -891,8 +1124,9 @@ const (
 )
 
 // Values returns all known values for Platform. Note that this can be expanded in
-// the future, and so it is only as up to date as the client. The ordering of this
-// slice is not guaranteed to be stable across updates.
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (Platform) Values() []Platform {
 	return []Platform{
 		"IOS",
@@ -912,8 +1146,9 @@ const (
 )
 
 // Values returns all known values for PositionalConstraint. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (PositionalConstraint) Values() []PositionalConstraint {
 	return []PositionalConstraint{
 		"EXACTLY",
@@ -930,16 +1165,21 @@ type RateBasedStatementAggregateKeyType string
 const (
 	RateBasedStatementAggregateKeyTypeIp          RateBasedStatementAggregateKeyType = "IP"
 	RateBasedStatementAggregateKeyTypeForwardedIp RateBasedStatementAggregateKeyType = "FORWARDED_IP"
+	RateBasedStatementAggregateKeyTypeCustomKeys  RateBasedStatementAggregateKeyType = "CUSTOM_KEYS"
+	RateBasedStatementAggregateKeyTypeConstant    RateBasedStatementAggregateKeyType = "CONSTANT"
 )
 
 // Values returns all known values for RateBasedStatementAggregateKeyType. Note
 // that this can be expanded in the future, and so it is only as up to date as the
-// client. The ordering of this slice is not guaranteed to be stable across
-// updates.
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (RateBasedStatementAggregateKeyType) Values() []RateBasedStatementAggregateKeyType {
 	return []RateBasedStatementAggregateKeyType{
 		"IP",
 		"FORWARDED_IP",
+		"CUSTOM_KEYS",
+		"CONSTANT",
 	}
 }
 
@@ -950,16 +1190,25 @@ const (
 	ResourceTypeApplicationLoadBalancer ResourceType = "APPLICATION_LOAD_BALANCER"
 	ResourceTypeApiGateway              ResourceType = "API_GATEWAY"
 	ResourceTypeAppsync                 ResourceType = "APPSYNC"
+	ResourceTypeCognitioUserPool        ResourceType = "COGNITO_USER_POOL"
+	ResourceTypeAppRunnerService        ResourceType = "APP_RUNNER_SERVICE"
+	ResourceTypeVerifiedAccessInstance  ResourceType = "VERIFIED_ACCESS_INSTANCE"
+	ResourceTypeAmplify                 ResourceType = "AMPLIFY"
 )
 
-// Values returns all known values for ResourceType. Note that this can be expanded
-// in the future, and so it is only as up to date as the client. The ordering of
-// this slice is not guaranteed to be stable across updates.
+// Values returns all known values for ResourceType. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ResourceType) Values() []ResourceType {
 	return []ResourceType{
 		"APPLICATION_LOAD_BALANCER",
 		"API_GATEWAY",
 		"APPSYNC",
+		"COGNITO_USER_POOL",
+		"APP_RUNNER_SERVICE",
+		"VERIFIED_ACCESS_INSTANCE",
+		"AMPLIFY",
 	}
 }
 
@@ -973,8 +1222,9 @@ const (
 )
 
 // Values returns all known values for ResponseContentType. Note that this can be
-// expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (ResponseContentType) Values() []ResponseContentType {
 	return []ResponseContentType{
 		"TEXT_PLAIN",
@@ -991,13 +1241,77 @@ const (
 	ScopeRegional   Scope = "REGIONAL"
 )
 
-// Values returns all known values for Scope. Note that this can be expanded in the
-// future, and so it is only as up to date as the client. The ordering of this
-// slice is not guaranteed to be stable across updates.
+// Values returns all known values for Scope. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (Scope) Values() []Scope {
 	return []Scope{
 		"CLOUDFRONT",
 		"REGIONAL",
+	}
+}
+
+type SensitivityLevel string
+
+// Enum values for SensitivityLevel
+const (
+	SensitivityLevelLow  SensitivityLevel = "LOW"
+	SensitivityLevelHigh SensitivityLevel = "HIGH"
+)
+
+// Values returns all known values for SensitivityLevel. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (SensitivityLevel) Values() []SensitivityLevel {
+	return []SensitivityLevel{
+		"LOW",
+		"HIGH",
+	}
+}
+
+type SensitivityToAct string
+
+// Enum values for SensitivityToAct
+const (
+	SensitivityToActLow    SensitivityToAct = "LOW"
+	SensitivityToActMedium SensitivityToAct = "MEDIUM"
+	SensitivityToActHigh   SensitivityToAct = "HIGH"
+)
+
+// Values returns all known values for SensitivityToAct. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (SensitivityToAct) Values() []SensitivityToAct {
+	return []SensitivityToAct{
+		"LOW",
+		"MEDIUM",
+		"HIGH",
+	}
+}
+
+type SizeInspectionLimit string
+
+// Enum values for SizeInspectionLimit
+const (
+	SizeInspectionLimitKb16 SizeInspectionLimit = "KB_16"
+	SizeInspectionLimitKb32 SizeInspectionLimit = "KB_32"
+	SizeInspectionLimitKb48 SizeInspectionLimit = "KB_48"
+	SizeInspectionLimitKb64 SizeInspectionLimit = "KB_64"
+)
+
+// Values returns all known values for SizeInspectionLimit. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (SizeInspectionLimit) Values() []SizeInspectionLimit {
+	return []SizeInspectionLimit{
+		"KB_16",
+		"KB_32",
+		"KB_48",
+		"KB_64",
 	}
 }
 
@@ -1029,8 +1343,9 @@ const (
 )
 
 // Values returns all known values for TextTransformationType. Note that this can
-// be expanded in the future, and so it is only as up to date as the client. The
-// ordering of this slice is not guaranteed to be stable across updates.
+// be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
 func (TextTransformationType) Values() []TextTransformationType {
 	return []TextTransformationType{
 		"NONE",
@@ -1054,5 +1369,24 @@ func (TextTransformationType) Values() []TextTransformationType {
 		"BASE64_DECODE_EXT",
 		"URL_DECODE_UNI",
 		"UTF8_TO_UNICODE",
+	}
+}
+
+type UsageOfAction string
+
+// Enum values for UsageOfAction
+const (
+	UsageOfActionEnabled  UsageOfAction = "ENABLED"
+	UsageOfActionDisabled UsageOfAction = "DISABLED"
+)
+
+// Values returns all known values for UsageOfAction. Note that this can be
+// expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (UsageOfAction) Values() []UsageOfAction {
+	return []UsageOfAction{
+		"ENABLED",
+		"DISABLED",
 	}
 }

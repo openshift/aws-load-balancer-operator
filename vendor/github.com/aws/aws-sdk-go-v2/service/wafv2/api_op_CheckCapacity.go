@@ -4,8 +4,8 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -13,13 +13,17 @@ import (
 
 // Returns the web ACL capacity unit (WCU) requirements for a specified scope and
 // set of rules. You can use this to check the capacity requirements for the rules
-// you want to use in a RuleGroup or WebACL. WAF uses WCUs to calculate and control
-// the operating resources that are used to run your rules, rule groups, and web
-// ACLs. WAF calculates capacity differently for each rule type, to reflect the
-// relative cost of each rule. Simple rules that cost little to run use fewer WCUs
-// than more complex rules that use more processing power. Rule group capacity is
-// fixed at creation, which helps users plan their web ACL WCU usage when they use
-// a rule group. The WCU limit for web ACLs is 1,500.
+// you want to use in a RuleGroupor WebACL.
+//
+// WAF uses WCUs to calculate and control the operating resources that are used to
+// run your rules, rule groups, and web ACLs. WAF calculates capacity differently
+// for each rule type, to reflect the relative cost of each rule. Simple rules that
+// cost little to run use fewer WCUs than more complex rules that use more
+// processing power. Rule group capacity is fixed at creation, which helps users
+// plan their web ACL WCU usage when they use a rule group. For more information,
+// see [WAF web ACL capacity units (WCU)]in the WAF Developer Guide.
+//
+// [WAF web ACL capacity units (WCU)]: https://docs.aws.amazon.com/waf/latest/developerguide/aws-waf-capacity-units.html
 func (c *Client) CheckCapacity(ctx context.Context, params *CheckCapacityInput, optFns ...func(*Options)) (*CheckCapacityOutput, error) {
 	if params == nil {
 		params = &CheckCapacityInput{}
@@ -42,17 +46,16 @@ type CheckCapacityInput struct {
 	// This member is required.
 	Rules []types.Rule
 
-	// Specifies whether this is for an Amazon CloudFront distribution or for a
-	// regional application. A regional application can be an Application Load Balancer
-	// (ALB), an Amazon API Gateway REST API, or an AppSync GraphQL API. To work with
-	// CloudFront, you must also specify the Region US East (N. Virginia) as
-	// follows:
+	// Specifies whether this is for a global resource type, such as a Amazon
+	// CloudFront distribution. For an Amplify application, use CLOUDFRONT .
 	//
-	// * CLI - Specify the Region when you use the CloudFront scope:
-	// --scope=CLOUDFRONT --region=us-east-1.
+	// To work with CloudFront, you must also specify the Region US East (N. Virginia)
+	// as follows:
 	//
-	// * API and SDKs - For all calls, use the
-	// Region endpoint us-east-1.
+	//   - CLI - Specify the Region when you use the CloudFront scope:
+	//   --scope=CLOUDFRONT --region=us-east-1 .
+	//
+	//   - API and SDKs - For all calls, use the Region endpoint us-east-1.
 	//
 	// This member is required.
 	Scope types.Scope
@@ -72,6 +75,9 @@ type CheckCapacityOutput struct {
 }
 
 func (c *Client) addOperationCheckCapacityMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCheckCapacity{}, middleware.After)
 	if err != nil {
 		return err
@@ -80,34 +86,41 @@ func (c *Client) addOperationCheckCapacityMiddlewares(stack *middleware.Stack, o
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CheckCapacity"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -116,10 +129,25 @@ func (c *Client) addOperationCheckCapacityMiddlewares(stack *middleware.Stack, o
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCheckCapacityValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCheckCapacity(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -131,6 +159,21 @@ func (c *Client) addOperationCheckCapacityMiddlewares(stack *middleware.Stack, o
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -138,7 +181,6 @@ func newServiceMetadataMiddleware_opCheckCapacity(region string) *awsmiddleware.
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "CheckCapacity",
 	}
 }

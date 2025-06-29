@@ -4,8 +4,8 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -33,48 +33,46 @@ func (c *Client) CreateIPSet(ctx context.Context, params *CreateIPSetInput, optF
 type CreateIPSetInput struct {
 
 	// Contains an array of strings that specifies zero or more IP addresses or blocks
-	// of IP addresses in Classless Inter-Domain Routing (CIDR) notation. WAF supports
-	// all IPv4 and IPv6 CIDR ranges except for /0. Example address strings:
+	// of IP addresses that you want WAF to inspect for in incoming requests. All
+	// addresses must be specified using Classless Inter-Domain Routing (CIDR)
+	// notation. WAF supports all IPv4 and IPv6 CIDR ranges except for /0 .
 	//
-	// * To
-	// configure WAF to allow, block, or count requests that originated from the IP
-	// address 192.0.2.44, specify 192.0.2.44/32.
+	// Example address strings:
 	//
-	// * To configure WAF to allow, block,
-	// or count requests that originated from IP addresses from 192.0.2.0 to
-	// 192.0.2.255, specify 192.0.2.0/24.
+	//   - For requests that originated from the IP address 192.0.2.44, specify
+	//   192.0.2.44/32 .
 	//
-	// * To configure WAF to allow, block, or count
-	// requests that originated from the IP address
-	// 1111:0000:0000:0000:0000:0000:0000:0111, specify
-	// 1111:0000:0000:0000:0000:0000:0000:0111/128.
+	//   - For requests that originated from IP addresses from 192.0.2.0 to
+	//   192.0.2.255, specify 192.0.2.0/24 .
 	//
-	// * To configure WAF to allow,
-	// block, or count requests that originated from IP addresses
-	// 1111:0000:0000:0000:0000:0000:0000:0000 to
-	// 1111:0000:0000:0000:ffff:ffff:ffff:ffff, specify
-	// 1111:0000:0000:0000:0000:0000:0000:0000/64.
+	//   - For requests that originated from the IP address
+	//   1111:0000:0000:0000:0000:0000:0000:0111, specify
+	//   1111:0000:0000:0000:0000:0000:0000:0111/128 .
 	//
-	// For more information about CIDR
-	// notation, see the Wikipedia entry Classless Inter-Domain Routing
-	// (https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing). Example JSON
-	// Addresses specifications:
+	//   - For requests that originated from IP addresses
+	//   1111:0000:0000:0000:0000:0000:0000:0000 to
+	//   1111:0000:0000:0000:ffff:ffff:ffff:ffff, specify
+	//   1111:0000:0000:0000:0000:0000:0000:0000/64 .
 	//
-	// * Empty array: "Addresses": []
+	// For more information about CIDR notation, see the Wikipedia entry [Classless Inter-Domain Routing].
 	//
-	// * Array with one
-	// address: "Addresses": ["192.0.2.44/32"]
+	// Example JSON Addresses specifications:
 	//
-	// * Array with three addresses:
-	// "Addresses": ["192.0.2.44/32", "192.0.2.0/24", "192.0.0.0/16"]
+	//   - Empty array: "Addresses": []
 	//
-	// * INVALID
-	// specification: "Addresses": [""] INVALID
+	//   - Array with one address: "Addresses": ["192.0.2.44/32"]
+	//
+	//   - Array with three addresses: "Addresses": ["192.0.2.44/32", "192.0.2.0/24",
+	//   "192.0.0.0/16"]
+	//
+	//   - INVALID specification: "Addresses": [""] INVALID
+	//
+	// [Classless Inter-Domain Routing]: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
 	//
 	// This member is required.
 	Addresses []string
 
-	// The version of the IP addresses, either IPV4 or IPV6.
+	// The version of the IP addresses, either IPV4 or IPV6 .
 	//
 	// This member is required.
 	IPAddressVersion types.IPAddressVersion
@@ -85,17 +83,16 @@ type CreateIPSetInput struct {
 	// This member is required.
 	Name *string
 
-	// Specifies whether this is for an Amazon CloudFront distribution or for a
-	// regional application. A regional application can be an Application Load Balancer
-	// (ALB), an Amazon API Gateway REST API, or an AppSync GraphQL API. To work with
-	// CloudFront, you must also specify the Region US East (N. Virginia) as
-	// follows:
+	// Specifies whether this is for a global resource type, such as a Amazon
+	// CloudFront distribution. For an Amplify application, use CLOUDFRONT .
 	//
-	// * CLI - Specify the Region when you use the CloudFront scope:
-	// --scope=CLOUDFRONT --region=us-east-1.
+	// To work with CloudFront, you must also specify the Region US East (N. Virginia)
+	// as follows:
 	//
-	// * API and SDKs - For all calls, use the
-	// Region endpoint us-east-1.
+	//   - CLI - Specify the Region when you use the CloudFront scope:
+	//   --scope=CLOUDFRONT --region=us-east-1 .
+	//
+	//   - API and SDKs - For all calls, use the Region endpoint us-east-1.
 	//
 	// This member is required.
 	Scope types.Scope
@@ -111,10 +108,9 @@ type CreateIPSetInput struct {
 
 type CreateIPSetOutput struct {
 
-	// High-level information about an IPSet, returned by operations like create and
-	// list. This provides information like the ID, that you can use to retrieve and
-	// manage an IPSet, and the ARN, that you provide to the IPSetReferenceStatement to
-	// use the address set in a Rule.
+	// High-level information about an IPSet, returned by operations like create and list.
+	// This provides information like the ID, that you can use to retrieve and manage
+	// an IPSet , and the ARN, that you provide to the IPSetReferenceStatement to use the address set in a Rule.
 	Summary *types.IPSetSummary
 
 	// Metadata pertaining to the operation's result.
@@ -124,6 +120,9 @@ type CreateIPSetOutput struct {
 }
 
 func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateIPSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -132,34 +131,41 @@ func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateIPSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -168,10 +174,25 @@ func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateIPSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateIPSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -183,6 +204,21 @@ func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -190,7 +226,6 @@ func newServiceMetadataMiddleware_opCreateIPSet(region string) *awsmiddleware.Re
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "CreateIPSet",
 	}
 }

@@ -4,26 +4,32 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Retrieves the keys that are currently blocked by a rate-based rule instance. The
-// maximum number of managed keys that can be blocked for a single rate-based rule
-// instance is 10,000. If more than 10,000 addresses exceed the rate limit, those
-// with the highest rates are blocked. For a rate-based rule that you've defined
-// inside a rule group, provide the name of the rule group reference statement in
-// your request, in addition to the rate-based rule name and the web ACL name. WAF
-// monitors web requests and manages keys independently for each unique combination
-// of web ACL, optional rule group, and rate-based rule. For example, if you define
-// a rate-based rule inside a rule group, and then use the rule group in a web ACL,
-// WAF monitors web requests and manages keys for that web ACL, rule group
-// reference statement, and rate-based rule instance. If you use the same rule
-// group in a second web ACL, WAF monitors web requests and manages keys for this
-// second usage completely independent of your first.
+// Retrieves the IP addresses that are currently blocked by a rate-based rule
+// instance. This is only available for rate-based rules that aggregate solely on
+// the IP address or on the forwarded IP address.
+//
+// The maximum number of addresses that can be blocked for a single rate-based
+// rule instance is 10,000. If more than 10,000 addresses exceed the rate limit,
+// those with the highest rates are blocked.
+//
+// For a rate-based rule that you've defined inside a rule group, provide the name
+// of the rule group reference statement in your request, in addition to the
+// rate-based rule name and the web ACL name.
+//
+// WAF monitors web requests and manages keys independently for each unique
+// combination of web ACL, optional rule group, and rate-based rule. For example,
+// if you define a rate-based rule inside a rule group, and then use the rule group
+// in a web ACL, WAF monitors web requests and manages keys for that web ACL, rule
+// group reference statement, and rate-based rule instance. If you use the same
+// rule group in a second web ACL, WAF monitors web requests and manages keys for
+// this second usage completely independent of your first.
 func (c *Client) GetRateBasedStatementManagedKeys(ctx context.Context, params *GetRateBasedStatementManagedKeysInput, optFns ...func(*Options)) (*GetRateBasedStatementManagedKeysOutput, error) {
 	if params == nil {
 		params = &GetRateBasedStatementManagedKeysInput{}
@@ -44,22 +50,21 @@ type GetRateBasedStatementManagedKeysInput struct {
 	// The name of the rate-based rule to get the keys for. If you have the rule
 	// defined inside a rule group that you're using in your web ACL, also provide the
 	// name of the rule group reference statement in the request parameter
-	// RuleGroupRuleName.
+	// RuleGroupRuleName .
 	//
 	// This member is required.
 	RuleName *string
 
-	// Specifies whether this is for an Amazon CloudFront distribution or for a
-	// regional application. A regional application can be an Application Load Balancer
-	// (ALB), an Amazon API Gateway REST API, or an AppSync GraphQL API. To work with
-	// CloudFront, you must also specify the Region US East (N. Virginia) as
-	// follows:
+	// Specifies whether this is for a global resource type, such as a Amazon
+	// CloudFront distribution. For an Amplify application, use CLOUDFRONT .
 	//
-	// * CLI - Specify the Region when you use the CloudFront scope:
-	// --scope=CLOUDFRONT --region=us-east-1.
+	// To work with CloudFront, you must also specify the Region US East (N. Virginia)
+	// as follows:
 	//
-	// * API and SDKs - For all calls, use the
-	// Region endpoint us-east-1.
+	//   - CLI - Specify the Region when you use the CloudFront scope:
+	//   --scope=CLOUDFRONT --region=us-east-1 .
+	//
+	//   - API and SDKs - For all calls, use the Region endpoint us-east-1.
 	//
 	// This member is required.
 	Scope types.Scope
@@ -76,8 +81,8 @@ type GetRateBasedStatementManagedKeysInput struct {
 	// This member is required.
 	WebACLName *string
 
-	// The name of the rule group reference statement in your web ACL. This is required
-	// only when you have the rate-based rule nested inside a rule group.
+	// The name of the rule group reference statement in your web ACL. This is
+	// required only when you have the rate-based rule nested inside a rule group.
 	RuleGroupRuleName *string
 
 	noSmithyDocumentSerde
@@ -98,6 +103,9 @@ type GetRateBasedStatementManagedKeysOutput struct {
 }
 
 func (c *Client) addOperationGetRateBasedStatementManagedKeysMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGetRateBasedStatementManagedKeys{}, middleware.After)
 	if err != nil {
 		return err
@@ -106,34 +114,41 @@ func (c *Client) addOperationGetRateBasedStatementManagedKeysMiddlewares(stack *
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "GetRateBasedStatementManagedKeys"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -142,10 +157,25 @@ func (c *Client) addOperationGetRateBasedStatementManagedKeysMiddlewares(stack *
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetRateBasedStatementManagedKeysValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetRateBasedStatementManagedKeys(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -157,6 +187,21 @@ func (c *Client) addOperationGetRateBasedStatementManagedKeysMiddlewares(stack *
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -164,7 +209,6 @@ func newServiceMetadataMiddleware_opGetRateBasedStatementManagedKeys(region stri
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "GetRateBasedStatementManagedKeys",
 	}
 }

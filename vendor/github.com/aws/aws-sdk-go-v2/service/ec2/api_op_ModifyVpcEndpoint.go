@@ -4,17 +4,18 @@ package ec2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 // Modifies attributes of a specified VPC endpoint. The attributes that you can
 // modify depend on the type of VPC endpoint (interface, gateway, or Gateway Load
-// Balancer). For more information, see VPC Endpoints
-// (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-endpoints.html) in the
-// Amazon Virtual Private Cloud User Guide.
+// Balancer). For more information, see the [Amazon Web Services PrivateLink Guide].
+//
+// [Amazon Web Services PrivateLink Guide]: https://docs.aws.amazon.com/vpc/latest/privatelink/
 func (c *Client) ModifyVpcEndpoint(ctx context.Context, params *ModifyVpcEndpointInput, optFns ...func(*Options)) (*ModifyVpcEndpointOutput, error) {
 	if params == nil {
 		params = &ModifyVpcEndpointInput{}
@@ -30,7 +31,6 @@ func (c *Client) ModifyVpcEndpoint(ctx context.Context, params *ModifyVpcEndpoin
 	return out, nil
 }
 
-// Contains the parameters for ModifyVpcEndpoint.
 type ModifyVpcEndpointInput struct {
 
 	// The ID of the endpoint.
@@ -38,23 +38,29 @@ type ModifyVpcEndpointInput struct {
 	// This member is required.
 	VpcEndpointId *string
 
-	// (Gateway endpoint) One or more route tables IDs to associate with the endpoint.
+	// (Gateway endpoint) The IDs of the route tables to associate with the endpoint.
 	AddRouteTableIds []string
 
-	// (Interface endpoint) One or more security group IDs to associate with the
-	// network interface.
+	// (Interface endpoint) The IDs of the security groups to associate with the
+	// endpoint network interfaces.
 	AddSecurityGroupIds []string
 
-	// (Interface and Gateway Load Balancer endpoints) One or more subnet IDs in which
+	// (Interface and Gateway Load Balancer endpoints) The IDs of the subnets in which
 	// to serve the endpoint. For a Gateway Load Balancer endpoint, you can specify
 	// only one subnet.
 	AddSubnetIds []string
 
+	// The DNS options for the endpoint.
+	DnsOptions *types.DnsOptionsSpecification
+
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have the
-	// required permissions, the error response is DryRunOperation. Otherwise, it is
-	// UnauthorizedOperation.
+	// required permissions, the error response is DryRunOperation . Otherwise, it is
+	// UnauthorizedOperation .
 	DryRun *bool
+
+	// The IP address type for the endpoint.
+	IpAddressType types.IpAddressType
 
 	// (Interface and gateway endpoints) A policy to attach to the endpoint that
 	// controls access to the service. The policy must be in valid JSON format.
@@ -64,20 +70,23 @@ type ModifyVpcEndpointInput struct {
 	// the VPC.
 	PrivateDnsEnabled *bool
 
-	// (Gateway endpoint) One or more route table IDs to disassociate from the
+	// (Gateway endpoint) The IDs of the route tables to disassociate from the
 	// endpoint.
 	RemoveRouteTableIds []string
 
-	// (Interface endpoint) One or more security group IDs to disassociate from the
-	// network interface.
+	// (Interface endpoint) The IDs of the security groups to disassociate from the
+	// endpoint network interfaces.
 	RemoveSecurityGroupIds []string
 
-	// (Interface endpoint) One or more subnets IDs in which to remove the endpoint.
+	// (Interface endpoint) The IDs of the subnets from which to remove the endpoint.
 	RemoveSubnetIds []string
 
 	// (Gateway endpoint) Specify true to reset the policy document to the default
 	// policy. The default policy allows full access to the service.
 	ResetPolicy *bool
+
+	// The subnet configurations for the endpoint.
+	SubnetConfigurations []types.SubnetConfiguration
 
 	noSmithyDocumentSerde
 }
@@ -94,6 +103,9 @@ type ModifyVpcEndpointOutput struct {
 }
 
 func (c *Client) addOperationModifyVpcEndpointMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpModifyVpcEndpoint{}, middleware.After)
 	if err != nil {
 		return err
@@ -102,34 +114,41 @@ func (c *Client) addOperationModifyVpcEndpointMiddlewares(stack *middleware.Stac
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "ModifyVpcEndpoint"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -138,10 +157,25 @@ func (c *Client) addOperationModifyVpcEndpointMiddlewares(stack *middleware.Stac
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpModifyVpcEndpointValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opModifyVpcEndpoint(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -153,6 +187,21 @@ func (c *Client) addOperationModifyVpcEndpointMiddlewares(stack *middleware.Stac
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -160,7 +209,6 @@ func newServiceMetadataMiddleware_opModifyVpcEndpoint(region string) *awsmiddlew
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "ModifyVpcEndpoint",
 	}
 }

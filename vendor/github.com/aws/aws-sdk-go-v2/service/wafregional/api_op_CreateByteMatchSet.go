@@ -4,44 +4,45 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Creates a ByteMatchSet. You then use UpdateByteMatchSet to identify
-// the part of a web request that you want AWS WAF to inspect, such as the values
-// of the User-Agent header or the query string. For example, you can create a
-// ByteMatchSet that matches any requests with User-Agent headers that contain the
-// string BadBot. You can then configure AWS WAF to reject those requests. To
-// create and configure a ByteMatchSet, perform the following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Use
-// GetChangeToken to get the change token that you provide in the ChangeToken
-// parameter of a CreateByteMatchSet request.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * Submit a CreateByteMatchSet
-// request.
+// Creates a ByteMatchSet . You then use UpdateByteMatchSet to identify the part of a web request
+// that you want AWS WAF to inspect, such as the values of the User-Agent header
+// or the query string. For example, you can create a ByteMatchSet that matches
+// any requests with User-Agent headers that contain the string BadBot . You can
+// then configure AWS WAF to reject those requests.
 //
-// * Use GetChangeToken to get the change token that you provide in the
-// ChangeToken parameter of an UpdateByteMatchSet request.
+// To create and configure a ByteMatchSet , perform the following steps:
 //
-// * Submit an
-// UpdateByteMatchSet request to specify the part of the request that you want AWS
-// WAF to inspect (for example, the header or the URI) and the value that you want
-// AWS WAF to watch for.
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a CreateByteMatchSet request.
 //
-// For more information about how to use the AWS WAF API to
-// allow or block HTTP requests, see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+//   - Submit a CreateByteMatchSet request.
+//
+//   - Use GetChangeToken to get the change token that you provide in the
+//     ChangeToken parameter of an UpdateByteMatchSet request.
+//
+//   - Submit an UpdateByteMatchSetrequest to specify the part of the request that you want AWS WAF
+//     to inspect (for example, the header or the URI) and the value that you want AWS
+//     WAF to watch for.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) CreateByteMatchSet(ctx context.Context, params *CreateByteMatchSetInput, optFns ...func(*Options)) (*CreateByteMatchSetOutput, error) {
 	if params == nil {
 		params = &CreateByteMatchSetInput{}
@@ -64,8 +65,8 @@ type CreateByteMatchSetInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// A friendly name or description of the ByteMatchSet. You can't change Name after
-	// you create a ByteMatchSet.
+	// A friendly name or description of the ByteMatchSet. You can't change Name after you create
+	// a ByteMatchSet .
 	//
 	// This member is required.
 	Name *string
@@ -90,6 +91,9 @@ type CreateByteMatchSetOutput struct {
 }
 
 func (c *Client) addOperationCreateByteMatchSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateByteMatchSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -98,34 +102,41 @@ func (c *Client) addOperationCreateByteMatchSetMiddlewares(stack *middleware.Sta
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateByteMatchSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -134,10 +145,25 @@ func (c *Client) addOperationCreateByteMatchSetMiddlewares(stack *middleware.Sta
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateByteMatchSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateByteMatchSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -149,6 +175,21 @@ func (c *Client) addOperationCreateByteMatchSetMiddlewares(stack *middleware.Sta
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -156,7 +197,6 @@ func newServiceMetadataMiddleware_opCreateByteMatchSet(region string) *awsmiddle
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateByteMatchSet",
 	}
 }

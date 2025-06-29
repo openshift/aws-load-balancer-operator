@@ -12,6 +12,8 @@ import (
 type ConcurrentModificationException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -25,29 +27,34 @@ func (e *ConcurrentModificationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *ConcurrentModificationException) ErrorCode() string {
-	return "ConcurrentModificationException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "ConcurrentModificationException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *ConcurrentModificationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was denied because performing this operation violates a constraint.
+//
 // Some of the reasons in the following list might not apply to this specific
 // operation.
 //
-// * You must meet the prerequisites for using tag policies. For
-// information, see Prerequisites and Permissions for Using Tag Policies
-// (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies-prereqs.html)
-// in the Organizations User Guide.
+//   - You must meet the prerequisites for using tag policies. For information,
+//     see [Prerequisites and Permissions for Using Tag Policies]in the Organizations User Guide.
 //
-// * You must enable the tag policies service
-// principal (tagpolicies.tag.amazonaws.com) to integrate with Organizations For
-// information, see EnableAWSServiceAccess
-// (https://docs.aws.amazon.com/organizations/latest/APIReference/API_EnableAWSServiceAccess.html).
+//   - You must enable the tag policies service principal (
+//     tagpolicies.tag.amazonaws.com ) to integrate with Organizations For
+//     information, see [EnableAWSServiceAccess].
 //
-// *
-// You must have a tag policy attached to the organization root, an OU, or an
-// account.
+//   - You must have a tag policy attached to the organization root, an OU, or an
+//     account.
+//
+// [EnableAWSServiceAccess]: https://docs.aws.amazon.com/organizations/latest/APIReference/API_EnableAWSServiceAccess.html
+// [Prerequisites and Permissions for Using Tag Policies]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies-prereqs.html
 type ConstraintViolationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -61,13 +68,20 @@ func (e *ConstraintViolationException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *ConstraintViolationException) ErrorCode() string             { return "ConstraintViolationException" }
+func (e *ConstraintViolationException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "ConstraintViolationException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *ConstraintViolationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request processing failed because of an unknown error, exception, or
 // failure. You can retry the request.
 type InternalServiceException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -81,29 +95,32 @@ func (e *InternalServiceException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InternalServiceException) ErrorCode() string             { return "InternalServiceException" }
+func (e *InternalServiceException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "InternalServiceException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InternalServiceException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
 // This error indicates one of the following:
 //
-// * A parameter is missing.
+//   - A parameter is missing.
 //
-// * A
-// malformed string was supplied for the request parameter.
+//   - A malformed string was supplied for the request parameter.
 //
-// * An out-of-range
-// value was supplied for the request parameter.
+//   - An out-of-range value was supplied for the request parameter.
 //
-// * The target ID is invalid,
-// unsupported, or doesn't exist.
+//   - The target ID is invalid, unsupported, or doesn't exist.
 //
-// * You can't access the Amazon S3 bucket for
-// report storage. For more information, see Additional Requirements for
-// Organization-wide Tag Compliance Reports
-// (https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies-prereqs.html#bucket-policies-org-report)
-// in the Organizations User Guide.
+//   - You can't access the Amazon S3 bucket for report storage. For more
+//     information, see [Additional Requirements for Organization-wide Tag Compliance Reports]in the Organizations User Guide.
+//
+// [Additional Requirements for Organization-wide Tag Compliance Reports]: https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_tag-policies-prereqs.html#bucket-policies-org-report
 type InvalidParameterException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -117,13 +134,20 @@ func (e *InvalidParameterException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidParameterException) ErrorCode() string             { return "InvalidParameterException" }
+func (e *InvalidParameterException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "InvalidParameterException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidParameterException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // A PaginationToken is valid for a maximum of 15 minutes. Your request was denied
 // because the specified PaginationToken has expired.
 type PaginationTokenExpiredException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -138,13 +162,18 @@ func (e *PaginationTokenExpiredException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *PaginationTokenExpiredException) ErrorCode() string {
-	return "PaginationTokenExpiredException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "PaginationTokenExpiredException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *PaginationTokenExpiredException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was denied to limit the frequency of submitted requests.
 type ThrottledException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -158,5 +187,10 @@ func (e *ThrottledException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *ThrottledException) ErrorCode() string             { return "ThrottledException" }
+func (e *ThrottledException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "ThrottledException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *ThrottledException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }

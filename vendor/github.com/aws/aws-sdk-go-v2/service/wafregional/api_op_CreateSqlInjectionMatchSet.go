@@ -4,42 +4,42 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Creates a SqlInjectionMatchSet, which you use to allow, block, or
-// count requests that contain snippets of SQL code in a specified part of web
-// requests. AWS WAF searches for character sequences that are likely to be
-// malicious strings. To create and configure a SqlInjectionMatchSet, perform the
-// following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Use GetChangeToken to get the change token that you provide
-// in the ChangeToken parameter of a CreateSqlInjectionMatchSet request.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * Submit
-// a CreateSqlInjectionMatchSet request.
+// Creates a SqlInjectionMatchSet, which you use to allow, block, or count requests that contain
+// snippets of SQL code in a specified part of web requests. AWS WAF searches for
+// character sequences that are likely to be malicious strings.
 //
-// * Use GetChangeToken to get the change
-// token that you provide in the ChangeToken parameter of an
-// UpdateSqlInjectionMatchSet request.
+// To create and configure a SqlInjectionMatchSet , perform the following steps:
 //
-// * Submit an UpdateSqlInjectionMatchSet
-// request to specify the parts of web requests in which you want to allow, block,
-// or count malicious SQL code.
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a CreateSqlInjectionMatchSet request.
 //
-// For more information about how to use the AWS WAF
-// API to allow or block HTTP requests, see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+//   - Submit a CreateSqlInjectionMatchSet request.
+//
+//   - Use GetChangeToken to get the change token that you provide in the
+//     ChangeToken parameter of an UpdateSqlInjectionMatchSetrequest.
+//
+//   - Submit an UpdateSqlInjectionMatchSetrequest to specify the parts of web requests in which you want to
+//     allow, block, or count malicious SQL code.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) CreateSqlInjectionMatchSet(ctx context.Context, params *CreateSqlInjectionMatchSetInput, optFns ...func(*Options)) (*CreateSqlInjectionMatchSetOutput, error) {
 	if params == nil {
 		params = &CreateSqlInjectionMatchSetInput{}
@@ -63,8 +63,8 @@ type CreateSqlInjectionMatchSetInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// A friendly name or description for the SqlInjectionMatchSet that you're
-	// creating. You can't change Name after you create the SqlInjectionMatchSet.
+	// A friendly name or description for the SqlInjectionMatchSet that you're creating. You can't change
+	// Name after you create the SqlInjectionMatchSet .
 	//
 	// This member is required.
 	Name *string
@@ -90,6 +90,9 @@ type CreateSqlInjectionMatchSetOutput struct {
 }
 
 func (c *Client) addOperationCreateSqlInjectionMatchSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateSqlInjectionMatchSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -98,34 +101,41 @@ func (c *Client) addOperationCreateSqlInjectionMatchSetMiddlewares(stack *middle
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateSqlInjectionMatchSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -134,10 +144,25 @@ func (c *Client) addOperationCreateSqlInjectionMatchSetMiddlewares(stack *middle
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateSqlInjectionMatchSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateSqlInjectionMatchSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -149,6 +174,21 @@ func (c *Client) addOperationCreateSqlInjectionMatchSetMiddlewares(stack *middle
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -156,7 +196,6 @@ func newServiceMetadataMiddleware_opCreateSqlInjectionMatchSet(region string) *a
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateSqlInjectionMatchSet",
 	}
 }
