@@ -1,7 +1,6 @@
 package printers
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 
@@ -9,12 +8,13 @@ import (
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
+// JSON prints issues in a JSON representation.
 type JSON struct {
 	rd *report.Data
 	w  io.Writer
 }
 
-func NewJSON(rd *report.Data, w io.Writer) *JSON {
+func NewJSON(w io.Writer, rd *report.Data) *JSON {
 	return &JSON{
 		rd: rd,
 		w:  w,
@@ -26,7 +26,7 @@ type JSONResult struct {
 	Report *report.Data
 }
 
-func (p JSON) Print(ctx context.Context, issues []result.Issue) error {
+func (p JSON) Print(issues []result.Issue) error {
 	res := JSONResult{
 		Issues: issues,
 		Report: p.rd,
