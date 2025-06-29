@@ -95,6 +95,11 @@ type Value interface {
 	// structure through this API will fail dynamically, making the
 	// data structure immutable and safe for publishing to other
 	// Starlark interpreters running concurrently.
+	//
+	// Implementations of Freeze must be defensive against
+	// reference cycles; this can be achieved by first checking
+	// the value's frozen state, then setting it, and only then
+	// visiting any other values that it references.
 	Freeze()
 
 	// Truth returns the truth value of an object.
@@ -254,12 +259,17 @@ var (
 //
 // Example usage:
 //
-//	iter := iterable.Iterator()
+//	var seq Iterator = ...
+//	iter := seq.Iterate()
 //	defer iter.Done()
-//	var x Value
-//	for iter.Next(&x) {
+//	var elem Value
+//	for iter.Next(elem) {
 //		...
 //	}
+//
+// Or, using go1.23 iterators:
+//
+//	for elem := range Elements(seq) { ... }
 type Iterator interface {
 	// If the iterator is exhausted, Next returns false.
 	// Otherwise it sets *p to the current element of the sequence,
@@ -283,6 +293,8 @@ type Mapping interface {
 }
 
 // An IterableMapping is a mapping that supports key enumeration.
+//
+// See [Entries] for example use.
 type IterableMapping interface {
 	Mapping
 	Iterate() Iterator // see Iterable interface
@@ -465,9 +477,11 @@ func isFinite(f float64) bool {
 	return math.Abs(f) <= math.MaxFloat64
 }
 
-func (x Float) Cmp(y_ Value, depth int) (int, error) {
-	y := y_.(Float)
-	return floatCmp(x, y), nil
+// Cmp implements comparison of two Float values.
+// Required by the TotallyOrdered interface.
+func (f Float) Cmp(v Value, depth int) (int, error) {
+	g := v.(Float)
+	return floatCmp(f, g), nil
 }
 
 // floatCmp performs a three-valued comparison on floats,
@@ -526,7 +540,7 @@ func (f Float) Unary(op syntax.Token) (Value, error) {
 
 // String is the type of a Starlark text string.
 //
-// A String encapsulates an an immutable sequence of bytes,
+// A String encapsulates an immutable sequence of bytes,
 // but strings are not directly iterable. Instead, iterate
 // over the result of calling one of these four methods:
 // codepoints, codepoint_ords, elems, elem_ords.
@@ -682,30 +696,42 @@ func (*stringCodepointsIterator) Done() {}
 // The initialization behavior of a Starlark module is also represented by a Function.
 type Function struct {
 	funcode  *compile.Funcode
-	module   *module
+	module   *Module
 	defaults Tuple
 	freevars Tuple
 }
 
-// A module is the dynamic counterpart to a Program.
-// All functions in the same program share a module.
-type module struct {
-	program     *compile.Program
+// A Module represents an evaluated Starlark module.
+// It is the dynamic counterpart to a [Program].
+// All functions in the same program share a Module.
+type Module struct {
+	program     *Program
 	predeclared StringDict
 	globals     []Value
 	constants   []Value
 }
 
-// makeGlobalDict returns a new, unfrozen StringDict containing all global
+// Program returns the program from which this module was constructed.
+func (m *Module) Program() *Program {
+	return m.program
+}
+
+// Globals returns a new StringDict containing all global
 // variables so far defined in the module.
-func (m *module) makeGlobalDict() StringDict {
-	r := make(StringDict, len(m.program.Globals))
-	for i, id := range m.program.Globals {
+func (m *Module) Globals() StringDict {
+	r := make(StringDict, len(m.program.compiled.Globals))
+	for i, id := range m.program.compiled.Globals {
 		if v := m.globals[i]; v != nil {
 			r[id.Name] = v
 		}
 	}
 	return r
+}
+
+// Predeclared returns the predeclared environment used
+// to construct this module.
+func (m *Module) Predeclared() StringDict {
+	return m.predeclared
 }
 
 func (fn *Function) Name() string          { return fn.funcode.Name } // "lambda" for anonymous functions
@@ -715,10 +741,13 @@ func (fn *Function) Freeze()               { fn.defaults.Freeze(); fn.freevars.F
 func (fn *Function) String() string        { return toString(fn) }
 func (fn *Function) Type() string          { return "function" }
 func (fn *Function) Truth() Bool           { return true }
+func (fn *Function) Module() *Module       { return fn.module }
 
-// Globals returns a new, unfrozen StringDict containing all global
+// Globals returns a new StringDict containing all global
 // variables so far defined in the function's module.
-func (fn *Function) Globals() StringDict { return fn.module.makeGlobalDict() }
+//
+// fn.Globals() is equivalent to fn.Module().Globals().
+func (fn *Function) Globals() StringDict { return fn.module.Globals() }
 
 func (fn *Function) Position() syntax.Position { return fn.funcode.Pos }
 func (fn *Function) NumParams() int            { return fn.funcode.NumParams }
@@ -765,6 +794,15 @@ func (fn *Function) ParamDefault(i int) Value {
 
 func (fn *Function) HasVarargs() bool { return fn.funcode.HasVarargs }
 func (fn *Function) HasKwargs() bool  { return fn.funcode.HasKwargs }
+
+// NumFreeVars returns the number of free variables of this function.
+func (fn *Function) NumFreeVars() int { return len(fn.funcode.FreeVars) }
+
+// FreeVar returns the binding (name and binding position) and value
+// of the i'th free variable of function fn.
+func (fn *Function) FreeVar(i int) (Binding, Value) {
+	return Binding(fn.funcode.FreeVars[i]), fn.freevars[i].(*cell).v
+}
 
 // A Builtin is a function implemented in Go.
 type Builtin struct {
@@ -1051,6 +1089,7 @@ func (t Tuple) Slice(start, end, step int) Value {
 }
 
 func (t Tuple) Iterate() Iterator { return &tupleIterator{elems: t} }
+
 func (t Tuple) Freeze() {
 	for _, elem := range t {
 		elem.Freeze()
@@ -1132,6 +1171,34 @@ func (x *Set) CompareSameType(op syntax.Token, y_ Value, depth int) (bool, error
 	case syntax.NEQ:
 		ok, err := setsEqual(x, y, depth)
 		return !ok, err
+	case syntax.GE: // superset
+		if x.Len() < y.Len() {
+			return false, nil
+		}
+		iter := y.Iterate()
+		defer iter.Done()
+		return x.IsSuperset(iter)
+	case syntax.LE: // subset
+		if x.Len() > y.Len() {
+			return false, nil
+		}
+		iter := y.Iterate()
+		defer iter.Done()
+		return x.IsSubset(iter)
+	case syntax.GT: // proper superset
+		if x.Len() <= y.Len() {
+			return false, nil
+		}
+		iter := y.Iterate()
+		defer iter.Done()
+		return x.IsSuperset(iter)
+	case syntax.LT: // proper subset
+		if x.Len() >= y.Len() {
+			return false, nil
+		}
+		iter := y.Iterate()
+		defer iter.Done()
+		return x.IsSubset(iter)
 	default:
 		return false, fmt.Errorf("%s %s %s not implemented", x.Type(), op, y.Type())
 	}
@@ -1149,11 +1216,28 @@ func setsEqual(x, y *Set, depth int) (bool, error) {
 	return true, nil
 }
 
-func (s *Set) Union(iter Iterator) (Value, error) {
+func setFromIterator(iter Iterator) (*Set, error) {
+	var x Value
+	set := new(Set)
+	for iter.Next(&x) {
+		err := set.Insert(x)
+		if err != nil {
+			return set, err
+		}
+	}
+	return set, nil
+}
+
+func (s *Set) clone() *Set {
 	set := new(Set)
 	for e := s.ht.head; e != nil; e = e.next {
 		set.Insert(e.key) // can't fail
 	}
+	return set
+}
+
+func (s *Set) Union(iter Iterator) (Value, error) {
+	set := s.clone()
 	var x Value
 	for iter.Next(&x) {
 		if err := set.Insert(x); err != nil {
@@ -1161,6 +1245,82 @@ func (s *Set) Union(iter Iterator) (Value, error) {
 		}
 	}
 	return set, nil
+}
+
+func (s *Set) InsertAll(iter Iterator) error {
+	var x Value
+	for iter.Next(&x) {
+		if err := s.Insert(x); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Set) Difference(other Iterator) (Value, error) {
+	diff := s.clone()
+	var x Value
+	for other.Next(&x) {
+		if _, err := diff.Delete(x); err != nil {
+			return nil, err
+		}
+	}
+	return diff, nil
+}
+
+func (s *Set) IsSuperset(other Iterator) (bool, error) {
+	var x Value
+	for other.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return false, err
+		}
+		if !found {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (s *Set) IsSubset(other Iterator) (bool, error) {
+	if count, err := s.ht.count(other); err != nil {
+		return false, err
+	} else {
+		return count == s.Len(), nil
+	}
+}
+
+func (s *Set) Intersection(other Iterator) (Value, error) {
+	intersect := new(Set)
+	var x Value
+	for other.Next(&x) {
+		found, err := s.Has(x)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			err = intersect.Insert(x)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return intersect, nil
+}
+
+func (s *Set) SymmetricDifference(other Iterator) (Value, error) {
+	diff := s.clone()
+	var x Value
+	for other.Next(&x) {
+		found, err := diff.Delete(x)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			diff.Insert(x)
+		}
+	}
+	return diff, nil
 }
 
 // toString returns the string form of value v.
@@ -1451,7 +1611,7 @@ func Iterate(x Value) Iterator {
 // Bytes is the type of a Starlark binary string.
 //
 // A Bytes encapsulates an immutable sequence of bytes.
-// It is comparable, indexable, and sliceable, but not direcly iterable;
+// It is comparable, indexable, and sliceable, but not directly iterable;
 // use bytes.elems() for an iterable view.
 //
 // In this Go implementation, the elements of 'string' and 'bytes' are
