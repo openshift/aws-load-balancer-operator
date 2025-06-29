@@ -21,7 +21,7 @@ func CaseStyle(word string) WordCase {
 	lowerCount := 0
 
 	// this iterates over RUNES not BYTES
-	for i := 0; i < len(word); i++ {
+	for i := range len(word) {
 		ch := word[i]
 		switch {
 		case ch >= 'a' && ch <= 'z':
@@ -43,9 +43,9 @@ func CaseStyle(word string) WordCase {
 }
 
 // CaseVariations returns:
-// If AllUpper or First-Letter-Only is upcased: add the all upper case version.
-// If AllLower, add the original, the title and upcase forms.
-// If Mixed, return the original, and the all upcase form.
+// If AllUpper or First-Letter-Only is upper-cased: add the all upper case version.
+// If AllLower, add the original, the title and  upper-case forms.
+// If Mixed, return the original, and the all  upper-case form.
 func CaseVariations(word string, style WordCase) []string {
 	switch style {
 	case CaseLower:
