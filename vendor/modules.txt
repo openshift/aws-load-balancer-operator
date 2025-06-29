@@ -378,8 +378,8 @@ github.com/golangci/maligned
 # github.com/golangci/misspell v0.4.0
 ## explicit; go 1.18
 github.com/golangci/misspell
-# github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6
-## explicit; go 1.17
+# github.com/golangci/revgrep v0.8.0
+## explicit; go 1.21
 github.com/golangci/revgrep
 # github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4
 ## explicit
