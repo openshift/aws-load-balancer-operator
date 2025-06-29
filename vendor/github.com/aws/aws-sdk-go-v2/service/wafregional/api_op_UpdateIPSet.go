@@ -4,74 +4,75 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Inserts or deletes IPSetDescriptor objects in an IPSet. For each
-// IPSetDescriptor object, you specify the following values:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Whether to insert
-// or delete the object from the array. If you want to change an IPSetDescriptor
-// object, you delete the existing object and add a new one.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * The IP address
-// version, IPv4 or IPv6.
+// Inserts or deletes IPSetDescriptor objects in an IPSet . For each IPSetDescriptor object, you
+// specify the following values:
 //
-// * The IP address in CIDR notation, for example,
-// 192.0.2.0/24 (for the range of IP addresses from 192.0.2.0 to 192.0.2.255) or
-// 192.0.2.44/32 (for the individual IP address 192.0.2.44).
+//   - Whether to insert or delete the object from the array. If you want to
+//     change an IPSetDescriptor object, you delete the existing object and add a new
+//     one.
 //
-// AWS WAF supports IPv4
-// address ranges: /8 and any range between /16 through /32. AWS WAF supports IPv6
-// address ranges: /24, /32, /48, /56, /64, and /128. For more information about
-// CIDR notation, see the Wikipedia entry Classless Inter-Domain Routing
-// (https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing). IPv6 addresses
-// can be represented using any of the following formats:
+//   - The IP address version, IPv4 or IPv6 .
 //
-// *
-// 1111:0000:0000:0000:0000:0000:0000:0111/128
+//   - The IP address in CIDR notation, for example, 192.0.2.0/24 (for the range of
+//     IP addresses from 192.0.2.0 to 192.0.2.255 ) or 192.0.2.44/32 (for the
+//     individual IP address 192.0.2.44 ).
 //
-// * 1111:0:0:0:0:0:0:0111/128
+// AWS WAF supports IPv4 address ranges: /8 and any range between /16 through /32.
+// AWS WAF supports IPv6 address ranges: /24, /32, /48, /56, /64, and /128. For
+// more information about CIDR notation, see the Wikipedia entry [Classless Inter-Domain Routing].
 //
-// *
-// 1111::0111/128
+// IPv6 addresses can be represented using any of the following formats:
 //
-// * 1111::111/128
+//   - 1111:0000:0000:0000:0000:0000:0000:0111/128
 //
-// You use an IPSet to specify which web requests
-// you want to allow or block based on the IP addresses that the requests
-// originated from. For example, if you're receiving a lot of requests from one or
-// a small number of IP addresses and you want to block the requests, you can
-// create an IPSet that specifies those IP addresses, and then configure AWS WAF to
-// block the requests. To create and configure an IPSet, perform the following
-// steps:
+//   - 1111:0:0:0:0:0:0:0111/128
 //
-// * Submit a CreateIPSet request.
+//   - 1111::0111/128
 //
-// * Use GetChangeToken to get the change
-// token that you provide in the ChangeToken parameter of an UpdateIPSet
-// request.
+//   - 1111::111/128
 //
-// * Submit an UpdateIPSet request to specify the IP addresses that you
-// want AWS WAF to watch for.
+// You use an IPSet to specify which web requests you want to allow or block based
+// on the IP addresses that the requests originated from. For example, if you're
+// receiving a lot of requests from one or a small number of IP addresses and you
+// want to block the requests, you can create an IPSet that specifies those IP
+// addresses, and then configure AWS WAF to block the requests.
 //
-// When you update an IPSet, you specify the IP
-// addresses that you want to add and/or the IP addresses that you want to delete.
-// If you want to change an IP address, you delete the existing IP address and add
-// the new one. You can insert a maximum of 1000 addresses in a single request. For
-// more information about how to use the AWS WAF API to allow or block HTTP
-// requests, see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+// To create and configure an IPSet , perform the following steps:
+//
+//   - Submit a CreateIPSetrequest.
+//
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     an UpdateIPSetrequest.
+//
+//   - Submit an UpdateIPSet request to specify the IP addresses that you want AWS
+//     WAF to watch for.
+//
+// When you update an IPSet , you specify the IP addresses that you want to add
+// and/or the IP addresses that you want to delete. If you want to change an IP
+// address, you delete the existing IP address and add the new one.
+//
+// You can insert a maximum of 1000 addresses in a single request.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
+// [Classless Inter-Domain Routing]: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
 func (c *Client) UpdateIPSet(ctx context.Context, params *UpdateIPSetInput, optFns ...func(*Options)) (*UpdateIPSetOutput, error) {
 	if params == nil {
 		params = &UpdateIPSetInput{}
@@ -94,20 +95,19 @@ type UpdateIPSetInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// The IPSetId of the IPSet that you want to update. IPSetId is returned by
-	// CreateIPSet and by ListIPSets.
+	// The IPSetId of the IPSet that you want to update. IPSetId is returned by CreateIPSet and by ListIPSets.
 	//
 	// This member is required.
 	IPSetId *string
 
-	// An array of IPSetUpdate objects that you want to insert into or delete from an
-	// IPSet. For more information, see the applicable data types:
+	// An array of IPSetUpdate objects that you want to insert into or delete from an IPSet
+	// . For more information, see the applicable data types:
 	//
-	// * IPSetUpdate:
-	// Contains Action and IPSetDescriptor
+	// IPSetUpdate
+	//   - : Contains Action and IPSetDescriptor
 	//
-	// * IPSetDescriptor: Contains Type and
-	// Value
+	// IPSetDescriptor
+	//   - : Contains Type and Value
 	//
 	// You can insert a maximum of 1000 addresses in a single request.
 	//
@@ -120,8 +120,7 @@ type UpdateIPSetInput struct {
 type UpdateIPSetOutput struct {
 
 	// The ChangeToken that you used to submit the UpdateIPSet request. You can also
-	// use this value to query the status of the request. For more information, see
-	// GetChangeTokenStatus.
+	// use this value to query the status of the request. For more information, see GetChangeTokenStatus.
 	ChangeToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -131,6 +130,9 @@ type UpdateIPSetOutput struct {
 }
 
 func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateIPSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -139,34 +141,41 @@ func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateIPSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -175,10 +184,25 @@ func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateIPSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateIPSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -190,6 +214,21 @@ func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -197,7 +236,6 @@ func newServiceMetadataMiddleware_opUpdateIPSet(region string) *awsmiddleware.Re
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "UpdateIPSet",
 	}
 }

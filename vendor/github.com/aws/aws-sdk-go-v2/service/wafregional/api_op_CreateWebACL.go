@@ -4,52 +4,52 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Creates a WebACL, which contains the Rules that identify the
-// CloudFront web requests that you want to allow, block, or count. AWS WAF
-// evaluates Rules in order based on the value of Priority for each Rule. You also
-// specify a default action, either ALLOW or BLOCK. If a web request doesn't match
-// any of the Rules in a WebACL, AWS WAF responds to the request with the default
-// action. To create and configure a WebACL, perform the following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Create
-// and update the ByteMatchSet objects and other predicates that you want to
-// include in Rules. For more information, see CreateByteMatchSet,
-// UpdateByteMatchSet, CreateIPSet, UpdateIPSet, CreateSqlInjectionMatchSet, and
-// UpdateSqlInjectionMatchSet.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * Create and update the Rules that you want to
-// include in the WebACL. For more information, see CreateRule and UpdateRule.
+// Creates a WebACL , which contains the Rules that identify the CloudFront web
+// requests that you want to allow, block, or count. AWS WAF evaluates Rules in
+// order based on the value of Priority for each Rule .
 //
-// *
-// Use GetChangeToken to get the change token that you provide in the ChangeToken
-// parameter of a CreateWebACL request.
+// You also specify a default action, either ALLOW or BLOCK . If a web request
+// doesn't match any of the Rules in a WebACL , AWS WAF responds to the request
+// with the default action.
 //
-// * Submit a CreateWebACL request.
+// To create and configure a WebACL , perform the following steps:
 //
-// * Use
-// GetChangeToken to get the change token that you provide in the ChangeToken
-// parameter of an UpdateWebACL request.
+//   - Create and update the ByteMatchSet objects and other predicates that you
+//     want to include in Rules . For more information, see CreateByteMatchSet, UpdateByteMatchSet, CreateIPSet, UpdateIPSet, CreateSqlInjectionMatchSet, and UpdateSqlInjectionMatchSet.
 //
-// * Submit an UpdateWebACL request to
-// specify the Rules that you want to include in the WebACL, to specify the default
-// action, and to associate the WebACL with a CloudFront distribution.
+//   - Create and update the Rules that you want to include in the WebACL . For
+//     more information, see CreateRuleand UpdateRule.
 //
-// For more
-// information about how to use the AWS WAF API, see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a CreateWebACL request.
+//
+//   - Submit a CreateWebACL request.
+//
+//   - Use GetChangeToken to get the change token that you provide in the
+//     ChangeToken parameter of an UpdateWebACLrequest.
+//
+//   - Submit an UpdateWebACLrequest to specify the Rules that you want to include in the
+//     WebACL , to specify the default action, and to associate the WebACL with a
+//     CloudFront distribution.
+//
+// For more information about how to use the AWS WAF API, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) CreateWebACL(ctx context.Context, params *CreateWebACLInput, optFns ...func(*Options)) (*CreateWebACLOutput, error) {
 	if params == nil {
 		params = &CreateWebACLInput{}
@@ -74,22 +74,22 @@ type CreateWebACLInput struct {
 
 	// The action that you want AWS WAF to take when a request doesn't match the
 	// criteria specified in any of the Rule objects that are associated with the
-	// WebACL.
+	// WebACL .
 	//
 	// This member is required.
 	DefaultAction *types.WafAction
 
-	// A friendly name or description for the metrics for this WebACL.The name can
+	// A friendly name or description for the metrics for this WebACL .The name can
 	// contain only alphanumeric characters (A-Z, a-z, 0-9), with maximum length 128
 	// and minimum length one. It can't contain whitespace or metric names reserved for
-	// AWS WAF, including "All" and "Default_Action." You can't change MetricName after
-	// you create the WebACL.
+	// AWS WAF, including "All" and "Default_Action." You can't change MetricName
+	// after you create the WebACL .
 	//
 	// This member is required.
 	MetricName *string
 
-	// A friendly name or description of the WebACL. You can't change Name after you
-	// create the WebACL.
+	// A friendly name or description of the WebACL. You can't change Name after you create
+	// the WebACL .
 	//
 	// This member is required.
 	Name *string
@@ -103,8 +103,7 @@ type CreateWebACLInput struct {
 type CreateWebACLOutput struct {
 
 	// The ChangeToken that you used to submit the CreateWebACL request. You can also
-	// use this value to query the status of the request. For more information, see
-	// GetChangeTokenStatus.
+	// use this value to query the status of the request. For more information, see GetChangeTokenStatus.
 	ChangeToken *string
 
 	// The WebACL returned in the CreateWebACL response.
@@ -117,6 +116,9 @@ type CreateWebACLOutput struct {
 }
 
 func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateWebACL{}, middleware.After)
 	if err != nil {
 		return err
@@ -125,34 +127,41 @@ func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, op
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateWebACL"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -161,10 +170,25 @@ func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, op
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateWebACLValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateWebACL(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -176,6 +200,21 @@ func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, op
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -183,7 +222,6 @@ func newServiceMetadataMiddleware_opCreateWebACL(region string) *awsmiddleware.R
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateWebACL",
 	}
 }

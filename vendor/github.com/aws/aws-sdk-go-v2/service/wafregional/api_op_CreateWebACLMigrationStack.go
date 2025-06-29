@@ -4,8 +4,8 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -13,14 +13,15 @@ import (
 // Creates an AWS CloudFormation WAFV2 template for the specified web ACL in the
 // specified Amazon S3 bucket. Then, in CloudFormation, you create a stack from the
 // template, to create the web ACL and its resources in AWS WAFV2. Use this to
-// migrate your AWS WAF Classic web ACL to the latest version of AWS WAF. This is
-// part of a larger migration procedure for web ACLs from AWS WAF Classic to the
-// latest version of AWS WAF. For the full procedure, including caveats and manual
-// steps to complete the migration and switch over to the new web ACL, see
-// Migrating your AWS WAF Classic resources to AWS WAF
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-migrating-from-classic.html)
-// in the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html).
+// migrate your AWS WAF Classic web ACL to the latest version of AWS WAF.
+//
+// This is part of a larger migration procedure for web ACLs from AWS WAF Classic
+// to the latest version of AWS WAF. For the full procedure, including caveats and
+// manual steps to complete the migration and switch over to the new web ACL, see [Migrating your AWS WAF Classic resources to AWS WAF]
+// in the [AWS WAF Developer Guide].
+//
+// [Migrating your AWS WAF Classic resources to AWS WAF]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-migrating-from-classic.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
 func (c *Client) CreateWebACLMigrationStack(ctx context.Context, params *CreateWebACLMigrationStackInput, optFns ...func(*Options)) (*CreateWebACLMigrationStackOutput, error) {
 	if params == nil {
 		params = &CreateWebACLMigrationStackInput{}
@@ -46,20 +47,18 @@ type CreateWebACLMigrationStackInput struct {
 	// This member is required.
 	IgnoreUnsupportedType *bool
 
-	// The name of the Amazon S3 bucket to store the CloudFormation template in. The S3
-	// bucket must be configured as follows for the migration:
+	// The name of the Amazon S3 bucket to store the CloudFormation template in. The
+	// S3 bucket must be configured as follows for the migration:
 	//
-	// * The bucket name must
-	// start with aws-waf-migration-. For example, aws-waf-migration-my-web-acl.
+	//   - The bucket name must start with aws-waf-migration- . For example,
+	//   aws-waf-migration-my-web-acl .
 	//
-	// * The
-	// bucket must be in the Region where you are deploying the template. For example,
-	// for a web ACL in us-west-2, you must use an Amazon S3 bucket in us-west-2 and
-	// you must deploy the template stack to us-west-2.
+	//   - The bucket must be in the Region where you are deploying the template. For
+	//   example, for a web ACL in us-west-2, you must use an Amazon S3 bucket in
+	//   us-west-2 and you must deploy the template stack to us-west-2.
 	//
-	// * The bucket policies must
-	// permit the migration process to write data. For listings of the bucket policies,
-	// see the Examples section.
+	//   - The bucket policies must permit the migration process to write data. For
+	//   listings of the bucket policies, see the Examples section.
 	//
 	// This member is required.
 	S3BucketName *string
@@ -86,6 +85,9 @@ type CreateWebACLMigrationStackOutput struct {
 }
 
 func (c *Client) addOperationCreateWebACLMigrationStackMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateWebACLMigrationStack{}, middleware.After)
 	if err != nil {
 		return err
@@ -94,34 +96,41 @@ func (c *Client) addOperationCreateWebACLMigrationStackMiddlewares(stack *middle
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateWebACLMigrationStack"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -130,10 +139,25 @@ func (c *Client) addOperationCreateWebACLMigrationStackMiddlewares(stack *middle
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateWebACLMigrationStackValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateWebACLMigrationStack(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -145,6 +169,21 @@ func (c *Client) addOperationCreateWebACLMigrationStackMiddlewares(stack *middle
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -152,7 +191,6 @@ func newServiceMetadataMiddleware_opCreateWebACLMigrationStack(region string) *a
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateWebACLMigrationStack",
 	}
 }

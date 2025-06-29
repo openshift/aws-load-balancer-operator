@@ -4,33 +4,36 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Permanently deletes a SizeConstraintSet. You can't delete a
-// SizeConstraintSet if it's still used in any Rules or if it still includes any
-// SizeConstraint objects (any filters). If you just want to remove a
-// SizeConstraintSet from a Rule, use UpdateRule. To permanently delete a
-// SizeConstraintSet, perform the following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Update the SizeConstraintSet
-// to remove filters, if any. For more information, see UpdateSizeConstraintSet.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// *
-// Use GetChangeToken to get the change token that you provide in the ChangeToken
-// parameter of a DeleteSizeConstraintSet request.
+// Permanently deletes a SizeConstraintSet. You can't delete a SizeConstraintSet if it's still used
+// in any Rules or if it still includes any SizeConstraint objects (any filters).
 //
-// * Submit a
-// DeleteSizeConstraintSet request.
+// If you just want to remove a SizeConstraintSet from a Rule , use UpdateRule.
+//
+// To permanently delete a SizeConstraintSet , perform the following steps:
+//
+//   - Update the SizeConstraintSet to remove filters, if any. For more
+//     information, see UpdateSizeConstraintSet.
+//
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a DeleteSizeConstraintSet request.
+//
+//   - Submit a DeleteSizeConstraintSet request.
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
 func (c *Client) DeleteSizeConstraintSet(ctx context.Context, params *DeleteSizeConstraintSetInput, optFns ...func(*Options)) (*DeleteSizeConstraintSetOutput, error) {
 	if params == nil {
 		params = &DeleteSizeConstraintSetInput{}
@@ -53,9 +56,8 @@ type DeleteSizeConstraintSetInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// The SizeConstraintSetId of the SizeConstraintSet that you want to delete.
-	// SizeConstraintSetId is returned by CreateSizeConstraintSet and by
-	// ListSizeConstraintSets.
+	// The SizeConstraintSetId of the SizeConstraintSet that you want to delete. SizeConstraintSetId is
+	// returned by CreateSizeConstraintSetand by ListSizeConstraintSets.
 	//
 	// This member is required.
 	SizeConstraintSetId *string
@@ -65,8 +67,8 @@ type DeleteSizeConstraintSetInput struct {
 
 type DeleteSizeConstraintSetOutput struct {
 
-	// The ChangeToken that you used to submit the DeleteSizeConstraintSet request. You
-	// can also use this value to query the status of the request. For more
+	// The ChangeToken that you used to submit the DeleteSizeConstraintSet request.
+	// You can also use this value to query the status of the request. For more
 	// information, see GetChangeTokenStatus.
 	ChangeToken *string
 
@@ -77,6 +79,9 @@ type DeleteSizeConstraintSetOutput struct {
 }
 
 func (c *Client) addOperationDeleteSizeConstraintSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteSizeConstraintSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -85,34 +90,41 @@ func (c *Client) addOperationDeleteSizeConstraintSetMiddlewares(stack *middlewar
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteSizeConstraintSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -121,10 +133,25 @@ func (c *Client) addOperationDeleteSizeConstraintSetMiddlewares(stack *middlewar
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteSizeConstraintSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteSizeConstraintSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -136,6 +163,21 @@ func (c *Client) addOperationDeleteSizeConstraintSetMiddlewares(stack *middlewar
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -143,7 +185,6 @@ func newServiceMetadataMiddleware_opDeleteSizeConstraintSet(region string) *awsm
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "DeleteSizeConstraintSet",
 	}
 }

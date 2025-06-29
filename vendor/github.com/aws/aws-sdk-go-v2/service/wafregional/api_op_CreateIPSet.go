@@ -4,43 +4,45 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Creates an IPSet, which you use to specify which web requests that
-// you want to allow or block based on the IP addresses that the requests originate
-// from. For example, if you're receiving a lot of requests from one or more
-// individual IP addresses or one or more ranges of IP addresses and you want to
-// block the requests, you can create an IPSet that contains those IP addresses and
-// then configure AWS WAF to block the requests. To create and configure an IPSet,
-// perform the following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Use GetChangeToken to get the change token that
-// you provide in the ChangeToken parameter of a CreateIPSet request.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * Submit a
-// CreateIPSet request.
+// Creates an IPSet, which you use to specify which web requests that you want to allow
+// or block based on the IP addresses that the requests originate from. For
+// example, if you're receiving a lot of requests from one or more individual IP
+// addresses or one or more ranges of IP addresses and you want to block the
+// requests, you can create an IPSet that contains those IP addresses and then
+// configure AWS WAF to block the requests.
 //
-// * Use GetChangeToken to get the change token that you
-// provide in the ChangeToken parameter of an UpdateIPSet request.
+// To create and configure an IPSet , perform the following steps:
 //
-// * Submit an
-// UpdateIPSet request to specify the IP addresses that you want AWS WAF to watch
-// for.
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a CreateIPSet request.
 //
-// For more information about how to use the AWS WAF API to allow or block
-// HTTP requests, see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+//   - Submit a CreateIPSet request.
+//
+//   - Use GetChangeToken to get the change token that you provide in the
+//     ChangeToken parameter of an UpdateIPSetrequest.
+//
+//   - Submit an UpdateIPSet request to specify the IP addresses that you want AWS
+//     WAF to watch for.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) CreateIPSet(ctx context.Context, params *CreateIPSetInput, optFns ...func(*Options)) (*CreateIPSetOutput, error) {
 	if params == nil {
 		params = &CreateIPSetInput{}
@@ -63,8 +65,8 @@ type CreateIPSetInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// A friendly name or description of the IPSet. You can't change Name after you
-	// create the IPSet.
+	// A friendly name or description of the IPSet. You can't change Name after you create
+	// the IPSet .
 	//
 	// This member is required.
 	Name *string
@@ -75,8 +77,7 @@ type CreateIPSetInput struct {
 type CreateIPSetOutput struct {
 
 	// The ChangeToken that you used to submit the CreateIPSet request. You can also
-	// use this value to query the status of the request. For more information, see
-	// GetChangeTokenStatus.
+	// use this value to query the status of the request. For more information, see GetChangeTokenStatus.
 	ChangeToken *string
 
 	// The IPSet returned in the CreateIPSet response.
@@ -89,6 +90,9 @@ type CreateIPSetOutput struct {
 }
 
 func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateIPSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -97,34 +101,41 @@ func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateIPSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -133,10 +144,25 @@ func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateIPSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateIPSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -148,6 +174,21 @@ func (c *Client) addOperationCreateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -155,7 +196,6 @@ func newServiceMetadataMiddleware_opCreateIPSet(region string) *awsmiddleware.Re
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateIPSet",
 	}
 }

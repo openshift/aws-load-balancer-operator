@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -33,23 +32,26 @@ type DescribeVpcEndpointConnectionsInput struct {
 
 	// Checks whether you have the required permissions for the action, without
 	// actually making the request, and provides an error response. If you have the
-	// required permissions, the error response is DryRunOperation. Otherwise, it is
-	// UnauthorizedOperation.
+	// required permissions, the error response is DryRunOperation . Otherwise, it is
+	// UnauthorizedOperation .
 	DryRun *bool
 
-	// One or more filters.
+	// The filters.
 	//
-	// * service-id - The ID of the service.
+	//   - ip-address-type - The IP address type ( ipv4 | ipv6 ).
 	//
-	// *
-	// vpc-endpoint-owner - The ID of the Amazon Web Services account ID that owns the
-	// endpoint.
+	//   - service-id - The ID of the service.
 	//
-	// * vpc-endpoint-state - The state of the endpoint (pendingAcceptance |
-	// pending | available | deleting | deleted | rejected | failed).
+	//   - vpc-endpoint-owner - The ID of the Amazon Web Services account ID that owns
+	//   the endpoint.
 	//
-	// *
-	// vpc-endpoint-id - The ID of the endpoint.
+	//   - vpc-endpoint-region - The Region of the endpoint or cross-region to find
+	//   endpoints for other Regions.
+	//
+	//   - vpc-endpoint-state - The state of the endpoint ( pendingAcceptance | pending
+	//   | available | deleting | deleted | rejected | failed ).
+	//
+	//   - vpc-endpoint-id - The ID of the endpoint.
 	Filters []types.Filter
 
 	// The maximum number of results to return for the request in a single page. The
@@ -70,7 +72,7 @@ type DescribeVpcEndpointConnectionsOutput struct {
 	// there are no more results to return.
 	NextToken *string
 
-	// Information about one or more VPC endpoint connections.
+	// Information about the VPC endpoint connections.
 	VpcEndpointConnections []types.VpcEndpointConnection
 
 	// Metadata pertaining to the operation's result.
@@ -80,6 +82,9 @@ type DescribeVpcEndpointConnectionsOutput struct {
 }
 
 func (c *Client) addOperationDescribeVpcEndpointConnectionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeVpcEndpointConnections{}, middleware.After)
 	if err != nil {
 		return err
@@ -88,34 +93,41 @@ func (c *Client) addOperationDescribeVpcEndpointConnectionsMiddlewares(stack *mi
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeVpcEndpointConnections"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -124,7 +136,22 @@ func (c *Client) addOperationDescribeVpcEndpointConnectionsMiddlewares(stack *mi
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeVpcEndpointConnections(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -136,16 +163,23 @@ func (c *Client) addOperationDescribeVpcEndpointConnectionsMiddlewares(stack *mi
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
-
-// DescribeVpcEndpointConnectionsAPIClient is a client that implements the
-// DescribeVpcEndpointConnections operation.
-type DescribeVpcEndpointConnectionsAPIClient interface {
-	DescribeVpcEndpointConnections(context.Context, *DescribeVpcEndpointConnectionsInput, ...func(*Options)) (*DescribeVpcEndpointConnectionsOutput, error)
-}
-
-var _ DescribeVpcEndpointConnectionsAPIClient = (*Client)(nil)
 
 // DescribeVpcEndpointConnectionsPaginatorOptions is the paginator options for
 // DescribeVpcEndpointConnections
@@ -216,6 +250,9 @@ func (p *DescribeVpcEndpointConnectionsPaginator) NextPage(ctx context.Context, 
 	}
 	params.MaxResults = limit
 
+	optFns = append([]func(*Options){
+		addIsPaginatorUserAgent,
+	}, optFns...)
 	result, err := p.client.DescribeVpcEndpointConnections(ctx, &params, optFns...)
 	if err != nil {
 		return nil, err
@@ -235,11 +272,18 @@ func (p *DescribeVpcEndpointConnectionsPaginator) NextPage(ctx context.Context, 
 	return result, nil
 }
 
+// DescribeVpcEndpointConnectionsAPIClient is a client that implements the
+// DescribeVpcEndpointConnections operation.
+type DescribeVpcEndpointConnectionsAPIClient interface {
+	DescribeVpcEndpointConnections(context.Context, *DescribeVpcEndpointConnectionsInput, ...func(*Options)) (*DescribeVpcEndpointConnectionsOutput, error)
+}
+
+var _ DescribeVpcEndpointConnectionsAPIClient = (*Client)(nil)
+
 func newServiceMetadataMiddleware_opDescribeVpcEndpointConnections(region string) *awsmiddleware.RegisterServiceMetadata {
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "DescribeVpcEndpointConnections",
 	}
 }
