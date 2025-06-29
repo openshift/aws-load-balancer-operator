@@ -262,7 +262,7 @@ github.com/go-openapi/swag
 # github.com/go-toolsmith/astcast v1.1.0
 ## explicit; go 1.16
 github.com/go-toolsmith/astcast
-# github.com/go-toolsmith/astcopy v1.0.3
+# github.com/go-toolsmith/astcopy v1.1.0
 ## explicit; go 1.16
 github.com/go-toolsmith/astcopy
 # github.com/go-toolsmith/astequal v1.1.0
