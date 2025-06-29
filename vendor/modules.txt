@@ -409,7 +409,7 @@ github.com/google/shlex
 # github.com/google/uuid v1.3.1
 ## explicit
 github.com/google/uuid
-# github.com/gordonklaus/ineffassign v0.0.0-20230107090616-13ace0543b28
+# github.com/gordonklaus/ineffassign v0.1.0
 ## explicit; go 1.14
 github.com/gordonklaus/ineffassign/pkg/ineffassign
 # github.com/gostaticanalysis/analysisutil v0.7.1
