@@ -113,7 +113,7 @@ require (
 	github.com/golangci/misspell v0.4.0 // indirect
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6 // indirect
 	github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4 // indirect
-	github.com/google/gnostic-models v0.6.8 // indirect
+	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.1 // indirect
@@ -229,6 +229,7 @@ require (
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.3 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230203172020-98cc5a0785f9 // indirect
 	golang.org/x/mod v0.15.0 // indirect
@@ -243,7 +244,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
