@@ -17,7 +17,7 @@ WORKDIR /workspace
 # Build
 RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o /usr/bin/manager main.go
 
-FROM registry.redhat.io/rhel8-6-els/rhel:8.6-1737
+FROM registry.access.redhat.com/ubi9/ubi:9.6-1751287003
 LABEL maintainer="Red Hat, Inc."
 LABEL com.redhat.component="aws-load-balancer-operator-container"
 LABEL name="aws-load-balancer-operator"
