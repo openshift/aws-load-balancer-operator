@@ -1,5 +1,7 @@
 # Build the manager binary
-FROM registry.access.redhat.com/ubi8/go-toolset:1.22 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22 as builder
+
+WORKDIR /opt/app-root/src
 
 # Copy the go source
 COPY main.go main.go
@@ -10,11 +12,11 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 
 # Build
-RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o /usr/bin/manager main.go
+RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o manager main.go
 
-FROM registry.redhat.io/rhel8-6-els/rhel:latest
 WORKDIR /
-COPY --from=builder /usr/bin/manager .
+FROM registry.access.redhat.com/ubi9/ubi:latest
+COPY --from=builder /opt/app-root/src/manager .
 
 USER 65532:65532
 
