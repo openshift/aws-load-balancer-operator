@@ -7,7 +7,7 @@ in a OpenShift cluster.
 This [document](https://github.com/openshift/enhancements/blob/master/enhancements/ingress/aws-load-balancer-operator.md)
 describes the design and implementation of the operator in more detail.
 
-## Table of contents
+## Table of contents Demo
 
 1. [Prerequisites](docs/prerequisites.md)
    1. [IAM Role for STS clusters](docs/prerequisites.md#iam-role-for-sts-clusters)
