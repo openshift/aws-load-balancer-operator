@@ -14,3 +14,5 @@ LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v3
 # Copy files to locations specified by labels.
 COPY bundle/manifests /manifests/
 COPY bundle/metadata /metadata/
+
+USER 65532:65532
