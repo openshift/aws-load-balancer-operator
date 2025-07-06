@@ -4,19 +4,26 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Disassociates a web ACL from a regional application resource. A regional
-// application can be an Application Load Balancer (ALB), an Amazon API Gateway
-// REST API, or an AppSync GraphQL API. For Amazon CloudFront, don't use this call.
-// Instead, use your CloudFront distribution configuration. To disassociate a web
-// ACL, provide an empty web ACL ID in the CloudFront call UpdateDistribution. For
-// information, see UpdateDistribution
-// (https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_UpdateDistribution.html).
+// Disassociates the specified resource from its web ACL association, if it has
+// one.
+//
+// Use this for all resource types except for Amazon CloudFront distributions. For
+// Amazon CloudFront, call UpdateDistribution for the distribution and provide an
+// empty web ACL ID. For information, see [UpdateDistribution]in the Amazon CloudFront API Reference.
+//
+// # Required permissions for customer-managed IAM policies
+//
+// This call requires permissions that are specific to the protected resource
+// type. For details, see [Permissions for DisassociateWebACL]in the WAF Developer Guide.
+//
+// [Permissions for DisassociateWebACL]: https://docs.aws.amazon.com/waf/latest/developerguide/security_iam_service-with-iam.html#security_iam_action-DisassociateWebACL
+// [UpdateDistribution]: https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_UpdateDistribution.html
 func (c *Client) DisassociateWebACL(ctx context.Context, params *DisassociateWebACLInput, optFns ...func(*Options)) (*DisassociateWebACLOutput, error) {
 	if params == nil {
 		params = &DisassociateWebACLInput{}
@@ -34,19 +41,31 @@ func (c *Client) DisassociateWebACL(ctx context.Context, params *DisassociateWeb
 
 type DisassociateWebACLInput struct {
 
-	// The Amazon Resource Name (ARN) of the resource to disassociate from the web ACL.
+	// The Amazon Resource Name (ARN) of the resource to disassociate from the web
+	// ACL.
+	//
 	// The ARN must be in one of the following formats:
 	//
-	// * For an Application Load
-	// Balancer:
-	// arn:aws:elasticloadbalancing:region:account-id:loadbalancer/app/load-balancer-name/load-balancer-id
+	//   - For an Application Load Balancer:
+	//   arn:partition:elasticloadbalancing:region:account-id:loadbalancer/app/load-balancer-name/load-balancer-id
 	//
-	// *
-	// For an Amazon API Gateway REST API:
-	// arn:aws:apigateway:region::/restapis/api-id/stages/stage-name
+	//   - For an Amazon API Gateway REST API:
+	//   arn:partition:apigateway:region::/restapis/api-id/stages/stage-name
 	//
-	// * For an AppSync
-	// GraphQL API: arn:aws:appsync:region:account-id:apis/GraphQLApiId
+	//   - For an AppSync GraphQL API:
+	//   arn:partition:appsync:region:account-id:apis/GraphQLApiId
+	//
+	//   - For an Amazon Cognito user pool:
+	//   arn:partition:cognito-idp:region:account-id:userpool/user-pool-id
+	//
+	//   - For an App Runner service:
+	//   arn:partition:apprunner:region:account-id:service/apprunner-service-name/apprunner-service-id
+	//
+	//   - For an Amazon Web Services Verified Access instance:
+	//   arn:partition:ec2:region:account-id:verified-access-instance/instance-id
+	//
+	//   - For an Amplify application:
+	//   arn:partition:amplify:region:account-id:apps/app-id
 	//
 	// This member is required.
 	ResourceArn *string
@@ -62,6 +81,9 @@ type DisassociateWebACLOutput struct {
 }
 
 func (c *Client) addOperationDisassociateWebACLMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDisassociateWebACL{}, middleware.After)
 	if err != nil {
 		return err
@@ -70,34 +92,41 @@ func (c *Client) addOperationDisassociateWebACLMiddlewares(stack *middleware.Sta
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DisassociateWebACL"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -106,10 +135,25 @@ func (c *Client) addOperationDisassociateWebACLMiddlewares(stack *middleware.Sta
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDisassociateWebACLValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDisassociateWebACL(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -121,6 +165,21 @@ func (c *Client) addOperationDisassociateWebACLMiddlewares(stack *middleware.Sta
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -128,7 +187,6 @@ func newServiceMetadataMiddleware_opDisassociateWebACL(region string) *awsmiddle
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "DisassociateWebACL",
 	}
 }

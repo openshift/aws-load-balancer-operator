@@ -4,60 +4,59 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Creates a Rule, which contains the IPSet objects, ByteMatchSet
-// objects, and other predicates that identify the requests that you want to block.
-// If you add more than one predicate to a Rule, a request must match all of the
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
+//
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
+//
+// Creates a Rule , which contains the IPSet objects, ByteMatchSet objects, and
+// other predicates that identify the requests that you want to block. If you add
+// more than one predicate to a Rule , a request must match all of the
 // specifications to be allowed or blocked. For example, suppose that you add the
-// following to a Rule:
+// following to a Rule :
 //
-// * An IPSet that matches the IP address 192.0.2.44/32
+//   - An IPSet that matches the IP address 192.0.2.44/32
 //
-// * A
-// ByteMatchSet that matches BadBot in the User-Agent header
+//   - A ByteMatchSet that matches BadBot in the User-Agent header
 //
-// You then add the Rule
-// to a WebACL and specify that you want to blocks requests that satisfy the Rule.
-// For a request to be blocked, it must come from the IP address 192.0.2.44 and the
-// User-Agent header in the request must contain the value BadBot. To create and
-// configure a Rule, perform the following steps:
+// You then add the Rule to a WebACL and specify that you want to blocks requests
+// that satisfy the Rule . For a request to be blocked, it must come from the IP
+// address 192.0.2.44 and the User-Agent header in the request must contain the
+// value BadBot .
 //
-// * Create and update the
-// predicates that you want to include in the Rule. For more information, see
-// CreateByteMatchSet, CreateIPSet, and CreateSqlInjectionMatchSet.
+// To create and configure a Rule , perform the following steps:
 //
-// * Use
-// GetChangeToken to get the change token that you provide in the ChangeToken
-// parameter of a CreateRule request.
+//   - Create and update the predicates that you want to include in the Rule . For
+//     more information, see CreateByteMatchSet, CreateIPSet, and CreateSqlInjectionMatchSet.
 //
-// * Submit a CreateRule request.
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a CreateRule request.
 //
-// * Use
-// GetChangeToken to get the change token that you provide in the ChangeToken
-// parameter of an UpdateRule request.
+//   - Submit a CreateRule request.
 //
-// * Submit an UpdateRule request to specify
-// the predicates that you want to include in the Rule.
+//   - Use GetChangeToken to get the change token that you provide in the
+//     ChangeToken parameter of an UpdateRulerequest.
 //
-// * Create and update a
-// WebACL that contains the Rule. For more information, see CreateWebACL.
+//   - Submit an UpdateRule request to specify the predicates that you want to
+//     include in the Rule .
 //
-// For more
-// information about how to use the AWS WAF API to allow or block HTTP requests,
-// see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+//   - Create and update a WebACL that contains the Rule . For more information,
+//     see CreateWebACL.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) CreateRule(ctx context.Context, params *CreateRuleInput, optFns ...func(*Options)) (*CreateRuleOutput, error) {
 	if params == nil {
 		params = &CreateRuleInput{}
@@ -80,11 +79,11 @@ type CreateRuleInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// A friendly name or description for the metrics for this Rule. The name can
+	// A friendly name or description for the metrics for this Rule . The name can
 	// contain only alphanumeric characters (A-Z, a-z, 0-9), with maximum length 128
 	// and minimum length one. It can't contain whitespace or metric names reserved for
 	// AWS WAF, including "All" and "Default_Action." You can't change the name of the
-	// metric after you create the Rule.
+	// metric after you create the Rule .
 	//
 	// This member is required.
 	MetricName *string
@@ -103,9 +102,8 @@ type CreateRuleInput struct {
 
 type CreateRuleOutput struct {
 
-	// The ChangeToken that you used to submit the CreateRule request. You can also use
-	// this value to query the status of the request. For more information, see
-	// GetChangeTokenStatus.
+	// The ChangeToken that you used to submit the CreateRule request. You can also
+	// use this value to query the status of the request. For more information, see GetChangeTokenStatus.
 	ChangeToken *string
 
 	// The Rule returned in the CreateRule response.
@@ -118,6 +116,9 @@ type CreateRuleOutput struct {
 }
 
 func (c *Client) addOperationCreateRuleMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateRule{}, middleware.After)
 	if err != nil {
 		return err
@@ -126,34 +127,41 @@ func (c *Client) addOperationCreateRuleMiddlewares(stack *middleware.Stack, opti
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateRule"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -162,10 +170,25 @@ func (c *Client) addOperationCreateRuleMiddlewares(stack *middleware.Stack, opti
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateRuleValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateRule(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -177,6 +200,21 @@ func (c *Client) addOperationCreateRuleMiddlewares(stack *middleware.Stack, opti
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -184,7 +222,6 @@ func newServiceMetadataMiddleware_opCreateRule(region string) *awsmiddleware.Reg
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateRule",
 	}
 }

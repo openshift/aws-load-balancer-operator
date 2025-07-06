@@ -50,6 +50,26 @@ func (m *validateOpCheckCapacity) HandleInitialize(ctx context.Context, in middl
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpCreateAPIKey struct {
+}
+
+func (*validateOpCreateAPIKey) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpCreateAPIKey) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*CreateAPIKeyInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpCreateAPIKeyInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpCreateIPSet struct {
 }
 
@@ -125,6 +145,26 @@ func (m *validateOpCreateWebACL) HandleInitialize(ctx context.Context, in middle
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpCreateWebACLInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpDeleteAPIKey struct {
+}
+
+func (*validateOpDeleteAPIKey) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDeleteAPIKey) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DeleteAPIKeyInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDeleteAPIKeyInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -270,6 +310,46 @@ func (m *validateOpDeleteWebACL) HandleInitialize(ctx context.Context, in middle
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpDescribeAllManagedProducts struct {
+}
+
+func (*validateOpDescribeAllManagedProducts) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDescribeAllManagedProducts) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DescribeAllManagedProductsInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDescribeAllManagedProductsInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpDescribeManagedProductsByVendor struct {
+}
+
+func (*validateOpDescribeManagedProductsByVendor) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpDescribeManagedProductsByVendor) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*DescribeManagedProductsByVendorInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpDescribeManagedProductsByVendorInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpDescribeManagedRuleGroup struct {
 }
 
@@ -325,6 +405,26 @@ func (m *validateOpGenerateMobileSdkReleaseUrl) HandleInitialize(ctx context.Con
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpGenerateMobileSdkReleaseUrlInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpGetDecryptedAPIKey struct {
+}
+
+func (*validateOpGetDecryptedAPIKey) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpGetDecryptedAPIKey) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*GetDecryptedAPIKeyInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpGetDecryptedAPIKeyInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -510,21 +610,21 @@ func (m *validateOpGetWebACLForResource) HandleInitialize(ctx context.Context, i
 	return next.HandleInitialize(ctx, in)
 }
 
-type validateOpGetWebACL struct {
+type validateOpListAPIKeys struct {
 }
 
-func (*validateOpGetWebACL) ID() string {
+func (*validateOpListAPIKeys) ID() string {
 	return "OperationInputValidation"
 }
 
-func (m *validateOpGetWebACL) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+func (m *validateOpListAPIKeys) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
 	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
 ) {
-	input, ok := in.Parameters.(*GetWebACLInput)
+	input, ok := in.Parameters.(*ListAPIKeysInput)
 	if !ok {
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
-	if err := validateOpGetWebACLInput(input); err != nil {
+	if err := validateOpListAPIKeysInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -958,6 +1058,10 @@ func addOpCheckCapacityValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCheckCapacity{}, middleware.After)
 }
 
+func addOpCreateAPIKeyValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpCreateAPIKey{}, middleware.After)
+}
+
 func addOpCreateIPSetValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateIPSet{}, middleware.After)
 }
@@ -972,6 +1076,10 @@ func addOpCreateRuleGroupValidationMiddleware(stack *middleware.Stack) error {
 
 func addOpCreateWebACLValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpCreateWebACL{}, middleware.After)
+}
+
+func addOpDeleteAPIKeyValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDeleteAPIKey{}, middleware.After)
 }
 
 func addOpDeleteFirewallManagerRuleGroupsValidationMiddleware(stack *middleware.Stack) error {
@@ -1002,6 +1110,14 @@ func addOpDeleteWebACLValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDeleteWebACL{}, middleware.After)
 }
 
+func addOpDescribeAllManagedProductsValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDescribeAllManagedProducts{}, middleware.After)
+}
+
+func addOpDescribeManagedProductsByVendorValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpDescribeManagedProductsByVendor{}, middleware.After)
+}
+
 func addOpDescribeManagedRuleGroupValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpDescribeManagedRuleGroup{}, middleware.After)
 }
@@ -1012,6 +1128,10 @@ func addOpDisassociateWebACLValidationMiddleware(stack *middleware.Stack) error 
 
 func addOpGenerateMobileSdkReleaseUrlValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpGenerateMobileSdkReleaseUrl{}, middleware.After)
+}
+
+func addOpGetDecryptedAPIKeyValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpGetDecryptedAPIKey{}, middleware.After)
 }
 
 func addOpGetIPSetValidationMiddleware(stack *middleware.Stack) error {
@@ -1050,8 +1170,8 @@ func addOpGetWebACLForResourceValidationMiddleware(stack *middleware.Stack) erro
 	return stack.Initialize.Add(&validateOpGetWebACLForResource{}, middleware.After)
 }
 
-func addOpGetWebACLValidationMiddleware(stack *middleware.Stack) error {
-	return stack.Initialize.Add(&validateOpGetWebACL{}, middleware.After)
+func addOpListAPIKeysValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpListAPIKeys{}, middleware.After)
 }
 
 func addOpListAvailableManagedRuleGroupsValidationMiddleware(stack *middleware.Stack) error {
@@ -1153,6 +1273,38 @@ func validateActionCondition(v *types.ActionCondition) error {
 	}
 }
 
+func validateAddressField(v *types.AddressField) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AddressField"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAddressFields(v []types.AddressField) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AddressFields"}
+	for i := range v {
+		if err := validateAddressField(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateAllowAction(v *types.AllowAction) error {
 	if v == nil {
 		return nil
@@ -1181,6 +1333,132 @@ func validateAndStatement(v *types.AndStatement) error {
 		if err := validateStatements(v.Statements); err != nil {
 			invalidParams.AddNested("Statements", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAsnMatchStatement(v *types.AsnMatchStatement) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AsnMatchStatement"}
+	if v.AsnList == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("AsnList"))
+	}
+	if v.ForwardedIPConfig != nil {
+		if err := validateForwardedIPConfig(v.ForwardedIPConfig); err != nil {
+			invalidParams.AddNested("ForwardedIPConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAssociationConfig(v *types.AssociationConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AssociationConfig"}
+	if v.RequestBody != nil {
+		if err := validateRequestBody(v.RequestBody); err != nil {
+			invalidParams.AddNested("RequestBody", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAWSManagedRulesACFPRuleSet(v *types.AWSManagedRulesACFPRuleSet) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AWSManagedRulesACFPRuleSet"}
+	if v.CreationPath == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("CreationPath"))
+	}
+	if v.RegistrationPagePath == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("RegistrationPagePath"))
+	}
+	if v.RequestInspection == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("RequestInspection"))
+	} else if v.RequestInspection != nil {
+		if err := validateRequestInspectionACFP(v.RequestInspection); err != nil {
+			invalidParams.AddNested("RequestInspection", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.ResponseInspection != nil {
+		if err := validateResponseInspection(v.ResponseInspection); err != nil {
+			invalidParams.AddNested("ResponseInspection", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAWSManagedRulesAntiDDoSRuleSet(v *types.AWSManagedRulesAntiDDoSRuleSet) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AWSManagedRulesAntiDDoSRuleSet"}
+	if v.ClientSideActionConfig == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ClientSideActionConfig"))
+	} else if v.ClientSideActionConfig != nil {
+		if err := validateClientSideActionConfig(v.ClientSideActionConfig); err != nil {
+			invalidParams.AddNested("ClientSideActionConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAWSManagedRulesATPRuleSet(v *types.AWSManagedRulesATPRuleSet) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AWSManagedRulesATPRuleSet"}
+	if v.LoginPath == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("LoginPath"))
+	}
+	if v.RequestInspection != nil {
+		if err := validateRequestInspection(v.RequestInspection); err != nil {
+			invalidParams.AddNested("RequestInspection", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.ResponseInspection != nil {
+		if err := validateResponseInspection(v.ResponseInspection); err != nil {
+			invalidParams.AddNested("ResponseInspection", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateAWSManagedRulesBotControlRuleSet(v *types.AWSManagedRulesBotControlRuleSet) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "AWSManagedRulesBotControlRuleSet"}
+	if len(v.InspectionLevel) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("InspectionLevel"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1272,6 +1550,74 @@ func validateCaptchaConfig(v *types.CaptchaConfig) error {
 	}
 }
 
+func validateChallengeAction(v *types.ChallengeAction) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ChallengeAction"}
+	if v.CustomRequestHandling != nil {
+		if err := validateCustomRequestHandling(v.CustomRequestHandling); err != nil {
+			invalidParams.AddNested("CustomRequestHandling", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateChallengeConfig(v *types.ChallengeConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ChallengeConfig"}
+	if v.ImmunityTimeProperty != nil {
+		if err := validateImmunityTimeProperty(v.ImmunityTimeProperty); err != nil {
+			invalidParams.AddNested("ImmunityTimeProperty", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateClientSideAction(v *types.ClientSideAction) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ClientSideAction"}
+	if len(v.UsageOfAction) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("UsageOfAction"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateClientSideActionConfig(v *types.ClientSideActionConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ClientSideActionConfig"}
+	if v.Challenge == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Challenge"))
+	} else if v.Challenge != nil {
+		if err := validateClientSideAction(v.Challenge); err != nil {
+			invalidParams.AddNested("Challenge", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateCondition(v *types.Condition) error {
 	if v == nil {
 		return nil
@@ -1303,6 +1649,27 @@ func validateConditions(v []types.Condition) error {
 		if err := validateCondition(&v[i]); err != nil {
 			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateCookies(v *types.Cookies) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "Cookies"}
+	if v.MatchPattern == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("MatchPattern"))
+	}
+	if len(v.MatchScope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("MatchScope"))
+	}
+	if len(v.OversizeHandling) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("OversizeHandling"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1438,6 +1805,64 @@ func validateCustomResponseBody(v *types.CustomResponseBody) error {
 	}
 }
 
+func validateDataProtection(v *types.DataProtection) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DataProtection"}
+	if v.Field == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Field"))
+	} else if v.Field != nil {
+		if err := validateFieldToProtect(v.Field); err != nil {
+			invalidParams.AddNested("Field", err.(smithy.InvalidParamsError))
+		}
+	}
+	if len(v.Action) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Action"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateDataProtectionConfig(v *types.DataProtectionConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DataProtectionConfig"}
+	if v.DataProtections == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("DataProtections"))
+	} else if v.DataProtections != nil {
+		if err := validateDataProtections(v.DataProtections); err != nil {
+			invalidParams.AddNested("DataProtections", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateDataProtections(v []types.DataProtection) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DataProtections"}
+	for i := range v {
+		if err := validateDataProtection(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateDefaultAction(v *types.DefaultAction) error {
 	if v == nil {
 		return nil
@@ -1452,6 +1877,21 @@ func validateDefaultAction(v *types.DefaultAction) error {
 		if err := validateAllowAction(v.Allow); err != nil {
 			invalidParams.AddNested("Allow", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateEmailField(v *types.EmailField) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "EmailField"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1511,6 +1951,46 @@ func validateFieldToMatch(v *types.FieldToMatch) error {
 		if err := validateJsonBody(v.JsonBody); err != nil {
 			invalidParams.AddNested("JsonBody", err.(smithy.InvalidParamsError))
 		}
+	}
+	if v.Headers != nil {
+		if err := validateHeaders(v.Headers); err != nil {
+			invalidParams.AddNested("Headers", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.Cookies != nil {
+		if err := validateCookies(v.Cookies); err != nil {
+			invalidParams.AddNested("Cookies", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.HeaderOrder != nil {
+		if err := validateHeaderOrder(v.HeaderOrder); err != nil {
+			invalidParams.AddNested("HeaderOrder", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.JA3Fingerprint != nil {
+		if err := validateJA3Fingerprint(v.JA3Fingerprint); err != nil {
+			invalidParams.AddNested("JA3Fingerprint", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.JA4Fingerprint != nil {
+		if err := validateJA4Fingerprint(v.JA4Fingerprint); err != nil {
+			invalidParams.AddNested("JA4Fingerprint", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateFieldToProtect(v *types.FieldToProtect) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "FieldToProtect"}
+	if len(v.FieldType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("FieldType"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1596,6 +2076,42 @@ func validateGeoMatchStatement(v *types.GeoMatchStatement) error {
 	}
 }
 
+func validateHeaderOrder(v *types.HeaderOrder) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "HeaderOrder"}
+	if len(v.OversizeHandling) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("OversizeHandling"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateHeaders(v *types.Headers) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "Headers"}
+	if v.MatchPattern == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("MatchPattern"))
+	}
+	if len(v.MatchScope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("MatchScope"))
+	}
+	if len(v.OversizeHandling) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("OversizeHandling"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateImmunityTimeProperty(v *types.ImmunityTimeProperty) error {
 	if v == nil {
 		return nil
@@ -1644,6 +2160,36 @@ func validateIPSetReferenceStatement(v *types.IPSetReferenceStatement) error {
 		if err := validateIPSetForwardedIPConfig(v.IPSetForwardedIPConfig); err != nil {
 			invalidParams.AddNested("IPSetForwardedIPConfig", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateJA3Fingerprint(v *types.JA3Fingerprint) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "JA3Fingerprint"}
+	if len(v.FallbackBehavior) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("FallbackBehavior"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateJA4Fingerprint(v *types.JA4Fingerprint) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "JA4Fingerprint"}
+	if len(v.FallbackBehavior) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("FallbackBehavior"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1800,6 +2346,26 @@ func validateManagedRuleGroupConfig(v *types.ManagedRuleGroupConfig) error {
 			invalidParams.AddNested("PasswordField", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.AWSManagedRulesBotControlRuleSet != nil {
+		if err := validateAWSManagedRulesBotControlRuleSet(v.AWSManagedRulesBotControlRuleSet); err != nil {
+			invalidParams.AddNested("AWSManagedRulesBotControlRuleSet", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AWSManagedRulesATPRuleSet != nil {
+		if err := validateAWSManagedRulesATPRuleSet(v.AWSManagedRulesATPRuleSet); err != nil {
+			invalidParams.AddNested("AWSManagedRulesATPRuleSet", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AWSManagedRulesACFPRuleSet != nil {
+		if err := validateAWSManagedRulesACFPRuleSet(v.AWSManagedRulesACFPRuleSet); err != nil {
+			invalidParams.AddNested("AWSManagedRulesACFPRuleSet", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AWSManagedRulesAntiDDoSRuleSet != nil {
+		if err := validateAWSManagedRulesAntiDDoSRuleSet(v.AWSManagedRulesAntiDDoSRuleSet); err != nil {
+			invalidParams.AddNested("AWSManagedRulesAntiDDoSRuleSet", err.(smithy.InvalidParamsError))
+		}
+	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	} else {
@@ -1850,6 +2416,11 @@ func validateManagedRuleGroupStatement(v *types.ManagedRuleGroupStatement) error
 			invalidParams.AddNested("ManagedRuleGroupConfigs", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.RuleActionOverrides != nil {
+		if err := validateRuleActionOverrides(v.RuleActionOverrides); err != nil {
+			invalidParams.AddNested("RuleActionOverrides", err.(smithy.InvalidParamsError))
+		}
+	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	} else {
@@ -1868,6 +2439,21 @@ func validateNotStatement(v *types.NotStatement) error {
 		if err := validateStatement(v.Statement); err != nil {
 			invalidParams.AddNested("Statement", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOnSourceDDoSProtectionConfig(v *types.OnSourceDDoSProtectionConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "OnSourceDDoSProtectionConfig"}
+	if len(v.ALBLowReputationMode) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("ALBLowReputationMode"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -1927,11 +2513,46 @@ func validatePasswordField(v *types.PasswordField) error {
 	}
 }
 
+func validatePhoneNumberField(v *types.PhoneNumberField) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "PhoneNumberField"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validatePhoneNumberFields(v []types.PhoneNumberField) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "PhoneNumberFields"}
+	for i := range v {
+		if err := validatePhoneNumberField(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateRateBasedStatement(v *types.RateBasedStatement) error {
 	if v == nil {
 		return nil
 	}
 	invalidParams := smithy.InvalidParamsError{Context: "RateBasedStatement"}
+	if v.Limit == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Limit"))
+	}
 	if len(v.AggregateKeyType) == 0 {
 		invalidParams.Add(smithy.NewErrParamRequired("AggregateKeyType"))
 	}
@@ -1943,6 +2564,229 @@ func validateRateBasedStatement(v *types.RateBasedStatement) error {
 	if v.ForwardedIPConfig != nil {
 		if err := validateForwardedIPConfig(v.ForwardedIPConfig); err != nil {
 			invalidParams.AddNested("ForwardedIPConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.CustomKeys != nil {
+		if err := validateRateBasedStatementCustomKeys(v.CustomKeys); err != nil {
+			invalidParams.AddNested("CustomKeys", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateBasedStatementCustomKey(v *types.RateBasedStatementCustomKey) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateBasedStatementCustomKey"}
+	if v.Header != nil {
+		if err := validateRateLimitHeader(v.Header); err != nil {
+			invalidParams.AddNested("Header", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.Cookie != nil {
+		if err := validateRateLimitCookie(v.Cookie); err != nil {
+			invalidParams.AddNested("Cookie", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.QueryArgument != nil {
+		if err := validateRateLimitQueryArgument(v.QueryArgument); err != nil {
+			invalidParams.AddNested("QueryArgument", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.QueryString != nil {
+		if err := validateRateLimitQueryString(v.QueryString); err != nil {
+			invalidParams.AddNested("QueryString", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.LabelNamespace != nil {
+		if err := validateRateLimitLabelNamespace(v.LabelNamespace); err != nil {
+			invalidParams.AddNested("LabelNamespace", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.UriPath != nil {
+		if err := validateRateLimitUriPath(v.UriPath); err != nil {
+			invalidParams.AddNested("UriPath", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.JA3Fingerprint != nil {
+		if err := validateRateLimitJA3Fingerprint(v.JA3Fingerprint); err != nil {
+			invalidParams.AddNested("JA3Fingerprint", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.JA4Fingerprint != nil {
+		if err := validateRateLimitJA4Fingerprint(v.JA4Fingerprint); err != nil {
+			invalidParams.AddNested("JA4Fingerprint", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateBasedStatementCustomKeys(v []types.RateBasedStatementCustomKey) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateBasedStatementCustomKeys"}
+	for i := range v {
+		if err := validateRateBasedStatementCustomKey(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitCookie(v *types.RateLimitCookie) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitCookie"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if v.TextTransformations == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("TextTransformations"))
+	} else if v.TextTransformations != nil {
+		if err := validateTextTransformations(v.TextTransformations); err != nil {
+			invalidParams.AddNested("TextTransformations", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitHeader(v *types.RateLimitHeader) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitHeader"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if v.TextTransformations == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("TextTransformations"))
+	} else if v.TextTransformations != nil {
+		if err := validateTextTransformations(v.TextTransformations); err != nil {
+			invalidParams.AddNested("TextTransformations", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitJA3Fingerprint(v *types.RateLimitJA3Fingerprint) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitJA3Fingerprint"}
+	if len(v.FallbackBehavior) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("FallbackBehavior"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitJA4Fingerprint(v *types.RateLimitJA4Fingerprint) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitJA4Fingerprint"}
+	if len(v.FallbackBehavior) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("FallbackBehavior"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitLabelNamespace(v *types.RateLimitLabelNamespace) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitLabelNamespace"}
+	if v.Namespace == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Namespace"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitQueryArgument(v *types.RateLimitQueryArgument) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitQueryArgument"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if v.TextTransformations == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("TextTransformations"))
+	} else if v.TextTransformations != nil {
+		if err := validateTextTransformations(v.TextTransformations); err != nil {
+			invalidParams.AddNested("TextTransformations", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitQueryString(v *types.RateLimitQueryString) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitQueryString"}
+	if v.TextTransformations == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("TextTransformations"))
+	} else if v.TextTransformations != nil {
+		if err := validateTextTransformations(v.TextTransformations); err != nil {
+			invalidParams.AddNested("TextTransformations", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRateLimitUriPath(v *types.RateLimitUriPath) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RateLimitUriPath"}
+	if v.TextTransformations == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("TextTransformations"))
+	} else if v.TextTransformations != nil {
+		if err := validateTextTransformations(v.TextTransformations); err != nil {
+			invalidParams.AddNested("TextTransformations", err.(smithy.InvalidParamsError))
 		}
 	}
 	if invalidParams.Len() > 0 {
@@ -2027,6 +2871,218 @@ func validateRegexPatternSetReferenceStatement(v *types.RegexPatternSetReference
 	}
 }
 
+func validateRequestBody(v map[string]types.RequestBodyAssociatedResourceTypeConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RequestBody"}
+	for key := range v {
+		value := v[key]
+		if err := validateRequestBodyAssociatedResourceTypeConfig(&value); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%q]", key), err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRequestBodyAssociatedResourceTypeConfig(v *types.RequestBodyAssociatedResourceTypeConfig) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RequestBodyAssociatedResourceTypeConfig"}
+	if len(v.DefaultSizeInspectionLimit) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("DefaultSizeInspectionLimit"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRequestInspection(v *types.RequestInspection) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RequestInspection"}
+	if len(v.PayloadType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("PayloadType"))
+	}
+	if v.UsernameField == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("UsernameField"))
+	} else if v.UsernameField != nil {
+		if err := validateUsernameField(v.UsernameField); err != nil {
+			invalidParams.AddNested("UsernameField", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.PasswordField == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("PasswordField"))
+	} else if v.PasswordField != nil {
+		if err := validatePasswordField(v.PasswordField); err != nil {
+			invalidParams.AddNested("PasswordField", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRequestInspectionACFP(v *types.RequestInspectionACFP) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RequestInspectionACFP"}
+	if len(v.PayloadType) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("PayloadType"))
+	}
+	if v.UsernameField != nil {
+		if err := validateUsernameField(v.UsernameField); err != nil {
+			invalidParams.AddNested("UsernameField", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.PasswordField != nil {
+		if err := validatePasswordField(v.PasswordField); err != nil {
+			invalidParams.AddNested("PasswordField", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.EmailField != nil {
+		if err := validateEmailField(v.EmailField); err != nil {
+			invalidParams.AddNested("EmailField", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.PhoneNumberFields != nil {
+		if err := validatePhoneNumberFields(v.PhoneNumberFields); err != nil {
+			invalidParams.AddNested("PhoneNumberFields", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AddressFields != nil {
+		if err := validateAddressFields(v.AddressFields); err != nil {
+			invalidParams.AddNested("AddressFields", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateResponseInspection(v *types.ResponseInspection) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ResponseInspection"}
+	if v.StatusCode != nil {
+		if err := validateResponseInspectionStatusCode(v.StatusCode); err != nil {
+			invalidParams.AddNested("StatusCode", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.Header != nil {
+		if err := validateResponseInspectionHeader(v.Header); err != nil {
+			invalidParams.AddNested("Header", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.BodyContains != nil {
+		if err := validateResponseInspectionBodyContains(v.BodyContains); err != nil {
+			invalidParams.AddNested("BodyContains", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.Json != nil {
+		if err := validateResponseInspectionJson(v.Json); err != nil {
+			invalidParams.AddNested("Json", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateResponseInspectionBodyContains(v *types.ResponseInspectionBodyContains) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ResponseInspectionBodyContains"}
+	if v.SuccessStrings == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SuccessStrings"))
+	}
+	if v.FailureStrings == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("FailureStrings"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateResponseInspectionHeader(v *types.ResponseInspectionHeader) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ResponseInspectionHeader"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if v.SuccessValues == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SuccessValues"))
+	}
+	if v.FailureValues == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("FailureValues"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateResponseInspectionJson(v *types.ResponseInspectionJson) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ResponseInspectionJson"}
+	if v.Identifier == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Identifier"))
+	}
+	if v.SuccessValues == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SuccessValues"))
+	}
+	if v.FailureValues == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("FailureValues"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateResponseInspectionStatusCode(v *types.ResponseInspectionStatusCode) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ResponseInspectionStatusCode"}
+	if v.SuccessCodes == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("SuccessCodes"))
+	}
+	if v.FailureCodes == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("FailureCodes"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateRule(v *types.Rule) error {
 	if v == nil {
 		return nil
@@ -2069,6 +3125,11 @@ func validateRule(v *types.Rule) error {
 			invalidParams.AddNested("CaptchaConfig", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.ChallengeConfig != nil {
+		if err := validateChallengeConfig(v.ChallengeConfig); err != nil {
+			invalidParams.AddNested("ChallengeConfig", err.(smithy.InvalidParamsError))
+		}
+	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	} else {
@@ -2101,6 +3162,50 @@ func validateRuleAction(v *types.RuleAction) error {
 			invalidParams.AddNested("Captcha", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.Challenge != nil {
+		if err := validateChallengeAction(v.Challenge); err != nil {
+			invalidParams.AddNested("Challenge", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRuleActionOverride(v *types.RuleActionOverride) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RuleActionOverride"}
+	if v.Name == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Name"))
+	}
+	if v.ActionToUse == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("ActionToUse"))
+	} else if v.ActionToUse != nil {
+		if err := validateRuleAction(v.ActionToUse); err != nil {
+			invalidParams.AddNested("ActionToUse", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateRuleActionOverrides(v []types.RuleActionOverride) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "RuleActionOverrides"}
+	for i := range v {
+		if err := validateRuleActionOverride(&v[i]); err != nil {
+			invalidParams.AddNested(fmt.Sprintf("[%d]", i), err.(smithy.InvalidParamsError))
+		}
+	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	} else {
@@ -2119,6 +3224,11 @@ func validateRuleGroupReferenceStatement(v *types.RuleGroupReferenceStatement) e
 	if v.ExcludedRules != nil {
 		if err := validateExcludedRules(v.ExcludedRules); err != nil {
 			invalidParams.AddNested("ExcludedRules", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.RuleActionOverrides != nil {
+		if err := validateRuleActionOverrides(v.RuleActionOverrides); err != nil {
+			invalidParams.AddNested("RuleActionOverrides", err.(smithy.InvalidParamsError))
 		}
 	}
 	if invalidParams.Len() > 0 {
@@ -2308,6 +3418,11 @@ func validateStatement(v *types.Statement) error {
 	if v.RegexMatchStatement != nil {
 		if err := validateRegexMatchStatement(v.RegexMatchStatement); err != nil {
 			invalidParams.AddNested("RegexMatchStatement", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AsnMatchStatement != nil {
+		if err := validateAsnMatchStatement(v.AsnMatchStatement); err != nil {
+			invalidParams.AddNested("AsnMatchStatement", err.(smithy.InvalidParamsError))
 		}
 	}
 	if invalidParams.Len() > 0 {
@@ -2515,6 +3630,24 @@ func validateOpCheckCapacityInput(v *CheckCapacityInput) error {
 	}
 }
 
+func validateOpCreateAPIKeyInput(v *CreateAPIKeyInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "CreateAPIKeyInput"}
+	if len(v.Scope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
+	}
+	if v.TokenDomains == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("TokenDomains"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpCreateIPSetInput(v *CreateIPSetInput) error {
 	if v == nil {
 		return nil
@@ -2581,6 +3714,9 @@ func validateOpCreateRuleGroupInput(v *CreateRuleGroupInput) error {
 	if len(v.Scope) == 0 {
 		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
 	}
+	if v.Capacity == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("Capacity"))
+	}
 	if v.Rules != nil {
 		if err := validateRules(v.Rules); err != nil {
 			invalidParams.AddNested("Rules", err.(smithy.InvalidParamsError))
@@ -2640,6 +3776,11 @@ func validateOpCreateWebACLInput(v *CreateWebACLInput) error {
 			invalidParams.AddNested("VisibilityConfig", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.DataProtectionConfig != nil {
+		if err := validateDataProtectionConfig(v.DataProtectionConfig); err != nil {
+			invalidParams.AddNested("DataProtectionConfig", err.(smithy.InvalidParamsError))
+		}
+	}
 	if v.Tags != nil {
 		if err := validateTagList(v.Tags); err != nil {
 			invalidParams.AddNested("Tags", err.(smithy.InvalidParamsError))
@@ -2654,6 +3795,39 @@ func validateOpCreateWebACLInput(v *CreateWebACLInput) error {
 		if err := validateCaptchaConfig(v.CaptchaConfig); err != nil {
 			invalidParams.AddNested("CaptchaConfig", err.(smithy.InvalidParamsError))
 		}
+	}
+	if v.ChallengeConfig != nil {
+		if err := validateChallengeConfig(v.ChallengeConfig); err != nil {
+			invalidParams.AddNested("ChallengeConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AssociationConfig != nil {
+		if err := validateAssociationConfig(v.AssociationConfig); err != nil {
+			invalidParams.AddNested("AssociationConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.OnSourceDDoSProtectionConfig != nil {
+		if err := validateOnSourceDDoSProtectionConfig(v.OnSourceDDoSProtectionConfig); err != nil {
+			invalidParams.AddNested("OnSourceDDoSProtectionConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpDeleteAPIKeyInput(v *DeleteAPIKeyInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DeleteAPIKeyInput"}
+	if len(v.Scope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
+	}
+	if v.APIKey == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("APIKey"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -2806,6 +3980,39 @@ func validateOpDeleteWebACLInput(v *DeleteWebACLInput) error {
 	}
 }
 
+func validateOpDescribeAllManagedProductsInput(v *DescribeAllManagedProductsInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DescribeAllManagedProductsInput"}
+	if len(v.Scope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpDescribeManagedProductsByVendorInput(v *DescribeManagedProductsByVendorInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "DescribeManagedProductsByVendorInput"}
+	if v.VendorName == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("VendorName"))
+	}
+	if len(v.Scope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpDescribeManagedRuleGroupInput(v *DescribeManagedRuleGroupInput) error {
 	if v == nil {
 		return nil
@@ -2852,6 +4059,24 @@ func validateOpGenerateMobileSdkReleaseUrlInput(v *GenerateMobileSdkReleaseUrlIn
 	}
 	if v.ReleaseVersion == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("ReleaseVersion"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpGetDecryptedAPIKeyInput(v *GetDecryptedAPIKeyInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "GetDecryptedAPIKeyInput"}
+	if len(v.Scope) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
+	}
+	if v.APIKey == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("APIKey"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3016,6 +4241,9 @@ func validateOpGetSampledRequestsInput(v *GetSampledRequestsInput) error {
 			invalidParams.AddNested("TimeWindow", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.MaxItems == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("MaxItems"))
+	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
 	} else {
@@ -3038,19 +4266,13 @@ func validateOpGetWebACLForResourceInput(v *GetWebACLForResourceInput) error {
 	}
 }
 
-func validateOpGetWebACLInput(v *GetWebACLInput) error {
+func validateOpListAPIKeysInput(v *ListAPIKeysInput) error {
 	if v == nil {
 		return nil
 	}
-	invalidParams := smithy.InvalidParamsError{Context: "GetWebACLInput"}
-	if v.Name == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("Name"))
-	}
+	invalidParams := smithy.InvalidParamsError{Context: "ListAPIKeysInput"}
 	if len(v.Scope) == 0 {
 		invalidParams.Add(smithy.NewErrParamRequired("Scope"))
-	}
-	if v.Id == nil {
-		invalidParams.Add(smithy.NewErrParamRequired("Id"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
@@ -3489,6 +4711,11 @@ func validateOpUpdateWebACLInput(v *UpdateWebACLInput) error {
 			invalidParams.AddNested("VisibilityConfig", err.(smithy.InvalidParamsError))
 		}
 	}
+	if v.DataProtectionConfig != nil {
+		if err := validateDataProtectionConfig(v.DataProtectionConfig); err != nil {
+			invalidParams.AddNested("DataProtectionConfig", err.(smithy.InvalidParamsError))
+		}
+	}
 	if v.LockToken == nil {
 		invalidParams.Add(smithy.NewErrParamRequired("LockToken"))
 	}
@@ -3500,6 +4727,21 @@ func validateOpUpdateWebACLInput(v *UpdateWebACLInput) error {
 	if v.CaptchaConfig != nil {
 		if err := validateCaptchaConfig(v.CaptchaConfig); err != nil {
 			invalidParams.AddNested("CaptchaConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.ChallengeConfig != nil {
+		if err := validateChallengeConfig(v.ChallengeConfig); err != nil {
+			invalidParams.AddNested("ChallengeConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.AssociationConfig != nil {
+		if err := validateAssociationConfig(v.AssociationConfig); err != nil {
+			invalidParams.AddNested("AssociationConfig", err.(smithy.InvalidParamsError))
+		}
+	}
+	if v.OnSourceDDoSProtectionConfig != nil {
+		if err := validateOnSourceDDoSProtectionConfig(v.OnSourceDDoSProtectionConfig); err != nil {
+			invalidParams.AddNested("OnSourceDDoSProtectionConfig", err.(smithy.InvalidParamsError))
 		}
 	}
 	if invalidParams.Len() > 0 {

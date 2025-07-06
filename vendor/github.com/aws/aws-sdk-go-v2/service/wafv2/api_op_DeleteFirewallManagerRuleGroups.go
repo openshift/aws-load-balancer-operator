@@ -4,15 +4,17 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes all rule groups that are managed by Firewall Manager for the specified
-// web ACL. You can only use this if ManagedByFirewallManager is false in the
-// specified WebACL.
+// Deletes all rule groups that are managed by Firewall Manager from the specified WebACL
+// .
+//
+// You can only use this if ManagedByFirewallManager and
+// RetrofittedByFirewallManager are both false in the web ACL.
 func (c *Client) DeleteFirewallManagerRuleGroups(ctx context.Context, params *DeleteFirewallManagerRuleGroupsInput, optFns ...func(*Options)) (*DeleteFirewallManagerRuleGroupsOutput, error) {
 	if params == nil {
 		params = &DeleteFirewallManagerRuleGroupsInput{}
@@ -38,10 +40,10 @@ type DeleteFirewallManagerRuleGroupsInput struct {
 	// A token used for optimistic locking. WAF returns a token to your get and list
 	// requests, to mark the state of the entity at the time of the request. To make
 	// changes to the entity associated with the token, you provide the token to
-	// operations like update and delete. WAF uses the token to ensure that no changes
+	// operations like update and delete . WAF uses the token to ensure that no changes
 	// have been made to the entity since you last retrieved it. If a change has been
-	// made, the update fails with a WAFOptimisticLockException. If this happens,
-	// perform another get, and use the new token returned by that operation.
+	// made, the update fails with a WAFOptimisticLockException . If this happens,
+	// perform another get , and use the new token returned by that operation.
 	//
 	// This member is required.
 	WebACLLockToken *string
@@ -54,10 +56,10 @@ type DeleteFirewallManagerRuleGroupsOutput struct {
 	// A token used for optimistic locking. WAF returns a token to your get and list
 	// requests, to mark the state of the entity at the time of the request. To make
 	// changes to the entity associated with the token, you provide the token to
-	// operations like update and delete. WAF uses the token to ensure that no changes
+	// operations like update and delete . WAF uses the token to ensure that no changes
 	// have been made to the entity since you last retrieved it. If a change has been
-	// made, the update fails with a WAFOptimisticLockException. If this happens,
-	// perform another get, and use the new token returned by that operation.
+	// made, the update fails with a WAFOptimisticLockException . If this happens,
+	// perform another get , and use the new token returned by that operation.
 	NextWebACLLockToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -67,6 +69,9 @@ type DeleteFirewallManagerRuleGroupsOutput struct {
 }
 
 func (c *Client) addOperationDeleteFirewallManagerRuleGroupsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteFirewallManagerRuleGroups{}, middleware.After)
 	if err != nil {
 		return err
@@ -75,34 +80,41 @@ func (c *Client) addOperationDeleteFirewallManagerRuleGroupsMiddlewares(stack *m
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteFirewallManagerRuleGroups"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -111,10 +123,25 @@ func (c *Client) addOperationDeleteFirewallManagerRuleGroupsMiddlewares(stack *m
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteFirewallManagerRuleGroupsValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteFirewallManagerRuleGroups(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -126,6 +153,21 @@ func (c *Client) addOperationDeleteFirewallManagerRuleGroupsMiddlewares(stack *m
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -133,7 +175,6 @@ func newServiceMetadataMiddleware_opDeleteFirewallManagerRuleGroups(region strin
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "DeleteFirewallManagerRuleGroups",
 	}
 }

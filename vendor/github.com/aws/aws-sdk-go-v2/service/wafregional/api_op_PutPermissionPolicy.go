@@ -4,50 +4,50 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Attaches an IAM policy to the specified resource. The only supported
-// use for this action is to share a RuleGroup across accounts. The
-// PutPermissionPolicy is subject to the following restrictions:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * You can attach
-// only one policy with each PutPermissionPolicy request.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * The policy must
-// include an Effect, Action and Principal.
+// Attaches an IAM policy to the specified resource. The only supported use for
+// this action is to share a RuleGroup across accounts.
 //
-// * Effect must specify Allow.
+// The PutPermissionPolicy is subject to the following restrictions:
 //
-// * The
-// Action in the policy must be waf:UpdateWebACL, waf-regional:UpdateWebACL,
-// waf:GetRuleGroup and waf-regional:GetRuleGroup . Any extra or wildcard actions
-// in the policy will be rejected.
+//   - You can attach only one policy with each PutPermissionPolicy request.
 //
-// * The policy cannot include a Resource
-// parameter.
+//   - The policy must include an Effect , Action and Principal .
 //
-// * The ARN in the request must be a valid WAF RuleGroup ARN and the
-// RuleGroup must exist in the same region.
+//   - Effect must specify Allow .
 //
-// * The user making the request must be
-// the owner of the RuleGroup.
+//   - The Action in the policy must be waf:UpdateWebACL ,
+//     waf-regional:UpdateWebACL , waf:GetRuleGroup and waf-regional:GetRuleGroup .
+//     Any extra or wildcard actions in the policy will be rejected.
 //
-// * Your policy must be composed using IAM Policy
-// version 2012-10-17.
+//   - The policy cannot include a Resource parameter.
 //
-// For more information, see IAM Policies
-// (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html). An
-// example of a valid policy parameter is shown in the Examples section below.
+//   - The ARN in the request must be a valid WAF RuleGroup ARN and the RuleGroup
+//     must exist in the same region.
+//
+//   - The user making the request must be the owner of the RuleGroup.
+//
+//   - Your policy must be composed using IAM Policy version 2012-10-17.
+//
+// For more information, see [IAM Policies].
+//
+// An example of a valid policy parameter is shown in the Examples section below.
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
+// [IAM Policies]: https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html
 func (c *Client) PutPermissionPolicy(ctx context.Context, params *PutPermissionPolicyInput, optFns ...func(*Options)) (*PutPermissionPolicyOutput, error) {
 	if params == nil {
 		params = &PutPermissionPolicyInput{}
@@ -87,6 +87,9 @@ type PutPermissionPolicyOutput struct {
 }
 
 func (c *Client) addOperationPutPermissionPolicyMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpPutPermissionPolicy{}, middleware.After)
 	if err != nil {
 		return err
@@ -95,34 +98,41 @@ func (c *Client) addOperationPutPermissionPolicyMiddlewares(stack *middleware.St
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "PutPermissionPolicy"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -131,10 +141,25 @@ func (c *Client) addOperationPutPermissionPolicyMiddlewares(stack *middleware.St
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpPutPermissionPolicyValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opPutPermissionPolicy(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -146,6 +171,21 @@ func (c *Client) addOperationPutPermissionPolicyMiddlewares(stack *middleware.St
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -153,7 +193,6 @@ func newServiceMetadataMiddleware_opPutPermissionPolicy(region string) *awsmiddl
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "PutPermissionPolicy",
 	}
 }

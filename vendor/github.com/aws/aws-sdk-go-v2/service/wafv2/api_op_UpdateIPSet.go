@@ -4,18 +4,46 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Updates the specified IPSet. This operation completely replaces the mutable
-// specifications that you already have for the IP set with the ones that you
-// provide to this call. To modify the IP set, retrieve it by calling GetIPSet,
-// update the settings as needed, and then provide the complete IP set
-// specification to this call.
+// Updates the specified IPSet.
+//
+// This operation completely replaces the mutable specifications that you already
+// have for the IP set with the ones that you provide to this call.
+//
+// To modify an IP set, do the following:
+//
+//   - Retrieve it by calling GetIPSet
+//
+//   - Update its settings as needed
+//
+//   - Provide the complete IP set specification to this call
+//
+// # Temporary inconsistencies during updates
+//
+// When you create or change a web ACL or other WAF resources, the changes take a
+// small amount of time to propagate to all areas where the resources are stored.
+// The propagation time can be from a few seconds to a number of minutes.
+//
+// The following are examples of the temporary inconsistencies that you might
+// notice during change propagation:
+//
+//   - After you create a web ACL, if you try to associate it with a resource, you
+//     might get an exception indicating that the web ACL is unavailable.
+//
+//   - After you add a rule group to a web ACL, the new rule group rules might be
+//     in effect in one area where the web ACL is used and not in another.
+//
+//   - After you change a rule action setting, you might see the old action in
+//     some places and the new action in others.
+//
+//   - After you add an IP address to an IP set that is in use in a blocking rule,
+//     the new address might be blocked in one area while still allowed in another.
 func (c *Client) UpdateIPSet(ctx context.Context, params *UpdateIPSetInput, optFns ...func(*Options)) (*UpdateIPSetOutput, error) {
 	if params == nil {
 		params = &UpdateIPSetInput{}
@@ -34,43 +62,41 @@ func (c *Client) UpdateIPSet(ctx context.Context, params *UpdateIPSetInput, optF
 type UpdateIPSetInput struct {
 
 	// Contains an array of strings that specifies zero or more IP addresses or blocks
-	// of IP addresses in Classless Inter-Domain Routing (CIDR) notation. WAF supports
-	// all IPv4 and IPv6 CIDR ranges except for /0. Example address strings:
+	// of IP addresses that you want WAF to inspect for in incoming requests. All
+	// addresses must be specified using Classless Inter-Domain Routing (CIDR)
+	// notation. WAF supports all IPv4 and IPv6 CIDR ranges except for /0 .
 	//
-	// * To
-	// configure WAF to allow, block, or count requests that originated from the IP
-	// address 192.0.2.44, specify 192.0.2.44/32.
+	// Example address strings:
 	//
-	// * To configure WAF to allow, block,
-	// or count requests that originated from IP addresses from 192.0.2.0 to
-	// 192.0.2.255, specify 192.0.2.0/24.
+	//   - For requests that originated from the IP address 192.0.2.44, specify
+	//   192.0.2.44/32 .
 	//
-	// * To configure WAF to allow, block, or count
-	// requests that originated from the IP address
-	// 1111:0000:0000:0000:0000:0000:0000:0111, specify
-	// 1111:0000:0000:0000:0000:0000:0000:0111/128.
+	//   - For requests that originated from IP addresses from 192.0.2.0 to
+	//   192.0.2.255, specify 192.0.2.0/24 .
 	//
-	// * To configure WAF to allow,
-	// block, or count requests that originated from IP addresses
-	// 1111:0000:0000:0000:0000:0000:0000:0000 to
-	// 1111:0000:0000:0000:ffff:ffff:ffff:ffff, specify
-	// 1111:0000:0000:0000:0000:0000:0000:0000/64.
+	//   - For requests that originated from the IP address
+	//   1111:0000:0000:0000:0000:0000:0000:0111, specify
+	//   1111:0000:0000:0000:0000:0000:0000:0111/128 .
 	//
-	// For more information about CIDR
-	// notation, see the Wikipedia entry Classless Inter-Domain Routing
-	// (https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing). Example JSON
-	// Addresses specifications:
+	//   - For requests that originated from IP addresses
+	//   1111:0000:0000:0000:0000:0000:0000:0000 to
+	//   1111:0000:0000:0000:ffff:ffff:ffff:ffff, specify
+	//   1111:0000:0000:0000:0000:0000:0000:0000/64 .
 	//
-	// * Empty array: "Addresses": []
+	// For more information about CIDR notation, see the Wikipedia entry [Classless Inter-Domain Routing].
 	//
-	// * Array with one
-	// address: "Addresses": ["192.0.2.44/32"]
+	// Example JSON Addresses specifications:
 	//
-	// * Array with three addresses:
-	// "Addresses": ["192.0.2.44/32", "192.0.2.0/24", "192.0.0.0/16"]
+	//   - Empty array: "Addresses": []
 	//
-	// * INVALID
-	// specification: "Addresses": [""] INVALID
+	//   - Array with one address: "Addresses": ["192.0.2.44/32"]
+	//
+	//   - Array with three addresses: "Addresses": ["192.0.2.44/32", "192.0.2.0/24",
+	//   "192.0.0.0/16"]
+	//
+	//   - INVALID specification: "Addresses": [""] INVALID
+	//
+	// [Classless Inter-Domain Routing]: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing
 	//
 	// This member is required.
 	Addresses []string
@@ -84,10 +110,10 @@ type UpdateIPSetInput struct {
 	// A token used for optimistic locking. WAF returns a token to your get and list
 	// requests, to mark the state of the entity at the time of the request. To make
 	// changes to the entity associated with the token, you provide the token to
-	// operations like update and delete. WAF uses the token to ensure that no changes
+	// operations like update and delete . WAF uses the token to ensure that no changes
 	// have been made to the entity since you last retrieved it. If a change has been
-	// made, the update fails with a WAFOptimisticLockException. If this happens,
-	// perform another get, and use the new token returned by that operation.
+	// made, the update fails with a WAFOptimisticLockException . If this happens,
+	// perform another get , and use the new token returned by that operation.
 	//
 	// This member is required.
 	LockToken *string
@@ -98,17 +124,16 @@ type UpdateIPSetInput struct {
 	// This member is required.
 	Name *string
 
-	// Specifies whether this is for an Amazon CloudFront distribution or for a
-	// regional application. A regional application can be an Application Load Balancer
-	// (ALB), an Amazon API Gateway REST API, or an AppSync GraphQL API. To work with
-	// CloudFront, you must also specify the Region US East (N. Virginia) as
-	// follows:
+	// Specifies whether this is for a global resource type, such as a Amazon
+	// CloudFront distribution. For an Amplify application, use CLOUDFRONT .
 	//
-	// * CLI - Specify the Region when you use the CloudFront scope:
-	// --scope=CLOUDFRONT --region=us-east-1.
+	// To work with CloudFront, you must also specify the Region US East (N. Virginia)
+	// as follows:
 	//
-	// * API and SDKs - For all calls, use the
-	// Region endpoint us-east-1.
+	//   - CLI - Specify the Region when you use the CloudFront scope:
+	//   --scope=CLOUDFRONT --region=us-east-1 .
+	//
+	//   - API and SDKs - For all calls, use the Region endpoint us-east-1.
 	//
 	// This member is required.
 	Scope types.Scope
@@ -122,7 +147,7 @@ type UpdateIPSetInput struct {
 type UpdateIPSetOutput struct {
 
 	// A token used for optimistic locking. WAF returns this token to your update
-	// requests. You use NextLockToken in the same manner as you use LockToken.
+	// requests. You use NextLockToken in the same manner as you use LockToken .
 	NextLockToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -132,6 +157,9 @@ type UpdateIPSetOutput struct {
 }
 
 func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateIPSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -140,34 +168,41 @@ func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateIPSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -176,10 +211,25 @@ func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateIPSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateIPSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -191,6 +241,21 @@ func (c *Client) addOperationUpdateIPSetMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -198,7 +263,6 @@ func newServiceMetadataMiddleware_opUpdateIPSet(region string) *awsmiddleware.Re
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "UpdateIPSet",
 	}
 }
