@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM registry.access.redhat.com/ubi8/go-toolset:1.22 as builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1.23.9-1751469143 as builder
 
 # Copy the go source
 COPY main.go main.go
