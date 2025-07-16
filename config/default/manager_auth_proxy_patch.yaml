@@ -26,6 +26,7 @@ spec:
           capabilities:
             drop:
               - ALL
+          runAsNonRoot: true
         resources:
           limits:
             cpu: 500m
