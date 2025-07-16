@@ -274,6 +274,7 @@ spec:
                   capabilities:
                     drop:
                     - ALL
+                  runAsNonRoot: true
                 terminationMessagePolicy: FallbackToLogsOnError
               - args:
                 - --health-probe-bind-address=:8081
