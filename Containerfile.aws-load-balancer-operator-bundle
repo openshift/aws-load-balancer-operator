@@ -1,0 +1,40 @@
+# Detect the drift from the upstream Dockerfile
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS drift
+WORKDIR /app
+COPY drift-cache/bundle.Dockerfile Dockerfile.cached
+COPY bundle.Dockerfile .
+# If the command below fails it means that the Dockerfile from this repository changed.
+# You have to update the Konflux Containerfile accordingly.
+# drift-cache/Dockerfile can be updated with the upstream contents once the Konflux version is aligned.
+RUN test "$(sha1sum bundle.Dockerfile.cached | cut -d' ' -f1)" = "$(sha1sum bundle.Dockerfile | cut -d' ' -f1)"
+
+# Based on ./gatekeeper-operator/bundle.Dockerfile
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest as builder-runner
+RUN microdnf install -y skopeo jq python3 python3-pip
+RUN pip3 install --upgrade pip && pip3 install ruamel.yaml==0.17.9
+
+# Use a new stage to enable caching of the package installations for local development
+FROM builder-runner as builder
+
+COPY bundle-hack .
+COPY bundle/manifests /manifests/
+COPY bundle/metadata /metadata/
+
+RUN ./update_bundle.sh
+
+FROM scratch
+
+# Core bundle labels.
+LABEL operators.operatorframework.io.bundle.mediatype.v1=registry+v1
+LABEL operators.operatorframework.io.bundle.manifests.v1=manifests/
+LABEL operators.operatorframework.io.bundle.metadata.v1=metadata/
+LABEL operators.operatorframework.io.bundle.package.v1=gatekeeper-operator
+LABEL operators.operatorframework.io.bundle.channels.v1=stable,3.15
+LABEL operators.operatorframework.io.bundle.channel.default.v1=stable
+LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.34.1
+LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
+LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v3
+
+# Copy files to locations specified by labels.
+COPY --from=builder /manifests /manifests/
+COPY --from=builder /metadata /metadata/
