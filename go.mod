@@ -137,7 +137,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/julz/importas v0.1.0 // indirect
-	github.com/junk1tm/musttag v0.4.5 // indirect
+	github.com/junk1tm/musttag v0.13.1 // indirect
 	github.com/kisielk/errcheck v1.6.3 // indirect
 	github.com/kisielk/gotool v1.0.0 // indirect
 	github.com/kkHAIKE/contextcheck v1.1.3 // indirect
