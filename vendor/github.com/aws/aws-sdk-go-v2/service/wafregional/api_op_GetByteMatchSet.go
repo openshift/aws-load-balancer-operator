@@ -4,20 +4,24 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Returns the ByteMatchSet specified by ByteMatchSetId.
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
+//
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
+//
+// Returns the ByteMatchSet specified by ByteMatchSetId .
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
 func (c *Client) GetByteMatchSet(ctx context.Context, params *GetByteMatchSetInput, optFns ...func(*Options)) (*GetByteMatchSetOutput, error) {
 	if params == nil {
 		params = &GetByteMatchSetInput{}
@@ -35,8 +39,8 @@ func (c *Client) GetByteMatchSet(ctx context.Context, params *GetByteMatchSetInp
 
 type GetByteMatchSetInput struct {
 
-	// The ByteMatchSetId of the ByteMatchSet that you want to get. ByteMatchSetId is
-	// returned by CreateByteMatchSet and by ListByteMatchSets.
+	// The ByteMatchSetId of the ByteMatchSet that you want to get. ByteMatchSetId is returned by CreateByteMatchSet
+	// and by ListByteMatchSets.
 	//
 	// This member is required.
 	ByteMatchSetId *string
@@ -46,18 +50,17 @@ type GetByteMatchSetInput struct {
 
 type GetByteMatchSetOutput struct {
 
-	// Information about the ByteMatchSet that you specified in the GetByteMatchSet
-	// request. For more information, see the following topics:
+	// Information about the ByteMatchSet that you specified in the GetByteMatchSet request. For
+	// more information, see the following topics:
 	//
-	// * ByteMatchSet:
-	// Contains ByteMatchSetId, ByteMatchTuples, and Name
+	// ByteMatchSet
+	//   - : Contains ByteMatchSetId , ByteMatchTuples , and Name
 	//
-	// * ByteMatchTuples: Contains
-	// an array of ByteMatchTuple objects. Each ByteMatchTuple object contains
-	// FieldToMatch, PositionalConstraint, TargetString, and TextTransformation
+	//   - ByteMatchTuples : Contains an array of ByteMatchTupleobjects. Each ByteMatchTuple object
+	//   contains FieldToMatch, PositionalConstraint , TargetString , and TextTransformation
 	//
-	// *
-	// FieldToMatch: Contains Data and Type
+	// FieldToMatch
+	//   - : Contains Data and Type
 	ByteMatchSet *types.ByteMatchSet
 
 	// Metadata pertaining to the operation's result.
@@ -67,6 +70,9 @@ type GetByteMatchSetOutput struct {
 }
 
 func (c *Client) addOperationGetByteMatchSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpGetByteMatchSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -75,34 +81,41 @@ func (c *Client) addOperationGetByteMatchSetMiddlewares(stack *middleware.Stack,
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "GetByteMatchSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -111,10 +124,25 @@ func (c *Client) addOperationGetByteMatchSetMiddlewares(stack *middleware.Stack,
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpGetByteMatchSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetByteMatchSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -126,6 +154,21 @@ func (c *Client) addOperationGetByteMatchSetMiddlewares(stack *middleware.Stack,
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -133,7 +176,6 @@ func newServiceMetadataMiddleware_opGetByteMatchSet(region string) *awsmiddlewar
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "GetByteMatchSet",
 	}
 }

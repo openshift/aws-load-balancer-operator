@@ -87,15 +87,21 @@ func New() *Resolver {
 var partitionRegexp = struct {
 	Aws      *regexp.Regexp
 	AwsCn    *regexp.Regexp
+	AwsEusc  *regexp.Regexp
 	AwsIso   *regexp.Regexp
 	AwsIsoB  *regexp.Regexp
+	AwsIsoE  *regexp.Regexp
+	AwsIsoF  *regexp.Regexp
 	AwsUsGov *regexp.Regexp
 }{
 
-	Aws:      regexp.MustCompile("^(us|eu|ap|sa|ca|me|af)\\-\\w+\\-\\d+$"),
+	Aws:      regexp.MustCompile("^(us|eu|ap|sa|ca|me|af|il|mx)\\-\\w+\\-\\d+$"),
 	AwsCn:    regexp.MustCompile("^cn\\-\\w+\\-\\d+$"),
+	AwsEusc:  regexp.MustCompile("^eusc\\-(de)\\-\\w+\\-\\d+$"),
 	AwsIso:   regexp.MustCompile("^us\\-iso\\-\\w+\\-\\d+$"),
 	AwsIsoB:  regexp.MustCompile("^us\\-isob\\-\\w+\\-\\d+$"),
+	AwsIsoE:  regexp.MustCompile("^eu\\-isoe\\-\\w+\\-\\d+$"),
+	AwsIsoF:  regexp.MustCompile("^us\\-isof\\-\\w+\\-\\d+$"),
 	AwsUsGov: regexp.MustCompile("^us\\-gov\\-\\w+\\-\\d+$"),
 }
 
@@ -238,6 +244,23 @@ var defaultPartitions = endpoints.Partitions{
 				},
 			},
 			endpoints.EndpointKey{
+				Region: "ap-south-2",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.ap-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-south-2",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "ap-south-2",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.ap-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-south-2",
+				},
+			},
+			endpoints.EndpointKey{
 				Region: "ap-southeast-1",
 			}: endpoints.Endpoint{
 				Hostname: "waf-regional.ap-southeast-1.amazonaws.com",
@@ -269,6 +292,40 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "waf-regional-fips.ap-southeast-2.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "ap-southeast-2",
+				},
+			},
+			endpoints.EndpointKey{
+				Region: "ap-southeast-3",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.ap-southeast-3.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-3",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "ap-southeast-3",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.ap-southeast-3.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-3",
+				},
+			},
+			endpoints.EndpointKey{
+				Region: "ap-southeast-4",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.ap-southeast-4.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-4",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "ap-southeast-4",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.ap-southeast-4.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-4",
 				},
 			},
 			endpoints.EndpointKey{
@@ -306,6 +363,23 @@ var defaultPartitions = endpoints.Partitions{
 				},
 			},
 			endpoints.EndpointKey{
+				Region: "eu-central-2",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.eu-central-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-central-2",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "eu-central-2",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.eu-central-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-central-2",
+				},
+			},
+			endpoints.EndpointKey{
 				Region: "eu-north-1",
 			}: endpoints.Endpoint{
 				Hostname: "waf-regional.eu-north-1.amazonaws.com",
@@ -337,6 +411,23 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "waf-regional-fips.eu-south-1.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "eu-south-1",
+				},
+			},
+			endpoints.EndpointKey{
+				Region: "eu-south-2",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.eu-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-south-2",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "eu-south-2",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.eu-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-south-2",
 				},
 			},
 			endpoints.EndpointKey{
@@ -445,6 +536,15 @@ var defaultPartitions = endpoints.Partitions{
 				Deprecated: aws.TrueTernary,
 			},
 			endpoints.EndpointKey{
+				Region: "fips-ap-south-2",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.ap-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-south-2",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
 				Region: "fips-ap-southeast-1",
 			}: endpoints.Endpoint{
 				Hostname: "waf-regional-fips.ap-southeast-1.amazonaws.com",
@@ -459,6 +559,24 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "waf-regional-fips.ap-southeast-2.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "ap-southeast-2",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
+				Region: "fips-ap-southeast-3",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.ap-southeast-3.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-3",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
+				Region: "fips-ap-southeast-4",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.ap-southeast-4.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "ap-southeast-4",
 				},
 				Deprecated: aws.TrueTernary,
 			},
@@ -481,6 +599,15 @@ var defaultPartitions = endpoints.Partitions{
 				Deprecated: aws.TrueTernary,
 			},
 			endpoints.EndpointKey{
+				Region: "fips-eu-central-2",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.eu-central-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-central-2",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
 				Region: "fips-eu-north-1",
 			}: endpoints.Endpoint{
 				Hostname: "waf-regional-fips.eu-north-1.amazonaws.com",
@@ -495,6 +622,15 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "waf-regional-fips.eu-south-1.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "eu-south-1",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
+				Region: "fips-eu-south-2",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.eu-south-2.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "eu-south-2",
 				},
 				Deprecated: aws.TrueTernary,
 			},
@@ -522,6 +658,24 @@ var defaultPartitions = endpoints.Partitions{
 				Hostname: "waf-regional-fips.eu-west-3.amazonaws.com",
 				CredentialScope: endpoints.CredentialScope{
 					Region: "eu-west-3",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
+				Region: "fips-il-central-1",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.il-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "il-central-1",
+				},
+				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
+				Region: "fips-me-central-1",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional-fips.me-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "me-central-1",
 				},
 				Deprecated: aws.TrueTernary,
 			},
@@ -578,6 +732,40 @@ var defaultPartitions = endpoints.Partitions{
 					Region: "us-west-2",
 				},
 				Deprecated: aws.TrueTernary,
+			},
+			endpoints.EndpointKey{
+				Region: "il-central-1",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.il-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "il-central-1",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "il-central-1",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.il-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "il-central-1",
+				},
+			},
+			endpoints.EndpointKey{
+				Region: "me-central-1",
+			}: endpoints.Endpoint{
+				Hostname: "waf-regional.me-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "me-central-1",
+				},
+			},
+			endpoints.EndpointKey{
+				Region:  "me-central-1",
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname: "waf-regional-fips.me-central-1.amazonaws.com",
+				CredentialScope: endpoints.CredentialScope{
+					Region: "me-central-1",
+				},
 			},
 			endpoints.EndpointKey{
 				Region: "me-south-1",
@@ -773,6 +961,27 @@ var defaultPartitions = endpoints.Partitions{
 		},
 	},
 	{
+		ID: "aws-eusc",
+		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
+			{
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname:          "waf-regional-fips.{region}.amazonaws.eu",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
+				Variant: 0,
+			}: {
+				Hostname:          "waf-regional.{region}.amazonaws.eu",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+		},
+		RegionRegex:    partitionRegexp.AwsEusc,
+		IsRegionalized: true,
+	},
+	{
 		ID: "aws-iso",
 		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
 			{
@@ -812,6 +1021,48 @@ var defaultPartitions = endpoints.Partitions{
 			},
 		},
 		RegionRegex:    partitionRegexp.AwsIsoB,
+		IsRegionalized: true,
+	},
+	{
+		ID: "aws-iso-e",
+		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
+			{
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname:          "waf-regional-fips.{region}.cloud.adc-e.uk",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
+				Variant: 0,
+			}: {
+				Hostname:          "waf-regional.{region}.cloud.adc-e.uk",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+		},
+		RegionRegex:    partitionRegexp.AwsIsoE,
+		IsRegionalized: true,
+	},
+	{
+		ID: "aws-iso-f",
+		Defaults: map[endpoints.DefaultKey]endpoints.Endpoint{
+			{
+				Variant: endpoints.FIPSVariant,
+			}: {
+				Hostname:          "waf-regional-fips.{region}.csp.hci.ic.gov",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+			{
+				Variant: 0,
+			}: {
+				Hostname:          "waf-regional.{region}.csp.hci.ic.gov",
+				Protocols:         []string{"https"},
+				SignatureVersions: []string{"v4"},
+			},
+		},
+		RegionRegex:    partitionRegexp.AwsIsoF,
 		IsRegionalized: true,
 	},
 	{

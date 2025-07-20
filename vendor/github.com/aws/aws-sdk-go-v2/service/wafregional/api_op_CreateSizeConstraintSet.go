@@ -4,45 +4,45 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Creates a SizeConstraintSet. You then use UpdateSizeConstraintSet to
-// identify the part of a web request that you want AWS WAF to check for length,
-// such as the length of the User-Agent header or the length of the query string.
-// For example, you can create a SizeConstraintSet that matches any requests that
-// have a query string that is longer than 100 bytes. You can then configure AWS
-// WAF to reject those requests. To create and configure a SizeConstraintSet,
-// perform the following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Use GetChangeToken to get the change token that
-// you provide in the ChangeToken parameter of a CreateSizeConstraintSet
-// request.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * Submit a CreateSizeConstraintSet request.
+// Creates a SizeConstraintSet . You then use UpdateSizeConstraintSet to identify the part of a web
+// request that you want AWS WAF to check for length, such as the length of the
+// User-Agent header or the length of the query string. For example, you can create
+// a SizeConstraintSet that matches any requests that have a query string that is
+// longer than 100 bytes. You can then configure AWS WAF to reject those requests.
 //
-// * Use GetChangeToken to
-// get the change token that you provide in the ChangeToken parameter of an
-// UpdateSizeConstraintSet request.
+// To create and configure a SizeConstraintSet , perform the following steps:
 //
-// * Submit an UpdateSizeConstraintSet request to
-// specify the part of the request that you want AWS WAF to inspect (for example,
-// the header or the URI) and the value that you want AWS WAF to watch for.
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a CreateSizeConstraintSet request.
 //
-// For
-// more information about how to use the AWS WAF API to allow or block HTTP
-// requests, see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/).
+//   - Submit a CreateSizeConstraintSet request.
+//
+//   - Use GetChangeToken to get the change token that you provide in the
+//     ChangeToken parameter of an UpdateSizeConstraintSet request.
+//
+//   - Submit an UpdateSizeConstraintSetrequest to specify the part of the request that you want AWS WAF
+//     to inspect (for example, the header or the URI) and the value that you want AWS
+//     WAF to watch for.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) CreateSizeConstraintSet(ctx context.Context, params *CreateSizeConstraintSetInput, optFns ...func(*Options)) (*CreateSizeConstraintSetOutput, error) {
 	if params == nil {
 		params = &CreateSizeConstraintSetInput{}
@@ -65,8 +65,8 @@ type CreateSizeConstraintSetInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// A friendly name or description of the SizeConstraintSet. You can't change Name
-	// after you create a SizeConstraintSet.
+	// A friendly name or description of the SizeConstraintSet. You can't change Name after you create
+	// a SizeConstraintSet .
 	//
 	// This member is required.
 	Name *string
@@ -76,8 +76,8 @@ type CreateSizeConstraintSetInput struct {
 
 type CreateSizeConstraintSetOutput struct {
 
-	// The ChangeToken that you used to submit the CreateSizeConstraintSet request. You
-	// can also use this value to query the status of the request. For more
+	// The ChangeToken that you used to submit the CreateSizeConstraintSet request.
+	// You can also use this value to query the status of the request. For more
 	// information, see GetChangeTokenStatus.
 	ChangeToken *string
 
@@ -91,6 +91,9 @@ type CreateSizeConstraintSetOutput struct {
 }
 
 func (c *Client) addOperationCreateSizeConstraintSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateSizeConstraintSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -99,34 +102,41 @@ func (c *Client) addOperationCreateSizeConstraintSetMiddlewares(stack *middlewar
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateSizeConstraintSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -135,10 +145,25 @@ func (c *Client) addOperationCreateSizeConstraintSetMiddlewares(stack *middlewar
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateSizeConstraintSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateSizeConstraintSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -150,6 +175,21 @@ func (c *Client) addOperationCreateSizeConstraintSetMiddlewares(stack *middlewar
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -157,7 +197,6 @@ func newServiceMetadataMiddleware_opCreateSizeConstraintSet(region string) *awsm
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "CreateSizeConstraintSet",
 	}
 }

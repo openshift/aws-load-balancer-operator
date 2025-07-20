@@ -4,22 +4,26 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Creates a WebACL per the specifications provided. A web ACL defines a collection
-// of rules to use to inspect and control web requests. Each rule has an action
-// defined (allow, block, or count) for requests that match the statement of the
-// rule. In the web ACL, you assign a default action to take (allow, block) for any
-// request that does not match any of the rules. The rules in a web ACL can be a
-// combination of the types Rule, RuleGroup, and managed rule group. You can
-// associate a web ACL with one or more Amazon Web Services resources to protect.
-// The resources can be an Amazon CloudFront distribution, an Amazon API Gateway
-// REST API, an Application Load Balancer, or an AppSync GraphQL API.
+// Creates a WebACL per the specifications provided.
+//
+// A web ACL defines a collection of rules to use to inspect and control web
+// requests. Each rule has a statement that defines what to look for in web
+// requests and an action that WAF applies to requests that match the statement. In
+// the web ACL, you assign a default action to take (allow, block) for any request
+// that does not match any of the rules. The rules in a web ACL can be a
+// combination of the types Rule, RuleGroup, and managed rule group. You can associate a web
+// ACL with one or more Amazon Web Services resources to protect. The resource
+// types include Amazon CloudFront distribution, Amazon API Gateway REST API,
+// Application Load Balancer, AppSync GraphQL API, Amazon Cognito user pool, App
+// Runner service, Amplify application, and Amazon Web Services Verified Access
+// instance.
 func (c *Client) CreateWebACL(ctx context.Context, params *CreateWebACLInput, optFns ...func(*Options)) (*CreateWebACLOutput, error) {
 	if params == nil {
 		params = &CreateWebACLInput{}
@@ -48,66 +52,123 @@ type CreateWebACLInput struct {
 	// This member is required.
 	Name *string
 
-	// Specifies whether this is for an Amazon CloudFront distribution or for a
-	// regional application. A regional application can be an Application Load Balancer
-	// (ALB), an Amazon API Gateway REST API, or an AppSync GraphQL API. To work with
-	// CloudFront, you must also specify the Region US East (N. Virginia) as
-	// follows:
+	// Specifies whether this is for a global resource type, such as a Amazon
+	// CloudFront distribution. For an Amplify application, use CLOUDFRONT .
 	//
-	// * CLI - Specify the Region when you use the CloudFront scope:
-	// --scope=CLOUDFRONT --region=us-east-1.
+	// To work with CloudFront, you must also specify the Region US East (N. Virginia)
+	// as follows:
 	//
-	// * API and SDKs - For all calls, use the
-	// Region endpoint us-east-1.
+	//   - CLI - Specify the Region when you use the CloudFront scope:
+	//   --scope=CLOUDFRONT --region=us-east-1 .
+	//
+	//   - API and SDKs - For all calls, use the Region endpoint us-east-1.
 	//
 	// This member is required.
 	Scope types.Scope
 
-	// Defines and enables Amazon CloudWatch metrics and web request sample collection.
+	// Defines and enables Amazon CloudWatch metrics and web request sample
+	// collection.
 	//
 	// This member is required.
 	VisibilityConfig *types.VisibilityConfig
 
+	// Configures the ability for the WAF console to store and retrieve application
+	// attributes during the web ACL creation process. Application attributes help WAF
+	// give recommendations for protection packs.
+	ApplicationConfig *types.ApplicationConfig
+
+	// Specifies custom configurations for the associations between the web ACL and
+	// protected resources.
+	//
+	// Use this to customize the maximum size of the request body that your protected
+	// resources forward to WAF for inspection. You can customize this setting for
+	// CloudFront, API Gateway, Amazon Cognito, App Runner, or Verified Access
+	// resources. The default setting is 16 KB (16,384 bytes).
+	//
+	// You are charged additional fees when your protected resources forward body
+	// sizes that are larger than the default. For more information, see [WAF Pricing].
+	//
+	// For Application Load Balancer and AppSync, the limit is fixed at 8 KB (8,192
+	// bytes).
+	//
+	// [WAF Pricing]: http://aws.amazon.com/waf/pricing/
+	AssociationConfig *types.AssociationConfig
+
 	// Specifies how WAF should handle CAPTCHA evaluations for rules that don't have
 	// their own CaptchaConfig settings. If you don't specify this, WAF uses its
-	// default settings for CaptchaConfig.
+	// default settings for CaptchaConfig .
 	CaptchaConfig *types.CaptchaConfig
+
+	// Specifies how WAF should handle challenge evaluations for rules that don't have
+	// their own ChallengeConfig settings. If you don't specify this, WAF uses its
+	// default settings for ChallengeConfig .
+	ChallengeConfig *types.ChallengeConfig
 
 	// A map of custom response keys and content bodies. When you create a rule with a
 	// block action, you can send a custom response to the web request. You define
 	// these for the web ACL, and then use them in the rules and default actions that
-	// you define in the web ACL. For information about customizing web requests and
-	// responses, see Customizing web requests and responses in WAF
-	// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-custom-request-response.html)
-	// in the WAF Developer Guide
-	// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). For
-	// information about the limits on count and size for custom request and response
-	// settings, see WAF quotas
-	// (https://docs.aws.amazon.com/waf/latest/developerguide/limits.html) in the WAF
-	// Developer Guide
-	// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html).
+	// you define in the web ACL.
+	//
+	// For information about customizing web requests and responses, see [Customizing web requests and responses in WAF] in the WAF
+	// Developer Guide.
+	//
+	// For information about the limits on count and size for custom request and
+	// response settings, see [WAF quotas]in the WAF Developer Guide.
+	//
+	// [WAF quotas]: https://docs.aws.amazon.com/waf/latest/developerguide/limits.html
+	// [Customizing web requests and responses in WAF]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-custom-request-response.html
 	CustomResponseBodies map[string]types.CustomResponseBody
+
+	// Specifies data protection to apply to the web request data for the web ACL.
+	// This is a web ACL level data protection option.
+	//
+	// The data protection that you configure for the web ACL alters the data that's
+	// available for any other data collection activity, including your WAF logging
+	// destinations, web ACL request sampling, and Amazon Security Lake data collection
+	// and management. Your other option for data protection is in the logging
+	// configuration, which only affects logging.
+	DataProtectionConfig *types.DataProtectionConfig
 
 	// A description of the web ACL that helps with identification.
 	Description *string
 
-	// The Rule statements used to identify the web requests that you want to allow,
-	// block, or count. Each rule includes one top-level statement that WAF uses to
-	// identify matching web requests, and parameters that govern how WAF handles them.
+	// Specifies the type of DDoS protection to apply to web request data for a web
+	// ACL. For most scenarios, it is recommended to use the default protection level,
+	// ACTIVE_UNDER_DDOS . If a web ACL is associated with multiple Application Load
+	// Balancers, the changes you make to DDoS protection in that web ACL will apply to
+	// all associated Application Load Balancers.
+	OnSourceDDoSProtectionConfig *types.OnSourceDDoSProtectionConfig
+
+	// The Rule statements used to identify the web requests that you want to manage. Each
+	// rule includes one top-level statement that WAF uses to identify matching web
+	// requests, and parameters that govern how WAF handles them.
 	Rules []types.Rule
 
 	// An array of key:value pairs to associate with the resource.
 	Tags []types.Tag
+
+	// Specifies the domains that WAF should accept in a web request token. This
+	// enables the use of tokens across multiple protected websites. When WAF provides
+	// a token, it uses the domain of the Amazon Web Services resource that the web ACL
+	// is protecting. If you don't specify a list of token domains, WAF accepts tokens
+	// only for the domain of the protected resource. With a token domain list, WAF
+	// accepts the resource's host domain plus all domains in the token domain list,
+	// including their prefixed subdomains.
+	//
+	// Example JSON: "TokenDomains": { "mywebsite.com", "myotherwebsite.com" }
+	//
+	// Public suffixes aren't allowed. For example, you can't use gov.au or co.uk as
+	// token domains.
+	TokenDomains []string
 
 	noSmithyDocumentSerde
 }
 
 type CreateWebACLOutput struct {
 
-	// High-level information about a WebACL, returned by operations like create and
-	// list. This provides information like the ID, that you can use to retrieve and
-	// manage a WebACL, and the ARN, that you provide to operations like
-	// AssociateWebACL.
+	// High-level information about a WebACL, returned by operations like create and list.
+	// This provides information like the ID, that you can use to retrieve and manage a
+	// WebACL , and the ARN, that you provide to operations like AssociateWebACL.
 	Summary *types.WebACLSummary
 
 	// Metadata pertaining to the operation's result.
@@ -117,6 +178,9 @@ type CreateWebACLOutput struct {
 }
 
 func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpCreateWebACL{}, middleware.After)
 	if err != nil {
 		return err
@@ -125,34 +189,41 @@ func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, op
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateWebACL"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -161,10 +232,25 @@ func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, op
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpCreateWebACLValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opCreateWebACL(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -176,6 +262,21 @@ func (c *Client) addOperationCreateWebACLMiddlewares(stack *middleware.Stack, op
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -183,7 +284,6 @@ func newServiceMetadataMiddleware_opCreateWebACL(region string) *awsmiddleware.R
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "CreateWebACL",
 	}
 }

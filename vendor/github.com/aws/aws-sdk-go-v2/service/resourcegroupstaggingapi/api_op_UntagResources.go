@@ -4,8 +4,8 @@ package resourcegroupstaggingapi
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -16,25 +16,25 @@ import (
 // succeeds even if you attempt to remove tags from a resource that were already
 // removed. Note the following:
 //
-// * To remove tags from a resource, you need the
-// necessary permissions for the service that the resource belongs to as well as
-// permissions for removing tags. For more information, see the documentation for
-// the service whose resource you want to untag.
+//   - To remove tags from a resource, you need the necessary permissions for the
+//     service that the resource belongs to as well as permissions for removing tags.
+//     For more information, see the documentation for the service whose resource you
+//     want to untag.
 //
-// * You can only tag resources that
-// are located in the specified Amazon Web Services Region for the calling Amazon
-// Web Services account.
+//   - You can only tag resources that are located in the specified Amazon Web
+//     Services Region for the calling Amazon Web Services account.
 //
-// Minimum permissions In addition to the tag:UntagResources
-// permission required by this operation, you must also have the remove tags
-// permission defined by the service that created the resource. For example, to
-// remove the tags from an Amazon EC2 instance using the UntagResources operation,
-// you must have both of the following permissions:
+// # Minimum permissions
 //
-// * tag:UntagResource
+// In addition to the tag:UntagResources permission required by this operation,
+// you must also have the remove tags permission defined by the service that
+// created the resource. For example, to remove the tags from an Amazon EC2
+// instance using the UntagResources operation, you must have both of the
+// following permissions:
 //
-// *
-// ec2:DeleteTags
+//   - tag:UntagResource
+//
+//   - ec2:DeleteTags
 func (c *Client) UntagResources(ctx context.Context, params *UntagResourcesInput, optFns ...func(*Options)) (*UntagResourcesOutput, error) {
 	if params == nil {
 		params = &UntagResourcesInput{}
@@ -52,11 +52,12 @@ func (c *Client) UntagResources(ctx context.Context, params *UntagResourcesInput
 
 type UntagResourcesInput struct {
 
-	// Specifies a list of ARNs of the resources that you want to remove tags from. An
-	// ARN (Amazon Resource Name) uniquely identifies a resource. For more information,
-	// see Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces
-	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) in
-	// the Amazon Web Services General Reference.
+	// Specifies a list of ARNs of the resources that you want to remove tags from.
+	//
+	// An ARN (Amazon Resource Name) uniquely identifies a resource. For more
+	// information, see [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]in the Amazon Web Services General Reference.
+	//
+	// [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
 	//
 	// This member is required.
 	ResourceARNList []string
@@ -85,6 +86,9 @@ type UntagResourcesOutput struct {
 }
 
 func (c *Client) addOperationUntagResourcesMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUntagResources{}, middleware.After)
 	if err != nil {
 		return err
@@ -93,34 +97,41 @@ func (c *Client) addOperationUntagResourcesMiddlewares(stack *middleware.Stack, 
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UntagResources"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -129,10 +140,25 @@ func (c *Client) addOperationUntagResourcesMiddlewares(stack *middleware.Stack, 
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUntagResourcesValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUntagResources(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -144,6 +170,21 @@ func (c *Client) addOperationUntagResourcesMiddlewares(stack *middleware.Stack, 
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -151,7 +192,6 @@ func newServiceMetadataMiddleware_opUntagResources(region string) *awsmiddleware
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "tagging",
 		OperationName: "UntagResources",
 	}
 }

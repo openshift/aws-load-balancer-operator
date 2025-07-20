@@ -4,15 +4,15 @@ package wafv2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Provides high-level information for a managed rule group, including descriptions
-// of the rules.
+// Provides high-level information for a managed rule group, including
+// descriptions of the rules.
 func (c *Client) DescribeManagedRuleGroup(ctx context.Context, params *DescribeManagedRuleGroupInput, optFns ...func(*Options)) (*DescribeManagedRuleGroupOutput, error) {
 	if params == nil {
 		params = &DescribeManagedRuleGroupInput{}
@@ -30,29 +30,28 @@ func (c *Client) DescribeManagedRuleGroup(ctx context.Context, params *DescribeM
 
 type DescribeManagedRuleGroupInput struct {
 
-	// The name of the managed rule group. You use this, along with the vendor name, to
-	// identify the rule group.
+	// The name of the managed rule group. You use this, along with the vendor name,
+	// to identify the rule group.
 	//
 	// This member is required.
 	Name *string
 
-	// Specifies whether this is for an Amazon CloudFront distribution or for a
-	// regional application. A regional application can be an Application Load Balancer
-	// (ALB), an Amazon API Gateway REST API, or an AppSync GraphQL API. To work with
-	// CloudFront, you must also specify the Region US East (N. Virginia) as
-	// follows:
+	// Specifies whether this is for a global resource type, such as a Amazon
+	// CloudFront distribution. For an Amplify application, use CLOUDFRONT .
 	//
-	// * CLI - Specify the Region when you use the CloudFront scope:
-	// --scope=CLOUDFRONT --region=us-east-1.
+	// To work with CloudFront, you must also specify the Region US East (N. Virginia)
+	// as follows:
 	//
-	// * API and SDKs - For all calls, use the
-	// Region endpoint us-east-1.
+	//   - CLI - Specify the Region when you use the CloudFront scope:
+	//   --scope=CLOUDFRONT --region=us-east-1 .
+	//
+	//   - API and SDKs - For all calls, use the Region endpoint us-east-1.
 	//
 	// This member is required.
 	Scope types.Scope
 
 	// The name of the managed rule group vendor. You use this, along with the rule
-	// group name, to identify the rule group.
+	// group name, to identify a rule group.
 	//
 	// This member is required.
 	VendorName *string
@@ -71,41 +70,50 @@ type DescribeManagedRuleGroupOutput struct {
 	// requests. These labels are defined in the RuleLabels for a Rule.
 	AvailableLabels []types.LabelSummary
 
-	// The web ACL capacity units (WCUs) required for this rule group. WAF uses web ACL
-	// capacity units (WCU) to calculate and control the operating resources that are
-	// used to run your rules, rule groups, and web ACLs. WAF calculates capacity
-	// differently for each rule type, to reflect each rule's relative cost. Rule group
-	// capacity is fixed at creation, so users can plan their web ACL WCU usage when
-	// they use a rule group. The WCU limit for web ACLs is 1,500.
-	Capacity int64
+	// The web ACL capacity units (WCUs) required for this rule group.
+	//
+	// WAF uses WCUs to calculate and control the operating resources that are used to
+	// run your rules, rule groups, and web ACLs. WAF calculates capacity differently
+	// for each rule type, to reflect the relative cost of each rule. Simple rules that
+	// cost little to run use fewer WCUs than more complex rules that use more
+	// processing power. Rule group capacity is fixed at creation, which helps users
+	// plan their web ACL WCU usage when they use a rule group. For more information,
+	// see [WAF web ACL capacity units (WCU)]in the WAF Developer Guide.
+	//
+	// [WAF web ACL capacity units (WCU)]: https://docs.aws.amazon.com/waf/latest/developerguide/aws-waf-capacity-units.html
+	Capacity *int64
 
 	// The labels that one or more rules in this rule group match against in label
 	// match statements. These labels are defined in a LabelMatchStatement
-	// specification, in the Statement definition of a rule.
+	// specification, in the Statementdefinition of a rule.
 	ConsumedLabels []types.LabelSummary
 
 	// The label namespace prefix for this rule group. All labels added by rules in
 	// this rule group have this prefix.
 	//
-	// * The syntax for the label namespace prefix
-	// for a managed rule group is the following: awswaf:managed:::
+	//   - The syntax for the label namespace prefix for a managed rule group is the
+	//   following:
 	//
-	// * When a rule with
-	// a label matches a web request, WAF adds the fully qualified label to the
-	// request. A fully qualified label is made up of the label namespace from the rule
-	// group or web ACL where the rule is defined and the label from the rule,
-	// separated by a colon: :
+	// awswaf:managed:: :
+	//
+	//   - When a rule with a label matches a web request, WAF adds the fully
+	//   qualified label to the request. A fully qualified label is made up of the label
+	//   namespace from the rule group or web ACL where the rule is defined and the label
+	//   from the rule, separated by a colon:
+	//
+	// :
 	LabelNamespace *string
 
 	//
 	Rules []types.RuleSummary
 
 	// The Amazon resource name (ARN) of the Amazon Simple Notification Service SNS
-	// topic that's used to record changes to the managed rule group. You can subscribe
-	// to the SNS topic to receive notifications when the managed rule group is
-	// modified, such as for new versions and for version expiration. For more
-	// information, see the Amazon Simple Notification Service Developer Guide
-	// (https://docs.aws.amazon.com/sns/latest/dg/welcome.html).
+	// topic that's used to provide notification of changes to the managed rule group.
+	// You can subscribe to the SNS topic to receive notifications when the managed
+	// rule group is modified, such as for new versions and for version expiration. For
+	// more information, see the [Amazon Simple Notification Service Developer Guide].
+	//
+	// [Amazon Simple Notification Service Developer Guide]: https://docs.aws.amazon.com/sns/latest/dg/welcome.html
 	SnsTopicArn *string
 
 	// The managed rule group's version.
@@ -118,6 +126,9 @@ type DescribeManagedRuleGroupOutput struct {
 }
 
 func (c *Client) addOperationDescribeManagedRuleGroupMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDescribeManagedRuleGroup{}, middleware.After)
 	if err != nil {
 		return err
@@ -126,34 +137,41 @@ func (c *Client) addOperationDescribeManagedRuleGroupMiddlewares(stack *middlewa
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeManagedRuleGroup"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -162,10 +180,25 @@ func (c *Client) addOperationDescribeManagedRuleGroupMiddlewares(stack *middlewa
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDescribeManagedRuleGroupValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeManagedRuleGroup(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -177,6 +210,21 @@ func (c *Client) addOperationDescribeManagedRuleGroupMiddlewares(stack *middlewa
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -184,7 +232,6 @@ func newServiceMetadataMiddleware_opDescribeManagedRuleGroup(region string) *aws
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "wafv2",
 		OperationName: "DescribeManagedRuleGroup",
 	}
 }

@@ -4,20 +4,24 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Returns an array of XssMatchSet objects.
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
+//
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
+//
+// Returns an array of XssMatchSet objects.
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
 func (c *Client) ListXssMatchSets(ctx context.Context, params *ListXssMatchSetsInput, optFns ...func(*Options)) (*ListXssMatchSetsOutput, error) {
 	if params == nil {
 		params = &ListXssMatchSetsInput{}
@@ -36,17 +40,17 @@ func (c *Client) ListXssMatchSets(ctx context.Context, params *ListXssMatchSetsI
 // A request to list the XssMatchSet objects created by the current AWS account.
 type ListXssMatchSetsInput struct {
 
-	// Specifies the number of XssMatchSet objects that you want AWS WAF to return for
-	// this request. If you have more XssMatchSet objects than the number you specify
-	// for Limit, the response includes a NextMarker value that you can use to get
-	// another batch of Rules.
+	// Specifies the number of XssMatchSet objects that you want AWS WAF to return for this
+	// request. If you have more XssMatchSet objects than the number you specify for
+	// Limit , the response includes a NextMarker value that you can use to get
+	// another batch of Rules .
 	Limit int32
 
-	// If you specify a value for Limit and you have more XssMatchSet objects than the
-	// value of Limit, AWS WAF returns a NextMarker value in the response that allows
-	// you to list another group of XssMatchSets. For the second and subsequent
+	// If you specify a value for Limit and you have more XssMatchSet objects than the value of
+	// Limit , AWS WAF returns a NextMarker value in the response that allows you to
+	// list another group of XssMatchSets . For the second and subsequent
 	// ListXssMatchSets requests, specify the value of NextMarker from the previous
-	// response to get information about another batch of XssMatchSets.
+	// response to get information about another batch of XssMatchSets .
 	NextMarker *string
 
 	noSmithyDocumentSerde
@@ -55,10 +59,10 @@ type ListXssMatchSetsInput struct {
 // The response to a ListXssMatchSets request.
 type ListXssMatchSetsOutput struct {
 
-	// If you have more XssMatchSet objects than the number that you specified for
-	// Limit in the request, the response includes a NextMarker value. To list more
-	// XssMatchSet objects, submit another ListXssMatchSets request, and specify the
-	// NextMarker value from the response in the NextMarker value in the next request.
+	// If you have more XssMatchSet objects than the number that you specified for Limit in the
+	// request, the response includes a NextMarker value. To list more XssMatchSet
+	// objects, submit another ListXssMatchSets request, and specify the NextMarker
+	// value from the response in the NextMarker value in the next request.
 	NextMarker *string
 
 	// An array of XssMatchSetSummary objects.
@@ -71,6 +75,9 @@ type ListXssMatchSetsOutput struct {
 }
 
 func (c *Client) addOperationListXssMatchSetsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpListXssMatchSets{}, middleware.After)
 	if err != nil {
 		return err
@@ -79,34 +86,41 @@ func (c *Client) addOperationListXssMatchSetsMiddlewares(stack *middleware.Stack
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "ListXssMatchSets"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -115,7 +129,22 @@ func (c *Client) addOperationListXssMatchSetsMiddlewares(stack *middleware.Stack
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opListXssMatchSets(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -127,6 +156,21 @@ func (c *Client) addOperationListXssMatchSetsMiddlewares(stack *middleware.Stack
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -134,7 +178,6 @@ func newServiceMetadataMiddleware_opListXssMatchSets(region string) *awsmiddlewa
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "ListXssMatchSets",
 	}
 }
