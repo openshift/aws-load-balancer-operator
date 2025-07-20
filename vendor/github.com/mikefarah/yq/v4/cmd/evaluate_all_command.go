@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"os"
 
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"github.com/spf13/cobra"
@@ -13,8 +12,14 @@ func createEvaluateAllCommand() *cobra.Command {
 		Use:     "eval-all [expression] [yaml_file1]...",
 		Aliases: []string{"ea"},
 		Short:   "Loads _all_ yaml documents of _all_ yaml files and runs expression once",
+		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return nil, cobra.ShellCompDirectiveDefault
+		},
 		Example: `
-# Merge f2.yml into f1.yml (inplace)
+# Merge f2.yml into f1.yml (in place)
 yq eval-all --inplace 'select(fileIndex == 0) * select(fileIndex == 1)' f1.yml f2.yml
 ## the same command and expression using shortened names:
 yq ea -i 'select(fi == 0) * select(fi == 1)' f1.yml f2.yml
@@ -27,7 +32,7 @@ yq ea '. as $item ireduce ({}; . * $item )' file1.yml file2.yml ...
 ## use '-' as a filename to pipe from STDIN
 cat file2.yml | yq ea '.a.b' file1.yml - file3.yml
 `,
-		Long: `yq is a portable command-line YAML processor (https://github.com/mikefarah/yq/) 
+		Long: `yq is a portable command-line data file processor (https://github.com/mikefarah/yq/) 
 See https://mikefarah.gitbook.io/yq/ for detailed documentation and examples.
 
 ## Evaluate All ##
@@ -47,36 +52,17 @@ func evaluateAll(cmd *cobra.Command, args []string) (cmdError error) {
 
 	var err error
 
-	firstFileIndex, err := initCommand(cmd, args)
+	expression, args, err := initCommand(cmd, args)
 	if err != nil {
 		return err
 	}
-
-	stat, _ := os.Stdin.Stat()
-	pipingStdIn := (stat.Mode() & os.ModeCharDevice) == 0
-	yqlib.GetLogger().Debug("pipingStdIn: %v", pipingStdIn)
-
-	yqlib.GetLogger().Debug("stat.Mode(): %v", stat.Mode())
-	yqlib.GetLogger().Debug("ModeDir: %v", stat.Mode()&os.ModeDir)
-	yqlib.GetLogger().Debug("ModeAppend: %v", stat.Mode()&os.ModeAppend)
-	yqlib.GetLogger().Debug("ModeExclusive: %v", stat.Mode()&os.ModeExclusive)
-	yqlib.GetLogger().Debug("ModeTemporary: %v", stat.Mode()&os.ModeTemporary)
-	yqlib.GetLogger().Debug("ModeSymlink: %v", stat.Mode()&os.ModeSymlink)
-	yqlib.GetLogger().Debug("ModeDevice: %v", stat.Mode()&os.ModeDevice)
-	yqlib.GetLogger().Debug("ModeNamedPipe: %v", stat.Mode()&os.ModeNamedPipe)
-	yqlib.GetLogger().Debug("ModeSocket: %v", stat.Mode()&os.ModeSocket)
-	yqlib.GetLogger().Debug("ModeSetuid: %v", stat.Mode()&os.ModeSetuid)
-	yqlib.GetLogger().Debug("ModeSetgid: %v", stat.Mode()&os.ModeSetgid)
-	yqlib.GetLogger().Debug("ModeCharDevice: %v", stat.Mode()&os.ModeCharDevice)
-	yqlib.GetLogger().Debug("ModeSticky: %v", stat.Mode()&os.ModeSticky)
-	yqlib.GetLogger().Debug("ModeIrregular: %v", stat.Mode()&os.ModeIrregular)
 
 	out := cmd.OutOrStdout()
 
 	if writeInplace {
 		// only use colors if its forced
 		colorsEnabled = forceColor
-		writeInPlaceHandler := yqlib.NewWriteInPlaceHandler(args[firstFileIndex])
+		writeInPlaceHandler := yqlib.NewWriteInPlaceHandler(args[0])
 		out, err = writeInPlaceHandler.CreateTempFile()
 		if err != nil {
 			return err
@@ -90,12 +76,12 @@ func evaluateAll(cmd *cobra.Command, args []string) (cmdError error) {
 		}()
 	}
 
-	format, err := yqlib.OutputFormatFromString(outputFormat)
+	format, err := yqlib.FormatFromString(outputFormat)
 	if err != nil {
 		return err
 	}
 
-	decoder, err := configureDecoder()
+	decoder, err := configureDecoder(true)
 	if err != nil {
 		return err
 	}
@@ -104,17 +90,23 @@ func evaluateAll(cmd *cobra.Command, args []string) (cmdError error) {
 	if err != nil {
 		return err
 	}
-	encoder := configureEncoder(format)
+	encoder, err := configureEncoder()
+	if err != nil {
+		return err
+	}
 
 	printer := yqlib.NewPrinter(encoder, printerWriter)
+	if nulSepOutput {
+		printer.SetNulSepOutput(true)
+	}
 
 	if frontMatter != "" {
-		frontMatterHandler := yqlib.NewFrontMatterHandler(args[firstFileIndex])
+		frontMatterHandler := yqlib.NewFrontMatterHandler(args[0])
 		err = frontMatterHandler.Split()
 		if err != nil {
 			return err
 		}
-		args[firstFileIndex] = frontMatterHandler.GetYamlFrontMatterFilename()
+		args[0] = frontMatterHandler.GetYamlFrontMatterFilename()
 
 		if frontMatter == "process" {
 			reader := frontMatterHandler.GetContentReader()
@@ -126,22 +118,16 @@ func evaluateAll(cmd *cobra.Command, args []string) (cmdError error) {
 
 	allAtOnceEvaluator := yqlib.NewAllAtOnceEvaluator()
 
-	expression, args, err := processArgs(pipingStdIn, args)
-	if err != nil {
-		return err
-	}
-	yqlib.GetLogger().Debugf("processed args: %v", args)
-
 	switch len(args) {
 	case 0:
 		if nullInput {
-			err = yqlib.NewStreamEvaluator().EvaluateNew(processExpression(expression), printer, "")
+			err = yqlib.NewStreamEvaluator().EvaluateNew(processExpression(expression), printer)
 		} else {
 			cmd.Println(cmd.UsageString())
 			return nil
 		}
 	default:
-		err = allAtOnceEvaluator.EvaluateFiles(processExpression(expression), args, printer, leadingContentPreProcessing, decoder)
+		err = allAtOnceEvaluator.EvaluateFiles(processExpression(expression), args, printer, decoder)
 	}
 
 	completedSuccessfully = err == nil

@@ -26,12 +26,13 @@ func popOpToResult(opStack []*token, result []*Operation) ([]*token, []*Operatio
 }
 
 func validateNoOpenTokens(token *token) error {
-	if token.TokenType == openCollect {
-		return fmt.Errorf(("Bad expression, could not find matching `]`"))
-	} else if token.TokenType == openCollectObject {
-		return fmt.Errorf(("Bad expression, could not find matching `}`"))
-	} else if token.TokenType == openBracket {
-		return fmt.Errorf(("Bad expression, could not find matching `)`"))
+	switch token.TokenType {
+	case openCollect:
+		return fmt.Errorf(("bad expression, could not find matching `]`"))
+	case openCollectObject:
+		return fmt.Errorf(("bad expression, could not find matching `}`"))
+	case openBracket:
+		return fmt.Errorf(("bad expression, could not find matching `)`"))
 	}
 	return nil
 }
@@ -64,7 +65,7 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 				opStack, result = popOpToResult(opStack, result)
 			}
 			if len(opStack) == 0 {
-				return nil, errors.New("Bad path expression, got close collect brackets without matching opening bracket")
+				return nil, errors.New("bad path expression, got close collect brackets without matching opening bracket")
 			}
 			// now we should have [ as the last element on the opStack, get rid of it
 			opStack = opStack[0 : len(opStack)-1]
@@ -76,7 +77,7 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 			// on the close op - move it to the traverse array op
 			// allows for .["cat"]?
 			prefs := traversePreferences{}
-			closeTokenMatch := string(currentToken.Match.Bytes)
+			closeTokenMatch := currentToken.Match
 			if closeTokenMatch[len(closeTokenMatch)-1:] == "?" {
 				prefs.OptionalTraverse = true
 			}
@@ -104,7 +105,7 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 				opStack, result = popOpToResult(opStack, result)
 			}
 			if len(opStack) == 0 {
-				return nil, errors.New("Bad path expression, got close brackets without matching opening bracket")
+				return nil, errors.New("bad expression, got close brackets without matching opening bracket")
 			}
 			// now we should have ( as the last element on the opStack, get rid of it
 			opStack = opStack[0 : len(opStack)-1]
@@ -124,6 +125,14 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 	}
 
 	log.Debugf("opstackLen: %v", len(opStack))
+	if len(opStack) > 0 {
+		log.Debugf("opstack:")
+		for _, token := range opStack {
+			log.Debugf("- %v", token.toString(true))
+		}
+
+		return nil, fmt.Errorf("bad expression - probably missing close bracket on %v", opStack[len(opStack)-1].toString(false))
+	}
 
 	if log.IsEnabledFor(logging.DEBUG) {
 		log.Debugf("PostFix Result:")

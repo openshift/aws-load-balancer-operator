@@ -1,20 +1,18 @@
 - update release notes
-- increment version in version.go
-- increment version in snapcraft.yaml
 - make sure local build passes
-- check manpage 
-  - ./scripts/generate-man-page-md.sh
-  - ./scripts/generate-man-page.sh
-  - man ./yq.1
 - run ./scripts/copy-docs.sh (and commit the changed in the yq-book branch)
-- commit version update changes
-- tag git with same version number
-- commit vX tag - this will trigger github actions
+- run ./scripts/bump-version.sh
+- git push
+// to move the v4 branch
+- git push origin -d v4
+- git push --tags
 - use github actions to publish docker and make github release
 - check github updated yq action in marketplace
 
 
 - snapcraft
+  - update snapcraft version
+  - https://snapcraft.io/yq/builds
   - will auto create a candidate, test it works then promote
   - !! need to update v4/stable as well as latest
   

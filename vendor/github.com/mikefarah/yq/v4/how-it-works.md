@@ -19,7 +19,7 @@ with an expression:
 .a = .b
 ```
 
-Like math expression - operator precedence is important. 
+Like math expressions - operator precedence is important. 
 
 The `=` operator takes two arguments, a `lhs` expression, which in this case is `.a` and `rhs` expression which is `.b`. 
 
@@ -29,7 +29,7 @@ It pipes the current, lets call it 'root' context through the `lhs` expression o
 cat
 ```
 
-Sidenote: this node holds not only its value 'cat', but comments and metadata too, including path and parent information.
+Side note: this node holds not only its value 'cat', but comments and metadata too, including path and parent information.
 
 The `=` operator then pipes the 'root' context through the `rhs` expression of `.b` to return the node
 
@@ -37,7 +37,7 @@ The `=` operator then pipes the 'root' context through the `rhs` expression of `
 dog
 ```
 
-Both sides have now been evaluated, so now the operator copies across the value from the RHS (`.b`) to the the LHS (`.a`), and it returns the now updated context:
+Both sides have now been evaluated, so now the operator copies across the value from the RHS (`.b`) to the LHS (`.a`), and it returns the now updated context:
 
 ```yaml
 a: dog
@@ -47,7 +47,7 @@ b: dog
 
 ## Complex assignment, operator precedence rules
 
-Just like math expression - `yq` expression have an order of precedence. The pipe `|` operator has a low order of precedence, so operators with higher precedence will get evalated first. 
+Just like math expressions - `yq` expressions have an order of precedence. The pipe `|` operator has a low order of precedence, so operators with higher precedence will get evaluated first. 
 
 Most of the time, this is intuitively what you'd want, for instance `.a = "cat" | .b = "dog"` is effectively: `(.a = "cat") | (.b = "dog")`.
 
@@ -66,7 +66,7 @@ Lets say you had:
 Lets say you wanted to update the `sally` entry to have fruit: 'mango'. The _incorrect_ way to do that is:
 `.[] | select(.name == "sally") | .fruit = "mango"`.
 
-Becasue `|` has a low operator precedence, this will be evaluated (_incorrectly_) as : `(.[]) | (select(.name == "sally")) | (.fruit = "mango")`. What you'll see is only the updated segment returned:
+Because `|` has a low operator precedence, this will be evaluated (_incorrectly_) as : `(.[]) | (select(.name == "sally")) | (.fruit = "mango")`. What you'll see is only the updated segment returned:
 
 ```yaml
 name: sally

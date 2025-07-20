@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"github.com/spf13/cobra"
 	"gopkg.in/op/go-logging.v1"
 )
 
-func initCommand(cmd *cobra.Command, args []string) (firstFileIndex int, err error) {
+func isAutomaticOutputFormat() bool {
+	return outputFormat == "" || outputFormat == "auto" || outputFormat == "a"
+}
+
+func initCommand(cmd *cobra.Command, args []string) (string, []string, error) {
 	cmd.SilenceUsage = true
 
 	fileInfo, _ := os.Stdout.Stat()
@@ -19,11 +24,17 @@ func initCommand(cmd *cobra.Command, args []string) (firstFileIndex int, err err
 		colorsEnabled = true
 	}
 
-	firstFileIndex = -1
-	if !nullInput && len(args) == 1 {
-		firstFileIndex = 0
-	} else if len(args) > 1 {
-		firstFileIndex = 1
+	expression, args, err := processArgs(args)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if splitFileExpFile != "" {
+		splitExpressionBytes, err := os.ReadFile(splitFileExpFile)
+		if err != nil {
+			return "", nil, err
+		}
+		splitFileExp = string(splitExpressionBytes)
 	}
 
 	// backwards compatibility
@@ -31,37 +42,87 @@ func initCommand(cmd *cobra.Command, args []string) (firstFileIndex int, err err
 		outputFormat = "json"
 	}
 
-	if writeInplace && (firstFileIndex == -1) {
-		return 0, fmt.Errorf("write inplace flag only applicable when giving an expression and at least one file")
+	if writeInplace && (len(args) == 0 || args[0] == "-") {
+		return "", nil, fmt.Errorf("write in place flag only applicable when giving an expression and at least one file")
+	}
+
+	if frontMatter != "" && len(args) == 0 {
+		return "", nil, fmt.Errorf("front matter flag only applicable when giving an expression and at least one file")
 	}
 
 	if writeInplace && splitFileExp != "" {
-		return 0, fmt.Errorf("write inplace cannot be used with split file")
+		return "", nil, fmt.Errorf("write in place cannot be used with split file")
 	}
 
-	if nullInput && len(args) > 1 {
-		return 0, fmt.Errorf("cannot pass files in when using null-input flag")
+	if nullInput && len(args) > 0 {
+		return "", nil, fmt.Errorf("cannot pass files in when using null-input flag")
 	}
 
-	return firstFileIndex, nil
+	inputFilename := ""
+	if len(args) > 0 {
+		inputFilename = args[0]
+	}
+	if inputFormat == "" || inputFormat == "auto" || inputFormat == "a" {
+
+		inputFormat = yqlib.FormatStringFromFilename(inputFilename)
+
+		_, err := yqlib.FormatFromString(inputFormat)
+		if err != nil {
+			// unknown file type, default to yaml
+			yqlib.GetLogger().Debug("Unknown file format extension '%v', defaulting to yaml", inputFormat)
+			inputFormat = "yaml"
+			if isAutomaticOutputFormat() {
+				outputFormat = "yaml"
+			}
+		} else if isAutomaticOutputFormat() {
+			outputFormat = inputFormat
+		}
+	} else if isAutomaticOutputFormat() {
+		// backwards compatibility -
+		// before this was introduced, `yq -pcsv things.csv`
+		// would produce *yaml* output.
+		//
+		outputFormat = yqlib.FormatStringFromFilename(inputFilename)
+		if inputFilename != "-" {
+			yqlib.GetLogger().Warning("yq default output is now 'auto' (based on the filename extension). Normally yq would output '%v', but for backwards compatibility 'yaml' has been set. Please use -oy to specify yaml, or drop the -p flag.", outputFormat)
+		}
+		outputFormat = "yaml"
+	}
+
+	outputFormatType, err := yqlib.FormatFromString(outputFormat)
+
+	if err != nil {
+		return "", nil, err
+	}
+	yqlib.GetLogger().Debug("Using input format %v", inputFormat)
+	yqlib.GetLogger().Debug("Using output format %v", outputFormat)
+
+	if outputFormatType == yqlib.YamlFormat ||
+		outputFormatType == yqlib.PropertiesFormat {
+		unwrapScalar = true
+	}
+	if unwrapScalarFlag.IsExplicitlySet() {
+		unwrapScalar = unwrapScalarFlag.IsSet()
+	}
+
+	return expression, args, nil
 }
 
-func configureDecoder() (yqlib.Decoder, error) {
-	yqlibInputFormat, err := yqlib.InputFormatFromString(inputFormat)
+func configureDecoder(evaluateTogether bool) (yqlib.Decoder, error) {
+	format, err := yqlib.FormatFromString(inputFormat)
 	if err != nil {
 		return nil, err
 	}
-	switch yqlibInputFormat {
-	case yqlib.XMLInputFormat:
-		return yqlib.NewXMLDecoder(xmlAttributePrefix, xmlContentName, xmlStrictMode), nil
-	case yqlib.PropertiesInputFormat:
-		return yqlib.NewPropertiesDecoder(), nil
-	}
+	yqlib.ConfiguredYamlPreferences.EvaluateTogether = evaluateTogether
 
-	return yqlib.NewYamlDecoder(), nil
+	yqlibDecoder := format.DecoderFactory()
+	if yqlibDecoder == nil {
+		return nil, fmt.Errorf("no support for %s input format", inputFormat)
+	}
+	return yqlibDecoder, nil
 }
 
-func configurePrinterWriter(format yqlib.PrinterOutputFormat, out io.Writer) (yqlib.PrinterWriter, error) {
+func configurePrinterWriter(format *yqlib.Format, out io.Writer) (yqlib.PrinterWriter, error) {
 
 	var printerWriter yqlib.PrinterWriter
 
@@ -78,22 +139,30 @@ func configurePrinterWriter(format yqlib.PrinterOutputFormat, out io.Writer) (yq
 	return printerWriter, nil
 }
 
-func configureEncoder(format yqlib.PrinterOutputFormat) yqlib.Encoder {
-	switch format {
-	case yqlib.JSONOutputFormat:
-		return yqlib.NewJONEncoder(indent)
-	case yqlib.PropsOutputFormat:
-		return yqlib.NewPropertiesEncoder()
-	case yqlib.CSVOutputFormat:
-		return yqlib.NewCsvEncoder(',')
-	case yqlib.TSVOutputFormat:
-		return yqlib.NewCsvEncoder('\t')
-	case yqlib.YamlOutputFormat:
-		return yqlib.NewYamlEncoder(indent, colorsEnabled, !noDocSeparators, unwrapScalar)
-	case yqlib.XMLOutputFormat:
-		return yqlib.NewXMLEncoder(indent, xmlAttributePrefix, xmlContentName)
+func configureEncoder() (yqlib.Encoder, error) {
+	yqlibOutputFormat, err := yqlib.FormatFromString(outputFormat)
+	if err != nil {
+		return nil, err
 	}
-	panic("invalid encoder")
+	yqlib.ConfiguredXMLPreferences.Indent = indent
+	yqlib.ConfiguredYamlPreferences.Indent = indent
+	yqlib.ConfiguredJSONPreferences.Indent = indent
+
+	yqlib.ConfiguredYamlPreferences.UnwrapScalar = unwrapScalar
+	yqlib.ConfiguredPropertiesPreferences.UnwrapScalar = unwrapScalar
+	yqlib.ConfiguredJSONPreferences.UnwrapScalar = unwrapScalar
+
+	yqlib.ConfiguredYamlPreferences.ColorsEnabled = colorsEnabled
+	yqlib.ConfiguredJSONPreferences.ColorsEnabled = colorsEnabled
+
+	yqlib.ConfiguredYamlPreferences.PrintDocSeparators = !noDocSeparators
+
+	encoder := yqlibOutputFormat.EncoderFactory()
+
+	if encoder == nil {
+		return nil, fmt.Errorf("no support for %s output format", outputFormat)
+	}
+	return encoder, err
 }
 
 // this is a hack to enable backwards compatibility with githubactions (which pipe /dev/null into everything)
@@ -116,12 +185,18 @@ func maybeFile(str string) bool {
 	return result
 }
 
-func processStdInArgs(pipingStdin bool, args []string) []string {
+func processStdInArgs(args []string) []string {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		yqlib.GetLogger().Debugf("error getting stdin: %v", err)
+	}
+	pipingStdin := stat != nil && (stat.Mode()&os.ModeCharDevice) == 0
+
 	// if we've been given a file, don't automatically
 	// read from stdin.
 	// this happens if there is more than one argument
 	// or only one argument and its a file
-	if !pipingStdin || len(args) > 1 || (len(args) > 0 && maybeFile(args[0])) {
+	if nullInput || !pipingStdin || len(args) > 1 || (len(args) > 0 && maybeFile(args[0])) {
 		return args
 	}
 
@@ -137,17 +212,27 @@ func processStdInArgs(pipingStdin bool, args []string) []string {
 	return append(args, "-")
 }
 
-func processArgs(pipingStdin bool, originalArgs []string) (string, []string, error) {
+func processArgs(originalArgs []string) (string, []string, error) {
 	expression := forceExpression
+	args := processStdInArgs(originalArgs)
+	maybeFirstArgIsAFile := len(args) > 0 && maybeFile(args[0])
+
+	if expressionFile == "" && maybeFirstArgIsAFile && strings.HasSuffix(args[0], ".yq") {
+		// lets check if an expression file was given
+		yqlib.GetLogger().Debug("Assuming arg %v is an expression file", args[0])
+		expressionFile = args[0]
+		args = args[1:]
+	}
+
 	if expressionFile != "" {
 		expressionBytes, err := os.ReadFile(expressionFile)
 		if err != nil {
 			return "", nil, err
 		}
-		expression = string(expressionBytes)
+		//replace \r\n (windows) with good ol' unix file endings.
+		expression = strings.ReplaceAll(string(expressionBytes), "\r\n", "\n")
 	}
 
-	args := processStdInArgs(pipingStdin, originalArgs)
 	yqlib.GetLogger().Debugf("processed args: %v", args)
 	if expression == "" && len(args) > 0 && args[0] != "-" && !maybeFile(args[0]) {
 		yqlib.GetLogger().Debug("assuming expression is '%v'", args[0])
