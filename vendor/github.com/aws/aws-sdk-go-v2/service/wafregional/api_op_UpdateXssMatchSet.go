@@ -4,56 +4,57 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/wafregional/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Inserts or deletes XssMatchTuple objects (filters) in an
-// XssMatchSet. For each XssMatchTuple object, you specify the following values:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// *
-// Action: Whether to insert the object into or delete the object from the array.
-// To change an XssMatchTuple, you delete the existing object and add a new one.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// *
-// FieldToMatch: The part of web requests that you want AWS WAF to inspect and, if
-// you want AWS WAF to inspect a header or custom query parameter, the name of the
-// header or parameter.
+// Inserts or deletes XssMatchTuple objects (filters) in an XssMatchSet. For each XssMatchTuple object,
+// you specify the following values:
 //
-// * TextTransformation: Which text transformation, if any,
-// to perform on the web request before inspecting the request for cross-site
-// scripting attacks. You can only specify a single type of
-// TextTransformation.
+//   - Action : Whether to insert the object into or delete the object from the
+//     array. To change an XssMatchTuple , you delete the existing object and add a
+//     new one.
 //
-// You use XssMatchSet objects to specify which CloudFront
-// requests that you want to allow, block, or count. For example, if you're
-// receiving requests that contain cross-site scripting attacks in the request body
-// and you want to block the requests, you can create an XssMatchSet with the
-// applicable settings, and then configure AWS WAF to block the requests. To create
-// and configure an XssMatchSet, perform the following steps:
+//   - FieldToMatch : The part of web requests that you want AWS WAF to inspect
+//     and, if you want AWS WAF to inspect a header or custom query parameter, the name
+//     of the header or parameter.
 //
-// * Submit a
-// CreateXssMatchSet request.
+//   - TextTransformation : Which text transformation, if any, to perform on the
+//     web request before inspecting the request for cross-site scripting attacks.
 //
-// * Use GetChangeToken to get the change token that
-// you provide in the ChangeToken parameter of an UpdateIPSet request.
+// You can only specify a single type of TextTransformation.
 //
-// * Submit an
-// UpdateXssMatchSet request to specify the parts of web requests that you want AWS
-// WAF to inspect for cross-site scripting attacks.
+// You use XssMatchSet objects to specify which CloudFront requests that you want
+// to allow, block, or count. For example, if you're receiving requests that
+// contain cross-site scripting attacks in the request body and you want to block
+// the requests, you can create an XssMatchSet with the applicable settings, and
+// then configure AWS WAF to block the requests.
 //
-// For more information about how
-// to use the AWS WAF API to allow or block HTTP requests, see the AWS WAF
-// Developer Guide (https://docs.aws.amazon.com/waf/latest/developerguide/).
+// To create and configure an XssMatchSet , perform the following steps:
+//
+//   - Submit a CreateXssMatchSetrequest.
+//
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     an UpdateIPSetrequest.
+//
+//   - Submit an UpdateXssMatchSet request to specify the parts of web requests
+//     that you want AWS WAF to inspect for cross-site scripting attacks.
+//
+// For more information about how to use the AWS WAF API to allow or block HTTP
+// requests, see the [AWS WAF Developer Guide].
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/
 func (c *Client) UpdateXssMatchSet(ctx context.Context, params *UpdateXssMatchSetInput, optFns ...func(*Options)) (*UpdateXssMatchSetOutput, error) {
 	if params == nil {
 		params = &UpdateXssMatchSetInput{}
@@ -80,19 +81,20 @@ type UpdateXssMatchSetInput struct {
 	// An array of XssMatchSetUpdate objects that you want to insert into or delete
 	// from an XssMatchSet. For more information, see the applicable data types:
 	//
-	// *
-	// XssMatchSetUpdate: Contains Action and XssMatchTuple
+	// XssMatchSetUpdate
+	//   - : Contains Action and XssMatchTuple
 	//
-	// * XssMatchTuple: Contains
-	// FieldToMatch and TextTransformation
+	// XssMatchTuple
+	//   - : Contains FieldToMatch and TextTransformation
 	//
-	// * FieldToMatch: Contains Data and Type
+	// FieldToMatch
+	//   - : Contains Data and Type
 	//
 	// This member is required.
 	Updates []types.XssMatchSetUpdate
 
 	// The XssMatchSetId of the XssMatchSet that you want to update. XssMatchSetId is
-	// returned by CreateXssMatchSet and by ListXssMatchSets.
+	// returned by CreateXssMatchSetand by ListXssMatchSets.
 	//
 	// This member is required.
 	XssMatchSetId *string
@@ -115,6 +117,9 @@ type UpdateXssMatchSetOutput struct {
 }
 
 func (c *Client) addOperationUpdateXssMatchSetMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpUpdateXssMatchSet{}, middleware.After)
 	if err != nil {
 		return err
@@ -123,34 +128,41 @@ func (c *Client) addOperationUpdateXssMatchSetMiddlewares(stack *middleware.Stac
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "UpdateXssMatchSet"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -159,10 +171,25 @@ func (c *Client) addOperationUpdateXssMatchSetMiddlewares(stack *middleware.Stac
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpUpdateXssMatchSetValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opUpdateXssMatchSet(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -174,6 +201,21 @@ func (c *Client) addOperationUpdateXssMatchSetMiddlewares(stack *middleware.Stac
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -181,7 +223,6 @@ func newServiceMetadataMiddleware_opUpdateXssMatchSet(region string) *awsmiddlew
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "UpdateXssMatchSet",
 	}
 }

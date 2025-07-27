@@ -4,32 +4,36 @@ package wafregional
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This is AWS WAF Classic documentation. For more information, see AWS WAF Classic
-// (https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html)
-// in the developer guide. For the latest version of AWS WAF, use the AWS WAFV2 API
-// and see the AWS WAF Developer Guide
-// (https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html). With
-// the latest version, AWS WAF has a single set of endpoints for regional and
-// global use. Permanently deletes a RateBasedRule. You can't delete a rule if it's
-// still used in any WebACL objects or if it still includes any predicates, such as
-// ByteMatchSet objects. If you just want to remove a rule from a WebACL, use
-// UpdateWebACL. To permanently delete a RateBasedRule from AWS WAF, perform the
-// following steps:
+// This is AWS WAF Classic documentation. For more information, see [AWS WAF Classic] in the
+// developer guide.
 //
-// * Update the RateBasedRule to remove predicates, if any. For
-// more information, see UpdateRateBasedRule.
+// For the latest version of AWS WAF, use the AWS WAFV2 API and see the [AWS WAF Developer Guide]. With the
+// latest version, AWS WAF has a single set of endpoints for regional and global
+// use.
 //
-// * Use GetChangeToken to get the
-// change token that you provide in the ChangeToken parameter of a
-// DeleteRateBasedRule request.
+// Permanently deletes a RateBasedRule. You can't delete a rule if it's still used in any WebACL
+// objects or if it still includes any predicates, such as ByteMatchSet objects.
 //
-// * Submit a DeleteRateBasedRule request.
+// If you just want to remove a rule from a WebACL , use UpdateWebACL.
+//
+// To permanently delete a RateBasedRule from AWS WAF, perform the following steps:
+//
+//   - Update the RateBasedRule to remove predicates, if any. For more information,
+//     see UpdateRateBasedRule.
+//
+//   - Use GetChangeTokento get the change token that you provide in the ChangeToken parameter of
+//     a DeleteRateBasedRule request.
+//
+//   - Submit a DeleteRateBasedRule request.
+//
+// [AWS WAF Classic]: https://docs.aws.amazon.com/waf/latest/developerguide/classic-waf-chapter.html
+// [AWS WAF Developer Guide]: https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html
 func (c *Client) DeleteRateBasedRule(ctx context.Context, params *DeleteRateBasedRuleInput, optFns ...func(*Options)) (*DeleteRateBasedRuleOutput, error) {
 	if params == nil {
 		params = &DeleteRateBasedRuleInput{}
@@ -52,8 +56,7 @@ type DeleteRateBasedRuleInput struct {
 	// This member is required.
 	ChangeToken *string
 
-	// The RuleId of the RateBasedRule that you want to delete. RuleId is returned by
-	// CreateRateBasedRule and by ListRateBasedRules.
+	// The RuleId of the RateBasedRule that you want to delete. RuleId is returned by CreateRateBasedRule and by ListRateBasedRules.
 	//
 	// This member is required.
 	RuleId *string
@@ -63,9 +66,9 @@ type DeleteRateBasedRuleInput struct {
 
 type DeleteRateBasedRuleOutput struct {
 
-	// The ChangeToken that you used to submit the DeleteRateBasedRule request. You can
-	// also use this value to query the status of the request. For more information,
-	// see GetChangeTokenStatus.
+	// The ChangeToken that you used to submit the DeleteRateBasedRule request. You
+	// can also use this value to query the status of the request. For more
+	// information, see GetChangeTokenStatus.
 	ChangeToken *string
 
 	// Metadata pertaining to the operation's result.
@@ -75,6 +78,9 @@ type DeleteRateBasedRuleOutput struct {
 }
 
 func (c *Client) addOperationDeleteRateBasedRuleMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpDeleteRateBasedRule{}, middleware.After)
 	if err != nil {
 		return err
@@ -83,34 +89,41 @@ func (c *Client) addOperationDeleteRateBasedRuleMiddlewares(stack *middleware.St
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteRateBasedRule"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -119,10 +132,25 @@ func (c *Client) addOperationDeleteRateBasedRuleMiddlewares(stack *middleware.St
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpDeleteRateBasedRuleValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteRateBasedRule(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -134,6 +162,21 @@ func (c *Client) addOperationDeleteRateBasedRuleMiddlewares(stack *middleware.St
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -141,7 +184,6 @@ func newServiceMetadataMiddleware_opDeleteRateBasedRule(region string) *awsmiddl
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "waf-regional",
 		OperationName: "DeleteRateBasedRule",
 	}
 }

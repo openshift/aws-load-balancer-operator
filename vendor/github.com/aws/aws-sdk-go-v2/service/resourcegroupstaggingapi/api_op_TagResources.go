@@ -4,8 +4,8 @@ package resourcegroupstaggingapi
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -13,42 +13,40 @@ import (
 
 // Applies one or more tags to the specified resources. Note the following:
 //
-// * Not
-// all resources can have tags. For a list of services with resources that support
-// tagging using this operation, see Services that support the Resource Groups
-// Tagging API
-// (https://docs.aws.amazon.com/resourcegroupstagging/latest/APIReference/supported-services.html).
-// If the resource doesn't yet support this operation, the resource's service might
-// support tagging using its own API operations. For more information, refer to the
-// documentation for that service.
+//   - Not all resources can have tags. For a list of services with resources that
+//     support tagging using this operation, see [Services that support the Resource Groups Tagging API]. If the resource doesn't yet
+//     support this operation, the resource's service might support tagging using its
+//     own API operations. For more information, refer to the documentation for that
+//     service.
 //
-// * Each resource can have up to 50 tags. For
-// other limits, see Tag Naming and Usage Conventions
-// (https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions)
-// in the Amazon Web Services General Reference.
+//   - Each resource can have up to 50 tags. For other limits, see [Tag Naming and Usage Conventions]in the Amazon
+//     Web Services General Reference.
 //
-// * You can only tag resources that
-// are located in the specified Amazon Web Services Region for the Amazon Web
-// Services account.
+//   - You can only tag resources that are located in the specified Amazon Web
+//     Services Region for the Amazon Web Services account.
 //
-// * To add tags to a resource, you need the necessary
-// permissions for the service that the resource belongs to as well as permissions
-// for adding tags. For more information, see the documentation for each
-// service.
+//   - To add tags to a resource, you need the necessary permissions for the
+//     service that the resource belongs to as well as permissions for adding tags. For
+//     more information, see the documentation for each service.
 //
-// Do not store personally identifiable information (PII) or other
-// confidential or sensitive information in tags. We use tags to provide you with
-// billing and administration services. Tags are not intended to be used for
-// private or sensitive data. Minimum permissions In addition to the
-// tag:TagResources permission required by this operation, you must also have the
-// tagging permission defined by the service that created the resource. For
-// example, to tag an Amazon EC2 instance using the TagResources operation, you
-// must have both of the following permissions:
+// Do not store personally identifiable information (PII) or other confidential or
+// sensitive information in tags. We use tags to provide you with billing and
+// administration services. Tags are not intended to be used for private or
+// sensitive data.
 //
-// * tag:TagResource
+// # Minimum permissions
 //
-// *
-// ec2:CreateTags
+// In addition to the tag:TagResources permission required by this operation, you
+// must also have the tagging permission defined by the service that created the
+// resource. For example, to tag an Amazon EC2 instance using the TagResources
+// operation, you must have both of the following permissions:
+//
+//   - tag:TagResource
+//
+//   - ec2:CreateTags
+//
+// [Services that support the Resource Groups Tagging API]: https://docs.aws.amazon.com/resourcegroupstagging/latest/APIReference/supported-services.html
+// [Tag Naming and Usage Conventions]: https://docs.aws.amazon.com/general/latest/gr/aws_tagging.html#tag-conventions
 func (c *Client) TagResources(ctx context.Context, params *TagResourcesInput, optFns ...func(*Options)) (*TagResourcesOutput, error) {
 	if params == nil {
 		params = &TagResourcesInput{}
@@ -66,11 +64,12 @@ func (c *Client) TagResources(ctx context.Context, params *TagResourcesInput, op
 
 type TagResourcesInput struct {
 
-	// Specifies the list of ARNs of the resources that you want to apply tags to. An
-	// ARN (Amazon Resource Name) uniquely identifies a resource. For more information,
-	// see Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces
-	// (https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) in
-	// the Amazon Web Services General Reference.
+	// Specifies the list of ARNs of the resources that you want to apply tags to.
+	//
+	// An ARN (Amazon Resource Name) uniquely identifies a resource. For more
+	// information, see [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]in the Amazon Web Services General Reference.
+	//
+	// [Amazon Resource Names (ARNs) and Amazon Web Services Service Namespaces]: https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
 	//
 	// This member is required.
 	ResourceARNList []string
@@ -99,6 +98,9 @@ type TagResourcesOutput struct {
 }
 
 func (c *Client) addOperationTagResourcesMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsAwsjson11_serializeOpTagResources{}, middleware.After)
 	if err != nil {
 		return err
@@ -107,34 +109,41 @@ func (c *Client) addOperationTagResourcesMiddlewares(stack *middleware.Stack, op
 	if err != nil {
 		return err
 	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "TagResources"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
+		return err
+	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
+	if err = addClientRequestID(stack); err != nil {
 		return err
 	}
-	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
+	if err = addComputeContentLength(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
+	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetryMiddlewares(stack, options); err != nil {
+	if err = addRetry(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+	if err = addRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
+	if err = addRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
+	if err = addSpanRetryLoop(stack, options); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
@@ -143,10 +152,25 @@ func (c *Client) addOperationTagResourcesMiddlewares(stack *middleware.Stack, op
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addTimeOffsetBuild(stack, c); err != nil {
+		return err
+	}
+	if err = addUserAgentRetryMode(stack, options); err != nil {
+		return err
+	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpTagResourcesValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opTagResources(options.Region), middleware.Before); err != nil {
+		return err
+	}
+	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -158,6 +182,21 @@ func (c *Client) addOperationTagResourcesMiddlewares(stack *middleware.Stack, op
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addSpanInitializeStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanInitializeEnd(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestStart(stack); err != nil {
+		return err
+	}
+	if err = addSpanBuildRequestEnd(stack); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -165,7 +204,6 @@ func newServiceMetadataMiddleware_opTagResources(region string) *awsmiddleware.R
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "tagging",
 		OperationName: "TagResources",
 	}
 }

@@ -12,6 +12,8 @@ import (
 type WAFAssociatedItemException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -24,13 +26,57 @@ func (e *WAFAssociatedItemException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFAssociatedItemException) ErrorCode() string             { return "WAFAssociatedItemException" }
+func (e *WAFAssociatedItemException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFAssociatedItemException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFAssociatedItemException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The operation failed because you are inspecting the web request body, headers,
+// or cookies without specifying how to handle oversize components. Rules that
+// inspect the body must either provide an OversizeHandling configuration or they
+// must be preceded by a SizeConstraintStatement that blocks the body content from
+// being too large. Rules that inspect the headers or cookies must provide an
+// OversizeHandling configuration.
+//
+// Provide the handling configuration and retry your operation.
+//
+// Alternately, you can suppress this warning by adding the following tag to the
+// resource that you provide to this operation: Tag (key:
+// WAF:OversizeFieldsHandlingConstraintOptOut , value: true ).
+type WAFConfigurationWarningException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *WAFConfigurationWarningException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *WAFConfigurationWarningException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *WAFConfigurationWarningException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFConfigurationWarningException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *WAFConfigurationWarningException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // WAF couldn’t perform the operation because the resource that you tried to save
 // is a duplicate of an existing one.
 type WAFDuplicateItemException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -44,7 +90,12 @@ func (e *WAFDuplicateItemException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFDuplicateItemException) ErrorCode() string             { return "WAFDuplicateItemException" }
+func (e *WAFDuplicateItemException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFDuplicateItemException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFDuplicateItemException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The operation failed because the specified version for the managed rule group
@@ -52,6 +103,8 @@ func (e *WAFDuplicateItemException) ErrorFault() smithy.ErrorFault { return smit
 // by calling ListAvailableManagedRuleGroupVersions.
 type WAFExpiredManagedRuleGroupVersionException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -66,7 +119,10 @@ func (e *WAFExpiredManagedRuleGroupVersionException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *WAFExpiredManagedRuleGroupVersionException) ErrorCode() string {
-	return "WAFExpiredManagedRuleGroupVersionException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFExpiredManagedRuleGroupVersionException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *WAFExpiredManagedRuleGroupVersionException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -76,6 +132,8 @@ func (e *WAFExpiredManagedRuleGroupVersionException) ErrorFault() smithy.ErrorFa
 // system problem. Retry your request.
 type WAFInternalErrorException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -89,12 +147,19 @@ func (e *WAFInternalErrorException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFInternalErrorException) ErrorCode() string             { return "WAFInternalErrorException" }
+func (e *WAFInternalErrorException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFInternalErrorException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFInternalErrorException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
 // The operation isn't valid.
 type WAFInvalidOperationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -108,26 +173,31 @@ func (e *WAFInvalidOperationException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFInvalidOperationException) ErrorCode() string             { return "WAFInvalidOperationException" }
+func (e *WAFInvalidOperationException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFInvalidOperationException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFInvalidOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The operation failed because WAF didn't recognize a parameter in the request.
 // For example:
 //
-// * You specified a parameter name or value that isn't valid.
+//   - You specified a parameter name or value that isn't valid.
 //
-// *
-// Your nested statement isn't valid. You might have tried to nest a statement that
-// can’t be nested.
+//   - Your nested statement isn't valid. You might have tried to nest a statement
+//     that can’t be nested.
 //
-// * You tried to update a WebACL with a DefaultAction that isn't
-// among the types available at DefaultAction.
+//   - You tried to update a WebACL with a DefaultAction that isn't among the types
+//     available at DefaultAction.
 //
-// * Your request references an ARN
-// that is malformed, or corresponds to a resource with which a web ACL can't be
-// associated.
+//   - Your request references an ARN that is malformed, or corresponds to a
+//     resource with which a web ACL can't be associated.
 type WAFInvalidParameterException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	Field     ParameterExceptionField
 	Parameter *string
@@ -145,33 +215,38 @@ func (e *WAFInvalidParameterException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFInvalidParameterException) ErrorCode() string             { return "WAFInvalidParameterException" }
+func (e *WAFInvalidParameterException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFInvalidParameterException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFInvalidParameterException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The operation failed because the specified policy isn't in the proper format.
+//
 // The policy specifications must conform to the following:
 //
-// * The policy must be
-// composed using IAM Policy version 2012-10-17 or version 2015-01-01.
+//   - The policy must be composed using IAM Policy version 2012-10-17.
 //
-// * The
-// policy must include specifications for Effect, Action, and Principal.
+//   - The policy must include specifications for Effect , Action , and Principal .
 //
-// * Effect
-// must specify Allow.
+//   - Effect must specify Allow .
 //
-// * Action must specify wafv2:CreateWebACL,
-// wafv2:UpdateWebACL, and wafv2:PutFirewallManagerRuleGroups and may optionally
-// specify wafv2:GetRuleGroup. WAF rejects any extra actions or wildcard actions in
-// the policy.
+//   - Action must specify wafv2:CreateWebACL , wafv2:UpdateWebACL , and
+//     wafv2:PutFirewallManagerRuleGroups and may optionally specify
+//     wafv2:GetRuleGroup . WAF rejects any extra actions or wildcard actions in the
+//     policy.
 //
-// * The policy must not include a Resource parameter.
+//   - The policy must not include a Resource parameter.
 //
-// For more
-// information, see IAM Policies
-// (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html).
+// For more information, see [IAM Policies].
+//
+// [IAM Policies]: https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html
 type WAFInvalidPermissionPolicyException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -186,16 +261,21 @@ func (e *WAFInvalidPermissionPolicyException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *WAFInvalidPermissionPolicyException) ErrorCode() string {
-	return "WAFInvalidPermissionPolicyException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFInvalidPermissionPolicyException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *WAFInvalidPermissionPolicyException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
 
-// WAF couldn’t perform the operation because the resource that you requested isn’t
-// valid. Check the resource, and try again.
+// WAF couldn’t perform the operation because the resource that you requested
+// isn’t valid. Check the resource, and try again.
 type WAFInvalidResourceException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -209,16 +289,26 @@ func (e *WAFInvalidResourceException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFInvalidResourceException) ErrorCode() string             { return "WAFInvalidResourceException" }
+func (e *WAFInvalidResourceException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFInvalidResourceException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFInvalidResourceException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
-// WAF couldn’t perform the operation because you exceeded your resource limit. For
-// example, the maximum number of WebACL objects that you can create for an Amazon
-// Web Services account. For more information, see WAF quotas
-// (https://docs.aws.amazon.com/waf/latest/developerguide/limits.html) in the WAF
-// Developer Guide.
+// WAF couldn’t perform the operation because you exceeded your resource limit.
+// For example, the maximum number of WebACL objects that you can create for an
+// Amazon Web Services account. For more information, see [WAF quotas]in the WAF Developer
+// Guide.
+//
+// [WAF quotas]: https://docs.aws.amazon.com/waf/latest/developerguide/limits.html
 type WAFLimitsExceededException struct {
 	Message *string
+
+	ErrorCodeOverride *string
+
+	SourceType *string
 
 	noSmithyDocumentSerde
 }
@@ -232,15 +322,22 @@ func (e *WAFLimitsExceededException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFLimitsExceededException) ErrorCode() string             { return "WAFLimitsExceededException" }
+func (e *WAFLimitsExceededException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFLimitsExceededException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFLimitsExceededException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The operation failed because you don't have the permissions that your logging
-// configuration requires. For information, see Logging web ACL traffic information
-// (https://docs.aws.amazon.com/waf/latest/developerguide/logging.html) in the WAF
-// Developer Guide.
+// configuration requires. For information, see [Logging web ACL traffic information]in the WAF Developer Guide.
+//
+// [Logging web ACL traffic information]: https://docs.aws.amazon.com/waf/latest/developerguide/logging.html
 type WAFLogDestinationPermissionIssueException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -255,15 +352,23 @@ func (e *WAFLogDestinationPermissionIssueException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *WAFLogDestinationPermissionIssueException) ErrorCode() string {
-	return "WAFLogDestinationPermissionIssueException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFLogDestinationPermissionIssueException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *WAFLogDestinationPermissionIssueException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
 }
 
-// WAF couldn’t perform the operation because your resource doesn’t exist.
+// WAF couldn’t perform the operation because your resource doesn't exist. If
+// you've just created a resource that you're using in this operation, you might
+// just need to wait a few minutes. It can take from a few seconds to a number of
+// minutes for changes to propagate.
 type WAFNonexistentItemException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -277,7 +382,12 @@ func (e *WAFNonexistentItemException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFNonexistentItemException) ErrorCode() string             { return "WAFNonexistentItemException" }
+func (e *WAFNonexistentItemException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFNonexistentItemException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFNonexistentItemException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // WAF couldn’t save your changes because you tried to update or delete a resource
@@ -285,6 +395,8 @@ func (e *WAFNonexistentItemException) ErrorFault() smithy.ErrorFault { return sm
 // changes you need to make to the new copy, and retry your operation.
 type WAFOptimisticLockException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -298,19 +410,26 @@ func (e *WAFOptimisticLockException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFOptimisticLockException) ErrorCode() string             { return "WAFOptimisticLockException" }
+func (e *WAFOptimisticLockException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFOptimisticLockException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFOptimisticLockException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // WAF is not able to access the service linked role. This can be caused by a
-// previous PutLoggingConfiguration request, which can lock the service linked role
-// for about 20 seconds. Please try your request again. The service linked role can
-// also be locked by a previous DeleteServiceLinkedRole request, which can lock the
-// role for 15 minutes or more. If you recently made a call to
-// DeleteServiceLinkedRole, wait at least 15 minutes and try the request again. If
+// previous PutLoggingConfiguration request, which can lock the service linked
+// role for about 20 seconds. Please try your request again. The service linked
+// role can also be locked by a previous DeleteServiceLinkedRole request, which
+// can lock the role for 15 minutes or more. If you recently made a call to
+// DeleteServiceLinkedRole , wait at least 15 minutes and try the request again. If
 // you receive this same exception again, you will have to wait additional time
 // until the role is unlocked.
 type WAFServiceLinkedRoleErrorException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -325,7 +444,10 @@ func (e *WAFServiceLinkedRoleErrorException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *WAFServiceLinkedRoleErrorException) ErrorCode() string {
-	return "WAFServiceLinkedRoleErrorException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFServiceLinkedRoleErrorException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *WAFServiceLinkedRoleErrorException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -335,6 +457,8 @@ func (e *WAFServiceLinkedRoleErrorException) ErrorFault() smithy.ErrorFault {
 // aren't subscribed to it yet.
 type WAFSubscriptionNotFoundException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -349,13 +473,18 @@ func (e *WAFSubscriptionNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *WAFSubscriptionNotFoundException) ErrorCode() string {
-	return "WAFSubscriptionNotFoundException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFSubscriptionNotFoundException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *WAFSubscriptionNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // An error occurred during the tagging operation. Retry your request.
 type WAFTagOperationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -369,13 +498,20 @@ func (e *WAFTagOperationException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFTagOperationException) ErrorCode() string             { return "WAFTagOperationException" }
+func (e *WAFTagOperationException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFTagOperationException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFTagOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // WAF couldn’t perform your tagging operation because of an internal error. Retry
 // your request.
 type WAFTagOperationInternalErrorException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -390,15 +526,24 @@ func (e *WAFTagOperationInternalErrorException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *WAFTagOperationInternalErrorException) ErrorCode() string {
-	return "WAFTagOperationInternalErrorException"
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFTagOperationInternalErrorException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *WAFTagOperationInternalErrorException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultServer
 }
 
-// WAF couldn’t retrieve the resource that you requested. Retry your request.
+// WAF couldn’t retrieve a resource that you specified for this operation. If
+// you've just created a resource that you're using in this operation, you might
+// just need to wait a few minutes. It can take from a few seconds to a number of
+// minutes for changes to propagate. Verify the resource specifications in your
+// request parameters and then retry the operation.
 type WAFUnavailableEntityException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -412,5 +557,40 @@ func (e *WAFUnavailableEntityException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *WAFUnavailableEntityException) ErrorCode() string             { return "WAFUnavailableEntityException" }
+func (e *WAFUnavailableEntityException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFUnavailableEntityException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *WAFUnavailableEntityException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
+// The rule that you've named doesn't aggregate solely on the IP address or solely
+// on the forwarded IP address. This call is only available for rate-based rules
+// with an AggregateKeyType setting of IP or FORWARDED_IP .
+type WAFUnsupportedAggregateKeyTypeException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *WAFUnsupportedAggregateKeyTypeException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *WAFUnsupportedAggregateKeyTypeException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *WAFUnsupportedAggregateKeyTypeException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "WAFUnsupportedAggregateKeyTypeException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *WAFUnsupportedAggregateKeyTypeException) ErrorFault() smithy.ErrorFault {
+	return smithy.FaultClient
+}
