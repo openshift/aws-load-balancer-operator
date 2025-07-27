@@ -1,9 +1,14 @@
-FROM golang:1.18.0
+FROM golang:1.24.5
+
+RUN apt-get update && \
+    apt-get install -y npm && \
+    npm install -g npx cspell@latest
 
 COPY scripts/devtools.sh /opt/devtools.sh
 
-RUN set -e -x \
-    && /opt/devtools.sh
+RUN set -e -x && \
+    /opt/devtools.sh
+
 ENV PATH=/go/bin:$PATH
 
 ENV CGO_ENABLED 0

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/copier"
-	"gopkg.in/yaml.v3"
+	logging "gopkg.in/op/go-logging.v1"
 )
 
 type operatorHandler func(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error)
@@ -18,17 +18,28 @@ func compoundAssignFunction(d *dataTreeNavigator, context Context, expressionNod
 		return Context{}, err
 	}
 
-	assignmentOp := &Operation{OperationType: assignOpType, Preferences: expressionNode.Operation.Preferences}
+	// tricky logic when we are running *= with flags.
+	// we have an op like: .a *=nc .b
+	// which should roughly translate to .a =c .a *nc .b
+	// note that the 'n' flag only applies to the multiple op, not the assignment
+	// but the clobber flag applies to both!
+
+	prefs := assignPreferences{}
+	switch typedPref := expressionNode.Operation.Preferences.(type) {
+	case assignPreferences:
+		prefs = typedPref
+	case multiplyPreferences:
+		prefs.ClobberCustomTags = typedPref.AssignPrefs.ClobberCustomTags
+	}
+
+	assignmentOp := &Operation{OperationType: assignOpType, Preferences: prefs}
 
 	for el := lhs.MatchingNodes.Front(); el != nil; el = el.Next() {
 		candidate := el.Value.(*CandidateNode)
-		clone, err := candidate.Copy()
-		if err != nil {
-			return Context{}, err
-		}
-		valueCopyExp := &ExpressionNode{Operation: &Operation{OperationType: valueOpType, CandidateNode: clone}}
+		clone := candidate.Copy()
+		valueCopyExp := &ExpressionNode{Operation: &Operation{OperationType: referenceOpType, CandidateNode: clone}}
 
-		valueExpression := &ExpressionNode{Operation: &Operation{OperationType: valueOpType, CandidateNode: candidate}}
+		valueExpression := &ExpressionNode{Operation: &Operation{OperationType: referenceOpType, CandidateNode: candidate}}
 
 		assignmentOpNode := &ExpressionNode{Operation: assignmentOp, LHS: valueExpression, RHS: calculation(valueCopyExp, expressionNode.RHS)}
 
@@ -40,14 +51,7 @@ func compoundAssignFunction(d *dataTreeNavigator, context Context, expressionNod
 	return context, nil
 }
 
-func unwrapDoc(node *yaml.Node) *yaml.Node {
-	if node.Kind == yaml.DocumentNode {
-		return node.Content[0]
-	}
-	return node
-}
-
-func emptyOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+func emptyOperator(_ *dataTreeNavigator, context Context, _ *ExpressionNode) (Context, error) {
 	context.MatchingNodes = list.New()
 	return context, nil
 }
@@ -83,8 +87,10 @@ func resultsForRHS(d *dataTreeNavigator, context Context, lhsCandidate *Candidat
 	}
 
 	for rightEl := rhs.MatchingNodes.Front(); rightEl != nil; rightEl = rightEl.Next() {
-		log.Debugf("Applying calc")
 		rhsCandidate := rightEl.Value.(*CandidateNode)
+		if !log.IsEnabledFor(logging.DEBUG) {
+			log.Debugf("Applying lhs: %v, rhsCandidate, %v", NodeToString(lhsCandidate), NodeToString(rhsCandidate))
+		}
 		resultCandidate, err := prefs.Calculation(d, context, lhsCandidate, rhsCandidate)
 		if err != nil {
 			return err
@@ -112,7 +118,7 @@ func doCrossFunc(d *dataTreeNavigator, context Context, expressionNode *Expressi
 	}
 	log.Debugf("crossFunction LHS len: %v", lhs.MatchingNodes.Len())
 
-	if prefs.CalcWhenEmpty && lhs.MatchingNodes.Len() == 0 {
+	if prefs.CalcWhenEmpty && context.MatchingNodes.Len() > 0 && lhs.MatchingNodes.Len() == 0 {
 		err := resultsForRHS(d, context, nil, prefs, expressionNode.RHS, results)
 		if err != nil {
 			return Context{}, err
@@ -170,8 +176,13 @@ func createBooleanCandidate(owner *CandidateNode, value bool) *CandidateNode {
 	if !value {
 		valString = "false"
 	}
-	node := &yaml.Node{Kind: yaml.ScalarNode, Value: valString, Tag: "!!bool"}
-	return owner.CreateReplacement(node)
+	noob := owner.CreateReplacement(ScalarNode, "!!bool", valString)
+	if owner.IsMapKey {
+		noob.IsMapKey = false
+		noob.Key = owner
+	}
+
+	return noob
 }
 
 func createTraversalTree(path []interface{}, traversePrefs traversePreferences, targetKey bool) *ExpressionNode {

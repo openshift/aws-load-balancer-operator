@@ -1,16 +1,16 @@
-FROM golang:1.18.0 as builder
+FROM golang:1.24.5 AS builder
 
 WORKDIR /go/src/mikefarah/yq
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build .
+RUN CGO_ENABLED=0 go build -ldflags "-s -w" .
 # RUN ./scripts/test.sh -- this too often times out in the github pipeline.
 RUN ./scripts/acceptance.sh
 
 # Choose alpine as a base image to make this useful for CI, as many
 # CI tools expect an interactive shell inside the container
-FROM alpine:3 as production
+FROM alpine:3 AS production
 LABEL maintainer="Mike Farah <mikefarah@users.noreply.github.com>"
 
 COPY --from=builder /go/src/mikefarah/yq/yq /usr/bin/yq
