@@ -739,8 +739,8 @@ github.com/ryancurrah/gomodguard
 # github.com/ryanrolds/sqlclosecheck v0.4.0
 ## explicit; go 1.19
 github.com/ryanrolds/sqlclosecheck/pkg/analyzer
-# github.com/sanposhiho/wastedassign/v2 v2.0.7
-## explicit; go 1.14
+# github.com/sanposhiho/wastedassign/v2 v2.1.0
+## explicit; go 1.18
 github.com/sanposhiho/wastedassign/v2
 # github.com/sashamelentyev/interfacebloat v1.1.0
 ## explicit; go 1.18
