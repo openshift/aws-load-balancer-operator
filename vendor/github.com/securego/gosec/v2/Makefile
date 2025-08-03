@@ -11,29 +11,32 @@ endif
 BUILDFLAGS := "-w -s -X 'main.Version=$(GIT_TAG)' -X 'main.GitTag=$(GIT_TAG)' -X 'main.BuildDate=$(BUILD_DATE)'"
 CGO_ENABLED = 0
 GO := GO111MODULE=on go
-GO_NOMOD :=GO111MODULE=off go
 GOPATH ?= $(shell $(GO) env GOPATH)
 GOBIN ?= $(GOPATH)/bin
 GOSEC ?= $(GOBIN)/gosec
 GINKGO ?= $(GOBIN)/ginkgo
 GO_MINOR_VERSION = $(shell $(GO) version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
 GOVULN_MIN_VERSION = 17
-GO_VERSION = 1.20
+GO_VERSION = 1.24
+LDFLAGS = -ldflags "\
+	-X 'main.Version=$(shell git describe --tags --always)' \
+	-X 'main.GitTag=$(shell git describe --tags --abbrev=0)' \
+	-X 'main.BuildDate=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)'"
 
 default:
 	$(MAKE) build
 
 install-test-deps:
 	go install github.com/onsi/ginkgo/v2/ginkgo@latest
-	$(GO_NOMOD) get -u golang.org/x/crypto/ssh
-	$(GO_NOMOD) get -u github.com/lib/pq
+	go install golang.org/x/crypto/...@latest
+	go install github.com/lib/pq/...@latest
 
 install-govulncheck:
 	@if [ $(GO_MINOR_VERSION) -gt $(GOVULN_MIN_VERSION) ]; then \
 		go install golang.org/x/vuln/cmd/govulncheck@latest; \
 	fi
 
-test: install-test-deps build fmt vet sec govulncheck
+test: install-test-deps build-race fmt vet sec govulncheck
 	$(GINKGO) -v --fail-fast
 
 fmt:
@@ -63,10 +66,13 @@ test-coverage: install-test-deps
 	go test -race -v -count=1 -coverprofile=coverage.out ./...
 
 build:
-	go build -o $(BIN) ./cmd/gosec/
+	go build $(LDFLAGS) -o $(BIN) ./cmd/gosec/
+
+build-race:
+	go build -race $(LDFLAGS) -o $(BIN) ./cmd/gosec/
 
 clean:
-	rm -rf build vendor dist coverage.txt
+	rm -rf build vendor dist coverage.out
 	rm -f release image $(BIN)
 
 release:
@@ -74,7 +80,7 @@ release:
 	goreleaser release
 
 build-linux:
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux GOARCH=amd64 go build -ldflags=$(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=linux go build -ldflags=$(BUILDFLAGS) -o $(BIN) ./cmd/gosec/
 
 image:
 	@echo "Building the Docker image..."
@@ -87,4 +93,10 @@ image-push: image
 	docker push $(IMAGE_REPO)/$(BIN):$(GIT_TAG)
 	docker push $(IMAGE_REPO)/$(BIN):latest
 
-.PHONY: test build clean release image image-push
+tlsconfig:
+	go generate ./...
+
+perf-diff:
+	./perf-diff.sh
+
+.PHONY: test build clean release image image-push tlsconfig perf-diff
