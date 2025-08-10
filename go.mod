@@ -17,7 +17,7 @@ require (
 	github.com/mikefarah/yq/v4 v4.24.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.32.0
-	github.com/openshift/api v0.0.0-20240812094746-86145edb40cf
+	github.com/openshift/api c974eeafe3f1
 	github.com/openshift/cloud-credential-operator v0.0.0-20230816031419-2c3298b1bb3a
 	github.com/operator-framework/operator-lib v0.11.0
 	github.com/spf13/cobra v1.8.0
