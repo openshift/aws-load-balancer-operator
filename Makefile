@@ -294,6 +294,9 @@ CATALOG_IMG ?= $(BUNDLE_TAG_BASE)-catalog:v$(BUNDLE_VERSION)
 # Directory for the file based catalog.
 CATALOG_DIR := catalog
 
+# Catalog version subdirectory based on BUNDLE_VERSION (used by Konflux)
+CATALOG_VERSION_DIR := aws-lb-optr-$(shell echo $(BUNDLE_VERSION) | sed 's/\([0-9]*\)\.\([0-9]*\)\..*/\1-\2/')
+
 # Directory for the aws-load-balancer-operator package files.
 PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
 
@@ -301,6 +304,14 @@ PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
 catalog: opm
 	$(OPM) render $(BUNDLE_IMG) -o yaml > $(PACKAGE_DIR)/bundle.yaml
 	$(OPM) validate $(CATALOG_DIR)
+
+.PHONY: generate-catalog
+generate-catalog: opm
+	@echo "### Generating FBC catalog from template for version $(BUNDLE_VERSION) ###"
+	@echo "### Using catalog directory: $(CATALOG_DIR)/$(CATALOG_VERSION_DIR) ###"
+	@mkdir -p $(CATALOG_DIR)/$(CATALOG_VERSION_DIR)
+	@$(OPM) alpha render-template basic -o yaml $(CATALOG_DIR)/catalog-template.yaml > $(CATALOG_DIR)/$(CATALOG_VERSION_DIR)/catalog.yaml
+	@echo "### FBC catalog generated successfully ###"
 
 .PHONY: catalog-build
 catalog-build: catalog
