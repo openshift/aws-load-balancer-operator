@@ -7,8 +7,7 @@
 set -x
 set -e
 
-VERSION=$(cat VERSION)
-export VERSION
+export VERSION=$(cat VERSION)
 
 source ./container_digest.sh
 source ./bundle_vars.sh
