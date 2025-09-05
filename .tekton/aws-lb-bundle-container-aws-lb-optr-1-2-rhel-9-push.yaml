@@ -8,7 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main"
+      == "main" && body.repository.full_name == "openshift/aws-load-balancer-operator"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: aws-lb-optr-1-2-rhel-9
