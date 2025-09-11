@@ -38,8 +38,8 @@ sed -i -e "s|openshift.io/aws-load-balancer-operator:latest|${OPERATOR_IMAGE_PUL
        -e "s|docker.io/amazon/aws-alb-ingress-controller:.*$|${OPERAND_IMAGE_PULLSPEC}|g" \
        -e "s|quay.io/aws-load-balancer-operator/aws-load-balancer-controller:.*$|${OPERAND_IMAGE_PULLSPEC}|g" \
        -e "s|quay.io/aws-load-balancer-operator/aws-load-balancer-controller@.*$|${OPERAND_IMAGE_PULLSPEC}|g" \
-       -e "s|gcr.io/kubebuilder/kube-rbac-proxy:.*$|registry.redhat.io/openshift4/ose-kube-rbac-proxy:${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}|g" \
-       -e "s|quay.io/openshift/origin-kube-rbac-proxy:.*$|registry.redhat.io/openshift4/ose-kube-rbac-proxy:${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}|g" "${CSV_FILE}"
+       -e "s|gcr.io/kubebuilder/kube-rbac-proxy:.*$|${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}|g" \
+       -e "s|quay.io/openshift/origin-kube-rbac-proxy:.*$|${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}|g" "${CSV_FILE}"
 
 export EPOC_TIMESTAMP=$(date +%s)
 export TARGET_CSV_FILE="${CSV_FILE}"
