@@ -1,0 +1,12 @@
+entries:
+  - defaultChannel: stable-v1
+    name: aws-load-balancer-operator
+    schema: olm.package
+  - entries:
+      - name: aws-load-balancer-operator.v1.2.0
+    name: stable-v1.2
+    package: aws-load-balancer-operator
+    schema: olm.channel
+  - image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-2-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-2-rhel-9@sha256:15d35bf88843a1d9b7f04d22eadccbd2283ee8579b7cf6424bd5b7ffe30fa182
+    schema: olm.bundle
+schema: olm.template.basic
