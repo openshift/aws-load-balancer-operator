@@ -1,6 +1,6 @@
 # Do not remove comment lines, they are there to reduce conflicts
 # Operator
-export OPERATOR_IMAGE_PULLSPEC='quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-2-rhel-9/aws-load-balancer-operator-container-aws-lb-optr-1-2-rhel-9@sha256:937c802224e8283f79186d3e849ebb2ed5a0d91d25346bd1b9a0e5fdc94ef806'
+export OPERATOR_IMAGE_PULLSPEC='quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-2-rhel-9/aws-load-balancer-operator-container-aws-lb-optr-1-2-rhel-9@sha256:f78ffc98b08e230828024c3ca6226ef73de1ceca09d12083d600a09342474d74'
 # Controller
 export OPERAND_IMAGE_PULLSPEC='quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-2-rhel-9/aws-load-balancer-controller-container-aws-lb-optr-1-2-rhel-9@sha256:1de0313bc3bcfe9f4d7a531338f5a3df63bdd3f7f1b4371e1b7c309c16ff5a90'
 # kube-rbac-proxy
