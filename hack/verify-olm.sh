@@ -14,6 +14,7 @@ function print_failure {
 if [ "${OPENSHIFT_CI:-false}" = true ]; then
   echo "> generating the OLM bundle and catalog"
   make bundle catalog
+  make generate-catalog
   test -z "$(git status --porcelain | \grep -v '^??')" || print_failure
   echo "> verified generated bundle and catalog"
 fi
