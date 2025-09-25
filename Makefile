@@ -3,14 +3,14 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the BUNDLE_VERSION as arg of the bundle target (e.g make bundle BUNDLE_VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export BUNDLE_VERSION=0.0.2)
-BUNDLE_VERSION ?= 1.2.0
+BUNDLE_VERSION ?= 1.3.0
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
 # - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=candidate,fast,stable)
 # - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
-CHANNELS = "stable-v1.2,stable-v1"
+CHANNELS = "stable-v1.3,stable-v1"
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
@@ -68,7 +68,7 @@ CONTAINER_ENGINE ?= docker
 
 OPERATOR_SDK_VERSION = v1.17.0
 
-OPM_VERSION = v1.31.0
+OPM_VERSION = v1.59.0
 
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
 ## iamctl vars
@@ -294,8 +294,16 @@ CATALOG_IMG ?= $(BUNDLE_TAG_BASE)-catalog:v$(BUNDLE_VERSION)
 # Directory for the file based catalog.
 CATALOG_DIR := catalog
 
+# Catalog version subdirectory based on BUNDLE_VERSION (used by Konflux)
+CATALOG_VERSION_DIR := aws-lb-optr-$(shell echo $(BUNDLE_VERSION) | sed 's/\([0-9]*\)\.\([0-9]*\)\..*/\1-\2/')
+
 # Directory for the aws-load-balancer-operator package files.
 PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
+
+.PHONY: generate-catalog
+generate-catalog: opm
+	@mkdir -p $(CATALOG_DIR)/$(CATALOG_VERSION_DIR)
+	@$(OPM) alpha render-template basic -o yaml $(CATALOG_DIR)/catalog-template.yaml > $(CATALOG_DIR)/$(CATALOG_VERSION_DIR)/catalog.yaml
 
 .PHONY: catalog
 catalog: opm
