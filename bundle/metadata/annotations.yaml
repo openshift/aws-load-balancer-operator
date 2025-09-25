@@ -4,7 +4,7 @@ annotations:
   operators.operatorframework.io.bundle.manifests.v1: manifests/
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: aws-load-balancer-operator
-  operators.operatorframework.io.bundle.channels.v1: stable-v1.2,stable-v1
+  operators.operatorframework.io.bundle.channels.v1: stable-v1.3,stable-v1
   operators.operatorframework.io.bundle.channel.default.v1: stable-v1
   operators.operatorframework.io.metrics.builder: operator-sdk-v1.16.0+git
   operators.operatorframework.io.metrics.mediatype.v1: metrics+v1
