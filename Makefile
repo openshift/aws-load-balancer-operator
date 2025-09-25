@@ -68,7 +68,7 @@ CONTAINER_ENGINE ?= docker
 
 OPERATOR_SDK_VERSION = v1.17.0
 
-OPM_VERSION = v1.31.0
+OPM_VERSION = v1.52.0
 
 GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
 ## iamctl vars
@@ -295,13 +295,21 @@ CATALOG_IMG ?= $(BUNDLE_TAG_BASE)-catalog:v$(BUNDLE_VERSION)
 # Directory for the file based catalog.
 CATALOG_DIR := catalog
 
+# Catalog version subdirectory based on BUNDLE_VERSION (used by Konflux)
+CATALOG_VERSION_DIR := aws-lb-optr-$(shell echo $(BUNDLE_VERSION) | sed 's/\([0-9]*\)\.\([0-9]*\)\..*/\1-\2/')
+
 # Directory for the aws-load-balancer-operator package files.
 PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
+
+.PHONY: generate-catalog
+generate-catalog: opm ## Generate catalog for the Konflux-built operator
+	mkdir -p $(CATALOG_DIR)/$(CATALOG_VERSION_DIR)
+	$(OPM) alpha render-template basic -o yaml $(CATALOG_DIR)/catalog-template.yaml > $(CATALOG_DIR)/$(CATALOG_VERSION_DIR)/catalog.yaml
 
 .PHONY: catalog
 catalog: opm
 	$(OPM) render $(BUNDLE_IMG) -o yaml > $(PACKAGE_DIR)/bundle.yaml
-	$(OPM) validate $(CATALOG_DIR)
+	$(OPM) validate $(PACKAGE_DIR)
 
 .PHONY: catalog-build
 catalog-build: catalog
