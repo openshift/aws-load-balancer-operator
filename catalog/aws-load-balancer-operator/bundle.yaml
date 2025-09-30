@@ -1,5 +1,5 @@
 ---
-image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:v1.2.0
+image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:latest
 name: aws-load-balancer-operator.v1.2.0
 package: aws-load-balancer-operator
 properties:
@@ -175,7 +175,7 @@ properties:
 relatedImages:
 - image: openshift.io/aws-load-balancer-operator:latest
   name: ""
-- image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:v1.2.0
+- image: quay.io/aws-load-balancer-operator/aws-load-balancer-operator-bundle:latest
   name: ""
 - image: quay.io/openshift/origin-kube-rbac-proxy:latest
   name: ""
