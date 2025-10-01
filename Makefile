@@ -35,7 +35,7 @@ BUNDLE_TAG_BASE ?= quay.io/aws-load-balancer-operator/aws-load-balancer-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= $(BUNDLE_TAG_BASE)-bundle:v$(BUNDLE_VERSION)
+BUNDLE_IMG ?= $(BUNDLE_TAG_BASE)-bundle:latest
 
 # IMAGE_TAG_BASE defines the docker.io namespace and part of the image name for the operator image.
 IMAGE_TAG_BASE ?= openshift.io/aws-load-balancer-operator
