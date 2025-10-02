@@ -264,6 +264,10 @@ bundle: operator-sdk manifests ## Generate bundle manifests and metadata, then v
 	sed -i "s/\(olm\.skipRange: <\).*/\1$(BUNDLE_VERSION)/" bundle/manifests/aws-load-balancer-operator.clusterserviceversion.yaml
 	$(OPERATOR_SDK) bundle validate ./bundle
 
+.PHONY: set-version
+set-version: ## Sync VERSION for all Konflux Containerfiles.
+	@./hack/sync-version.sh
+
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
 	$(CONTAINER_ENGINE) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
@@ -321,6 +325,7 @@ verify: verify-vendored-crds
 	hack/verify-generated.sh
 	hack/verify-gofmt.sh
 	hack/verify-olm.sh
+	hack/verify-version.sh
 
 .PHONY: lint
 lint:
