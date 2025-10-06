@@ -26,10 +26,15 @@ COPY . /workspace
 RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o manager main.go
 
 FROM registry.access.redhat.com/ubi9/ubi:9.6-1751287003
+ARG FULL_COMMIT
+ARG GIT_URL
 LABEL maintainer="Red Hat, Inc."
 LABEL com.redhat.component="aws-load-balancer-operator-container"
 LABEL name="aws-load-balancer-operator"
 LABEL version="1.3.0"
+LABEL io.openshift.build.commit.id=${FULL_COMMIT}
+LABEL io.openshift.build.source-location=${GIT_URL}
+LABEL io.openshift.build.commit.url=${GIT_URL}/commit/${FULL_COMMIT}
 WORKDIR /
 COPY --from=builder /workspace/manager /
 USER 65532:65532
