@@ -26,8 +26,11 @@ COPY . /workspace
 RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o manager main.go
 
 FROM registry.access.redhat.com/ubi9/ubi:9.6-1751287003
+
+# Define build arguments to receive dynamic values
 ARG FULL_COMMIT
 ARG GIT_URL
+
 LABEL maintainer="Red Hat, Inc."
 LABEL com.redhat.component="aws-load-balancer-operator-container"
 LABEL name="aws-load-balancer-operator"
