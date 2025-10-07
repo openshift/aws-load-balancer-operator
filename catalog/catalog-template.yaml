@@ -17,7 +17,7 @@ entries:
     skipRange: '<1.3.0'
     package: aws-load-balancer-operator
     schema: olm.channel
-  - image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-3-rhel-9@sha256:b98eb896c356c0b12a3dfa2f7aeee97c5a7eafd24c99dcafa01558677cbff6b0
+  - image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-3-rhel-9:881c3cdefcfc008395827b05cbd10808f5d8b5b2
     name: aws-load-balancer-operator.v1.3.0
     schema: olm.bundle
 schema: olm.template.basic

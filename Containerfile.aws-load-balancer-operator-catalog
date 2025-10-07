@@ -11,9 +11,9 @@ RUN test "$(sha1sum Dockerfile.cached | cut -d' ' -f1)" = "$(sha1sum catalog.Doc
 # The base image is expected to contain
 # /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
 FROM registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.19
+COPY LICENSE /licenses/
 # dummy copy to trigger the drift detection
 COPY --from=drift /app/catalog.Dockerfile .
-
 # Configure the entrypoint and command
 ENTRYPOINT ["/bin/opm"]
 # Copy the ALBO FBC catalog
