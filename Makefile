@@ -308,7 +308,7 @@ PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
 .PHONY: generate-catalog
 generate-catalog: opm ## Generate catalog for the Konflux-built operator
 	mkdir -p $(CATALOG_VERSION_DIR)
-	$(OPM) alpha render-template basic -o yaml $(CATALOG_DIR)/catalog-template.yaml > $(CATALOG_VERSION_DIR)/catalog.yaml
+	$(OPM) alpha render-template basic --migrate-level bundle-object-to-csv-metadata -o yaml $(CATALOG_DIR)/catalog-template.yaml > $(CATALOG_VERSION_DIR)/catalog.yaml
 
 .PHONY: catalog
 catalog: opm
