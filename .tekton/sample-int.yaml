@@ -128,3 +128,5 @@ spec:
   
   workspaces:
     - name: shared-workspace
+      emptyDir: {}
+      
