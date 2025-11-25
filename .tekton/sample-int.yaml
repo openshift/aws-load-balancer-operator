@@ -21,6 +21,14 @@ spec:
     # -----------------------------------------------------------------
     - name: setup-albo-on-sts-cluster
       description: Clones the repo and runs the script to install ALBO on an STS cluster
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: SCRIPT_REPO_URL
+          value: $(params.SCRIPT_REPO_URL)
+        - name: SCRIPT_REPO_REVISION
+          value: $(params.SCRIPT_REPO_REVISION)
       taskSpec:
         params:
           - name: SCRIPT_REPO_URL
@@ -50,8 +58,8 @@ spec:
               dnf -y install jq
               
               # Make the script executable and run it
-              chmod +x ./scripts/pre-test.sh
-              ./scripts/pre-test.sh
+              chmod +x ./hack/pre-test.sh
+              ./hack/pre-test.sh
 
     # -----------------------------------------------------------------
     # YOUR ORIGINAL TASK (Now Task 2)
@@ -128,5 +136,4 @@ spec:
   
   workspaces:
     - name: shared-workspace
-      emptyDir: {}
       
