@@ -299,16 +299,16 @@ CATALOG_IMG ?= $(BUNDLE_TAG_BASE)-catalog:v$(BUNDLE_VERSION)
 # Directory for the file based catalog.
 CATALOG_DIR := catalog
 
-# Catalog version subdirectory based on BUNDLE_VERSION (used by Konflux)
-CATALOG_VERSION_DIR := $(CATALOG_DIR)/aws-lb-optr-$(shell echo $(BUNDLE_VERSION) | sed 's/\([0-9]*\)\.\([0-9]*\)\..*/\1-\2/')
-
+# Catalog version subdirectory based on OCP_VERSION (used by Konflux)
+OCP_VERSION ?= 4.21
+OCP_CATALOG_DIR := $(CATALOG_DIR)/v$(OCP_VERSION)
 # Directory for the aws-load-balancer-operator package files.
 PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
 
 .PHONY: generate-catalog
-generate-catalog: opm ## Generate catalog for the Konflux-built operator
-	mkdir -p $(CATALOG_VERSION_DIR)
-	$(OPM) alpha render-template basic --migrate-level bundle-object-to-csv-metadata -o yaml $(CATALOG_DIR)/catalog-template.yaml > $(CATALOG_VERSION_DIR)/catalog.yaml
+generate-catalog: opm ## Generate OCP version-based catalog for the Konflux-built operator
+	mkdir -p $(OCP_CATALOG_DIR)
+	$(OPM) alpha render-template basic --migrate-level bundle-object-to-csv-metadata -o yaml $(OCP_CATALOG_DIR)/catalog-template.yaml > $(OCP_CATALOG_DIR)/catalog.yaml
 
 .PHONY: catalog
 catalog: opm

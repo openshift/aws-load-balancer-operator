@@ -22,6 +22,15 @@ entries:
     package: aws-load-balancer-operator
     schema: olm.channel
   - entries:
+      - name: aws-load-balancer-operator.v1.0.0
+        skipRange: <1.0.0
+      - name: aws-load-balancer-operator.v1.0.1
+        replaces: aws-load-balancer-operator.v1.0.0
+        skipRange: <1.0.1
+    name: stable-v1.0
+    package: aws-load-balancer-operator
+    schema: olm.channel
+  - entries:
       - name: aws-load-balancer-operator.v1.1.0
         skipRange: <1.1.0
       - name: aws-load-balancer-operator.v1.1.1
@@ -49,6 +58,12 @@ entries:
     name: stable-v1.3
     package: aws-load-balancer-operator
     schema: olm.channel
+  - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:d4d65d0d7c249d076da74da22296280ddef534da2bf54efb9e46d2bd7b9a602d
+    name: aws-load-balancer-operator.v1.0.0
+    schema: olm.bundle
+  - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:59ff4966f4f653e49d42d97bfed6351d3730128db74f666ee4ecacff11790baf
+    name: aws-load-balancer-operator.v1.0.1
+    schema: olm.bundle
   - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:e4799ae4d44aae350cf3307a23d3957fb68003a64dbae5e29be801a993a90f69
     name: aws-load-balancer-operator.v1.1.0
     schema: olm.bundle
@@ -61,4 +76,22 @@ entries:
   - image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-3-rhel-9:e31851fe67b98a143fa3a1200c9bf1011369079a
     name: aws-load-balancer-operator.v1.3.0
     schema: olm.bundle
+  - schema: olm.deprecations
+    package: aws-load-balancer-operator
+    entries:
+      - reference:
+          schema: olm.channel
+          name: stable-v1.0
+        message: |
+          The stable-v1.0 channel is no longer supported. Please switch to a supported stable channel to receive the latest updates and support.
+      - reference:
+          schema: olm.bundle
+          name: aws-load-balancer-operator.v1.0.0
+        message: |
+          aws-load-balancer-operator.v1.0.0 is no longer supported. Please upgrade to the latest version from a supported stable channel.
+      - reference:
+          schema: olm.bundle
+          name: aws-load-balancer-operator.v1.0.1
+        message: |
+          aws-load-balancer-operator.v1.0.1 is no longer supported. Please upgrade to the latest version from a supported stable channel.
 schema: olm.template.basic
