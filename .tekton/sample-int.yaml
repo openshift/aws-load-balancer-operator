@@ -14,50 +14,54 @@ spec:
     - description: 'Revision (branch/commit) for the test script'
       name: SCRIPT_REPO_REVISION
       default: 'main'
-      
+
   tasks:
     # -----------------------------------------------------------------
     # NEW TASK 1: Run the pre-test script to install ALBO
     # -----------------------------------------------------------------
     - name: setup-albo-on-sts-cluster
       description: Clones the repo and runs the script to install ALBO on an STS cluster
-      workspaces:
-        - name: source
-          workspace: shared-workspace
-      params:
-        - name: SCRIPT_REPO_URL
-          value: $(params.SCRIPT_REPO_URL)
-        - name: SCRIPT_REPO_REVISION
-          value: $(params.SCRIPT_REPO_REVISION)
       taskSpec:
         params:
           - name: SCRIPT_REPO_URL
           - name: SCRIPT_REPO_REVISION
-        workspaces:
-          - name: source
+
+        # 1. DEFINE INTERNAL VOLUME (Fixes the "pipeline requires workspace" error)
+        volumes:
+          - name: repo-storage
+            emptyDir: {}
+
         steps:
-          # Step 1: Clone the repo that has your script
+          # Step 1: Clone the repo
           - name: git-clone
             image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8
+            # 2. MOUNT VOLUME
+            volumeMounts:
+              - name: repo-storage
+                mountPath: /source
             script: |
-              git clone $(params.SCRIPT_REPO_URL) $(workspaces.source.path)
-              cd $(workspaces.source.path)
+              git clone $(params.SCRIPT_REPO_URL) /source
+              cd /source
               git checkout $(params.SCRIPT_REPO_REVISION)
               echo "Cloned repo."
-          
-          # Step 2: Run the script
-          # This image (ose-cli) has 'oc' and 'aws' CLIs available
+
+          # Step 2: Run the setup script
           - name: run-setup-script
             image: registry.redhat.io/openshift4/ose-cli:latest
-            workingDir: $(workspaces.source.path)
+            # 3. MOUNT VOLUME AGAIN to access the cloned files
+            volumeMounts:
+              - name: repo-storage
+                mountPath: /source
+            workingDir: /source
             script: |
               #!/bin/bash
               set -e
               
-              # Install utilities needed by the script
+              # Install utilities
               dnf -y install jq
               
               # Make the script executable and run it
+              # (Assuming your script is at ./hack/pre-test.sh as shown in your snippet)
               chmod +x ./hack/pre-test.sh
               ./hack/pre-test.sh
 
@@ -66,7 +70,7 @@ spec:
     # -----------------------------------------------------------------
     - name: task-1-fbc-test
       description: Placeholder task that prints the Snapshot and outputs standard TEST_OUTPUT
-      runAfter: ["setup-albo-on-sts-cluster"] # <-- This task runs AFTER setup is done
+      runAfter: ["setup-albo-on-sts-cluster"]
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)
@@ -85,7 +89,7 @@ spec:
               #!/bin/bash
               set -e
               
-              # Install 'jq' for JSON processing
+              # Install 'jq'
               dnf -y install jq
               
               # Extract all components from the SNAPSHOT JSON array
@@ -93,7 +97,7 @@ spec:
               
               echo -e "Example test task for the Snapshot:\n ${SNAPSHOT}"
               
-              # Add a check here to verify ALBO is working
+              # Verify ALBO is working
               echo "Verifying ALBO setup..."
               if ! oc get awsloadbalancercontroller cluster -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'; then
                 echo "ALBO controller is not ready!"
@@ -118,7 +122,7 @@ spec:
                 echo "---------------------------"
 
                 # Add more testing logic here
-                
+              
               done < <(echo "$snapshotComponents")
               
               # After the tests finish, record the overall result
@@ -133,7 +137,4 @@ spec:
               
               # Print the result to stdout and write to the Tekton result path
               echo -n "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)
-  
-  workspaces:
-    - name: shared-workspace
-      
+              
