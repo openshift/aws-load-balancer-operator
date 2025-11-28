@@ -15,7 +15,7 @@ COPY go.sum go.sum
 RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o manager main.go
 
 WORKDIR /
-FROM registry.access.redhat.com/ubi9/ubi:latest
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 COPY --from=builder /opt/app-root/src/manager .
 
 USER 65532:65532
