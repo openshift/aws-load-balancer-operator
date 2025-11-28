@@ -1,0 +1,140 @@
+kind: Pipeline
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: example-pipeline-with-albo-setup
+spec:
+  params:
+    - description: 'Snapshot of the application'
+      name: SNAPSHOT
+      default: '{"components": [{"name":"test-app", "containerImage": "quay.io/example/repo:latest"}]}'
+      type: string
+    - description: 'URL of the git repo for the test script'
+      name: SCRIPT_REPO_URL
+      default: 'https://github.com/openshift/aws-load-balancer-operator.git'
+    - description: 'Revision (branch/commit) for the test script'
+      name: SCRIPT_REPO_REVISION
+      default: 'main'
+
+  tasks:
+    # -----------------------------------------------------------------
+    # NEW TASK 1: Run the pre-test script to install ALBO
+    # -----------------------------------------------------------------
+    - name: setup-albo-on-sts-cluster
+      description: Clones the repo and runs the script to install ALBO on an STS cluster
+      taskSpec:
+        params:
+          - name: SCRIPT_REPO_URL
+          - name: SCRIPT_REPO_REVISION
+
+        # 1. DEFINE INTERNAL VOLUME (Fixes the "pipeline requires workspace" error)
+        volumes:
+          - name: repo-storage
+            emptyDir: {}
+
+        steps:
+          # Step 1: Clone the repo
+          - name: git-clone
+            image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8
+            # 2. MOUNT VOLUME
+            volumeMounts:
+              - name: repo-storage
+                mountPath: /source
+            script: |
+              git clone $(params.SCRIPT_REPO_URL) /source
+              cd /source
+              git checkout $(params.SCRIPT_REPO_REVISION)
+              echo "Cloned repo."
+
+          # Step 2: Run the setup script
+          - name: run-setup-script
+            image: registry.redhat.io/openshift4/ose-cli:latest
+            # 3. MOUNT VOLUME AGAIN to access the cloned files
+            volumeMounts:
+              - name: repo-storage
+                mountPath: /source
+            workingDir: /source
+            script: |
+              #!/bin/bash
+              set -e
+              
+              # Install utilities
+              dnf -y install jq
+              
+              # Make the script executable and run it
+              # (Assuming your script is at ./hack/pre-test.sh as shown in your snippet)
+              chmod +x ./hack/pre-test.sh
+              ./hack/pre-test.sh
+
+    # -----------------------------------------------------------------
+    # YOUR ORIGINAL TASK (Now Task 2)
+    # -----------------------------------------------------------------
+    - name: task-1-fbc-test
+      description: Placeholder task that prints the Snapshot and outputs standard TEST_OUTPUT
+      runAfter: ["setup-albo-on-sts-cluster"]
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+      taskSpec:
+        params:
+          - name: SNAPSHOT
+        results:
+          - name: TEST_OUTPUT
+            description: Test output
+        steps:
+          - image: registry.redhat.io/openshift4/ose-cli:latest
+            env:
+              - name: SNAPSHOT
+                value: $(params.SNAPSHOT)
+            script: |
+              #!/bin/bash
+              set -e
+              
+              # Install 'jq'
+              dnf -y install jq
+              
+              # Extract all components from the SNAPSHOT JSON array
+              snapshotComponents=$(jq -c '.components[]' <<< "${SNAPSHOT}")
+              
+              echo -e "Example test task for the Snapshot:\n ${SNAPSHOT}"
+              
+              # Verify ALBO is working
+              echo "Verifying ALBO setup..."
+              if ! oc get awsloadbalancercontroller cluster -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'; then
+                echo "ALBO controller is not ready!"
+                exit 1
+              fi
+              echo "ALBO is ready. Proceeding with FBC test."
+              
+              # Loop through each component in the snapshot
+              while read componentEntry
+              do
+                # Variables
+                componentName=$(echo "${componentEntry}" | jq -r '.name')
+                componentUrl=$(echo "${componentEntry}" | jq -r '.source.git.url') 
+                componentUrlWithoutSuffix=$(echo $componentUrl | sed 's/\.git$//')
+                componentSha=$(echo "${componentEntry}" | jq -r '.source.git.revision')
+
+                echo "--- Component Information ---"
+                echo "Component Name: ${componentName}"
+                echo "Git URL: ${componentUrl}"
+                echo "URL without .git: ${componentUrlWithoutSuffix}"
+                echo "Git SHA: ${componentSha}"
+                echo "---------------------------"
+
+                # Add more testing logic here
+              
+              done < <(echo "$snapshotComponents")
+              
+              # After the tests finish, record the overall result
+              RESULT="SUCCESS"
+              
+              # Output the standardized TEST_OUTPUT result in JSON form
+              TEST_OUTPUT=$(jq -rc \
+                --arg date $(date -u --iso-8601=seconds) \
+                --arg RESULT "${RESULT}" \
+                --null-input \
+                '{result: $RESULT, timestamp: $date, failures: 0, successes: 1, warnings: 0}')
+              
+              # Print the result to stdout and write to the Tekton result path
+              echo -n "${TEST_OUTPUT}" | tee $(results.TEST_OUTPUT.path)
+              
