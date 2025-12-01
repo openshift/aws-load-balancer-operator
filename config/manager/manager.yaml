@@ -79,7 +79,7 @@ spec:
           - name: RELATED_IMAGE_CONTROLLER
             # Use "latest" floating tag to avoid problems with the prunning of older mirorred images.
             # Ref: https://issues.redhat.com/browse/OCPBUGS-57339.
-            value: quay.io/aws-load-balancer-operator/aws-load-balancer-controller:latest
+            value: quay.io/alebedev/aws-load-balancer-controller:12.1.145
           - name: TARGET_NAMESPACE
             valueFrom:
               fieldRef:
