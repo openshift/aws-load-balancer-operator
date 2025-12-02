@@ -1,7 +1,6 @@
 package printers
 
 import (
-	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -123,6 +122,8 @@ type htmlIssue struct {
 	Code   string
 }
 
+// HTML prints issues in an HTML page.
+// It uses the Cloudflare CDN (cdnjs) and React.
 type HTML struct {
 	w io.Writer
 }
@@ -131,7 +132,7 @@ func NewHTML(w io.Writer) *HTML {
 	return &HTML{w: w}
 }
 
-func (p HTML) Print(_ context.Context, issues []result.Issue) error {
+func (p HTML) Print(issues []result.Issue) error {
 	var htmlIssues []htmlIssue
 
 	for i := range issues {

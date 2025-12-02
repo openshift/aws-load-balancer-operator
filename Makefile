@@ -174,13 +174,13 @@ iam-gen:
 	./hack/generate-iam-from-credrequest.sh ./hack/operator-credentials-request.yaml ./hack/operator-permission-policy.json
 	cp ./hack/operator-permission-policy.json $(IAMCTL_ASSETS_DIR)/operator-iam-policy.json
 
-ENVTEST_K8S_VERSION ?= 1.30.3
+ENVTEST_K8S_VERSION ?= 1.33.0
 ENVTEST_ASSETS_DIR ?= $(shell pwd)/bin
 
 .PHONY: test
 test: manifests generate lint fmt vet ## Run tests.
 	mkdir -p "$(ENVTEST_ASSETS_DIR)"
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)" --index https://raw.githubusercontent.com/openshift/api/master/envtest-releases.yaml --use-deprecated-gcs=false)" go test -race ./... -coverprofile cover.out -covermode=atomic
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir "$(ENVTEST_ASSETS_DIR)")" go test -race ./... -coverprofile cover.out -covermode=atomic
 
 ##@ Build
 
