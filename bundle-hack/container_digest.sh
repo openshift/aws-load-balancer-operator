@@ -2,7 +2,7 @@
 # Operator
 export OPERATOR_IMAGE_PULLSPEC='quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-operator-container-aws-lb-optr-1-3-rhel-9@sha256:8ca4a3b8317d7368b69b382b14985ddaa2fefe7968d84ec653af140a4c6dfd55'
 # Controller
-export OPERAND_IMAGE_PULLSPEC='quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-controller-container-aws-lb-optr-1-3-rhel-9@sha256:be069d74a5d5ab88ab73d7369d158c6de6bcbb3940d02763ac946bd3a62c2050'
+export OPERAND_IMAGE_PULLSPEC='quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-controller-container-aws-lb-optr-1-3-rhel-9@sha256:577016038b4324e3ebc7fc5a9756594206c58d81b7f630884c0f20b565cc7ebb'
 # kube-rbac-proxy
 # Latest version of v4.14 tag is used.
 # Catalog link (health grade A): https://catalog.redhat.com/en/software/containers/openshift4/ose-kube-rbac-proxy/5cdb2634dd19c778293b4d98?image=691eb72e6d4c48dbffa76548
