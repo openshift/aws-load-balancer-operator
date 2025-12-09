@@ -1,0 +1,64 @@
+# Detect the drift from the bundle.Dockerfile
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS drift
+WORKDIR /app
+COPY drift-cache/bundle.Dockerfile Dockerfile.cached
+COPY bundle.Dockerfile .
+# If the command below fails it means that bundle.Dockerfile from this repository changed.
+# You have to update the Konflux Containerfile accordingly.
+# drift-cache/bundle.Dockerfile can be updated with latest contents once the Konflux version is aligned.
+RUN test "$(sha1sum Dockerfile.cached | cut -d' ' -f1)" = "$(sha1sum bundle.Dockerfile | cut -d' ' -f1)"
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest as builder-runner
+# dummy copy to trigger the drift detection
+COPY --from=drift /app/Dockerfile.cached .
+
+RUN microdnf install -y skopeo jq python3 python3-pip
+RUN pip3 install --upgrade pip && pip3 install ruamel.yaml==0.17.9
+
+# Use a new stage to enable caching of the package installations for local development
+FROM builder-runner as builder
+
+COPY VERSION .
+COPY bundle-hack .
+COPY bundle/manifests /manifests/
+COPY bundle/metadata /metadata/
+
+RUN ./update_bundle.sh
+
+FROM scratch
+
+# Define build arguments to receive dynamic values
+ARG FULL_COMMIT
+ARG GIT_URL
+
+# Core bundle labels.
+LABEL operators.operatorframework.io.bundle.mediatype.v1=registry+v1
+LABEL operators.operatorframework.io.bundle.manifests.v1=manifests/
+LABEL operators.operatorframework.io.bundle.metadata.v1=metadata/
+LABEL operators.operatorframework.io.bundle.package.v1=aws-load-balancer-operator
+LABEL operators.operatorframework.io.bundle.channels.v1=stable-v1.2,stable-v1
+LABEL operators.operatorframework.io.bundle.channel.default.v1=stable-v1
+LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.16.0+git
+LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
+LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v3
+# Additional labels.
+# should this operator be supported on OCP 4.4 and earlier (old appregistry format)
+LABEL com.redhat.delivery.backport: false
+# this is a bundle image and should be delivered via an index image
+LABEL com.redhat.delivery.operator.bundle: true
+LABEL name=aws-load-balancer-operator-bundle
+LABEL version="1.2.1"
+LABEL maintainer='NetworkEdge team <aos-network-edge-staff@redhat.com>'
+LABEL io.k8s.display-name='AWS Load Balancer Operator'
+LABEL io.k8s.description='Operator bundle for the AWS Load Balancer Operator'
+LABEL io.openshift.tags='networking,ingress'
+LABEL com.redhat.component='aws-load-balancer-operator-bundle-container'
+LABEL com.redhat.license_terms='https://www.redhat.com/agreements'
+LABEL description='Operator bundle for the AWS Load Balancer Operator'
+LABEL io.openshift.build.commit.id=${FULL_COMMIT}
+LABEL io.openshift.build.source-location=${GIT_URL}
+LABEL io.openshift.build.commit.url=${GIT_URL}/commit/${FULL_COMMIT}
+
+# Copy files to locations specified by labels.
+COPY --from=builder /manifests /manifests/
+COPY --from=builder /metadata /metadata/
