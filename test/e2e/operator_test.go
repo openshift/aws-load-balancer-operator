@@ -42,6 +42,7 @@ import (
 
 	albo "github.com/openshift/aws-load-balancer-operator/api/v1"
 	albov1alpha1 "github.com/openshift/aws-load-balancer-operator/api/v1alpha1"
+	"github.com/openshift/aws-load-balancer-operator/pkg/controllers/awsloadbalancercontroller"
 )
 
 const (
@@ -57,9 +58,6 @@ const (
 	wafWebACLIDVarName    = "ALBO_E2E_WAF_WEBACL_ID"
 	// controllerRoleARNVarName contains IAM role ARN to be used by the controller on a ROSA/STS cluster.
 	controllerRoleARNVarName = "ALBO_E2E_CONTROLLER_ROLE_ARN"
-
-	// controllerSecretName is the name of the controller's cloud credential secret provisioned by the CI.
-	controllerSecretName = "aws-load-balancer-controller-cluster"
 
 	// awsLoadBalancerControllerContainerName is the name of the AWS load balancer controller's container.
 	awsLoadBalancerControllerContainerName = "controller"
@@ -83,6 +81,10 @@ var (
 	httpClient    = http.Client{Timeout: 5 * time.Second}
 	e2eSecretName = types.NamespacedName{
 		Name:      "aws-load-balancer-operator-e2e",
+		Namespace: operatorNamespace,
+	}
+	controllerSecretName = types.NamespacedName{
+		Name:      "aws-load-balancer-controller-cluster",
 		Namespace: operatorNamespace,
 	}
 	controllerRoleARN string
@@ -132,6 +134,10 @@ func TestMain(m *testing.M) {
 	if !stsModeRequested() {
 		if err := ensureCredentialsRequest(e2eSecretName); err != nil {
 			fmt.Printf("failed to create credentialsrequest for e2e: %s\n", err)
+			os.Exit(1)
+		}
+		if err := ensureControllerCredentialsRequest(controllerSecretName); err != nil {
+			fmt.Printf("failed to create credentialsrequest for controller: %s\n", err)
 			os.Exit(1)
 		}
 		cfg, err = awsConfigWithCredentials(context.TODO(), kubeClient, infra.Status.PlatformStatus.AWS.Region, e2eSecretName)
@@ -256,7 +262,7 @@ func TestAWSLoadBalancerControllersV1Alpha1(t *testing.T) {
 
 	// The additional resource tags and the credentials secret are added to ALBC
 	// because they changed in v1.
-	alb := newALBCBuilder().withResourceTags(map[string]string{"testtag": "testval"}).withCredSecret(controllerSecretName).buildv1alpha1()
+	alb := newALBCBuilder().withResourceTags(map[string]string{"testtag": "testval"}).withCredSecret(controllerSecretName.Name).buildv1alpha1()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -334,7 +340,7 @@ func TestAWSLoadBalancerControllerWithCredentialsSecret(t *testing.T) {
 	}()
 
 	t.Log("Creating aws load balancer controller instance with credentials secret")
-	alb := newALBCBuilder().withCredSecret(controllerSecretName).build()
+	alb := newALBCBuilder().withCredSecret(controllerSecretName.Name).build()
 	if err := kubeClient.Create(context.TODO(), alb); err != nil {
 		t.Fatalf("failed to create aws load balancer controller: %v", err)
 	}
@@ -717,6 +723,7 @@ func TestAWSLoadBalancerControllerWithWAFv2(t *testing.T) {
 }
 
 func TestAWSLoadBalancerControllerWithWAFRegional(t *testing.T) {
+	t.Skip("Skipping this test for now as creation of WAF Classic ACLs is deprecated (OCPBUGS-57320)")
 	t.Log("Getting WAFRegional WebACL")
 	var webACLID string
 	if !stsModeRequested() {
@@ -1414,6 +1421,38 @@ func ensureCredentialsRequest(secret types.NamespacedName) error {
 				Namespace: secret.Namespace,
 			},
 			ServiceAccountNames: []string{operatorName},
+			ProviderSpec:        providerSpec,
+		},
+	}
+
+	if err = kubeClient.Create(context.Background(), &cr); err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+
+	return nil
+}
+
+// ensureControllerCredentialsRequest creates CredentialsRequest to provision a secret with the cloud credentials
+// required by the controller in some of the e2e tests.
+func ensureControllerCredentialsRequest(secret types.NamespacedName) error {
+	providerSpec, err := cco.Codec.EncodeProviderSpec(&cco.AWSProviderSpec{
+		StatementEntries: awsloadbalancercontroller.GetIAMPolicyMinify().Statement,
+	})
+	if err != nil {
+		return err
+	}
+
+	cr := cco.CredentialsRequest{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "aws-load-balancer-controller",
+			Namespace: "openshift-cloud-credential-operator",
+		},
+		Spec: cco.CredentialsRequestSpec{
+			SecretRef: corev1.ObjectReference{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+			ServiceAccountNames: []string{"aws-load-balancer-controller-cluster"},
 			ProviderSpec:        providerSpec,
 		},
 	}
