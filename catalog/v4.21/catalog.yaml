@@ -1076,7 +1076,7 @@ relatedImages:
   name: kube-rbac-proxy
 schema: olm.bundle
 ---
-image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-3-rhel-9@sha256:1ab65e083999fd9412bb83f2679bc0c72679842c7495f8ffe66083e9b0c3f697
+image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:7de0ead127527c32611d59a9df7ef16851e592881291f17e8a008581b8526d9f
 name: aws-load-balancer-operator.v1.3.0
 package: aws-load-balancer-operator
 properties:
@@ -1176,8 +1176,8 @@ properties:
           }
         ]
       capabilities: Basic Install
-      containerImage: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-operator-container-aws-lb-optr-1-3-rhel-9@sha256:4455b207d9394aaa323f8bae6d778a0666417b3139a3165d73e279655e74d2c9
-      createdAt: 2025-12-03T16:26:18
+      containerImage: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412
+      createdAt: 2025-12-12T13:24:01
       features.operators.openshift.io/disconnected: "true"
       features.operators.openshift.io/fips-compliant: "true"
       features.operators.openshift.io/proxy-aware: "true"
@@ -1187,6 +1187,8 @@ properties:
       features.operators.openshift.io/token-auth-gcp: "false"
       olm.skipRange: <1.3.0
       operatorframework.io/suggested-namespace: aws-load-balancer-operator
+      operators.openshift.io/valid-subscription: '["OpenShift Kubernetes Engine",
+        "OpenShift Container Platform", "OpenShift Platform Plus"]'
       operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
       operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
       repository: https://github.com/openshift/aws-load-balancer-operator
@@ -1252,16 +1254,16 @@ properties:
       name: Red Hat Inc.
       url: https://redhat.com
 relatedImages:
-- image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-3-rhel-9@sha256:1ab65e083999fd9412bb83f2679bc0c72679842c7495f8ffe66083e9b0c3f697
-  name: ""
-- image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-controller-container-aws-lb-optr-1-3-rhel-9@sha256:577016038b4324e3ebc7fc5a9756594206c58d81b7f630884c0f20b565cc7ebb
-  name: controller
-- image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-operator-container-aws-lb-optr-1-3-rhel-9@sha256:4455b207d9394aaa323f8bae6d778a0666417b3139a3165d73e279655e74d2c9
-  name: aws-load-balancer-rhel9-operator-4455b207d9394aaa323f8bae6d778a0666417b3139a3165d73e279655e74d2c9-annotation
-- image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-load-balancer-operator-container-aws-lb-optr-1-3-rhel-9@sha256:4455b207d9394aaa323f8bae6d778a0666417b3139a3165d73e279655e74d2c9
-  name: manager
 - image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:ba9ff4c933739f1774bc8277d636053c5306863221a8c7b7b9ddc4470eb7feff
   name: kube-rbac-proxy
+- image: registry.stage.redhat.io/albo/aws-load-balancer-controller-rhel9@sha256:03106a145ba31ae648092a48016d28d3b41dca737f76efdc82eae4628e4fa905
+  name: controller
+- image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:7de0ead127527c32611d59a9df7ef16851e592881291f17e8a008581b8526d9f
+  name: ""
+- image: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412
+  name: aws-load-balancer-rhel9-operator-56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412-annotation
+- image: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412
+  name: manager
 schema: olm.bundle
 ---
 entries:

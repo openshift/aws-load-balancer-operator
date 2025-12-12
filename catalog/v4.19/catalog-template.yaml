@@ -73,7 +73,7 @@ entries:
   - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:e371c45e259eaf54d79b1bfc6c47b1093d87965a8d6076205d4860047146ed43
     name: aws-load-balancer-operator.v1.2.0
     schema: olm.bundle
-  - image: quay.io/redhat-user-workloads/aws-load-balancer-operator-tenant/aws-lb-optr-1-3-rhel-9/aws-lb-bundle-container-aws-lb-optr-1-3-rhel-9@sha256:1ab65e083999fd9412bb83f2679bc0c72679842c7495f8ffe66083e9b0c3f697
+  - image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:7de0ead127527c32611d59a9df7ef16851e592881291f17e8a008581b8526d9f
     name: aws-load-balancer-operator.v1.3.0
     schema: olm.bundle
   - schema: olm.deprecations
