@@ -1076,7 +1076,7 @@ relatedImages:
   name: kube-rbac-proxy
 schema: olm.bundle
 ---
-image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:7de0ead127527c32611d59a9df7ef16851e592881291f17e8a008581b8526d9f
+image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:97868a1de19dc3d8ea6f010ed173ce6a3a9c24be6698fc993b915b3f6ff618c1
 name: aws-load-balancer-operator.v1.3.0
 package: aws-load-balancer-operator
 properties:
@@ -1176,8 +1176,8 @@ properties:
           }
         ]
       capabilities: Basic Install
-      containerImage: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412
-      createdAt: 2025-12-12T13:24:01
+      containerImage: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:1ce50e777efaef0e8df8d9488c1d065cbfa87494b8f191ac79c5ccd4cd37034f
+      createdAt: 2025-12-15T21:54:55
       features.operators.openshift.io/disconnected: "true"
       features.operators.openshift.io/fips-compliant: "true"
       features.operators.openshift.io/proxy-aware: "true"
@@ -1258,11 +1258,11 @@ relatedImages:
   name: kube-rbac-proxy
 - image: registry.stage.redhat.io/albo/aws-load-balancer-controller-rhel9@sha256:03106a145ba31ae648092a48016d28d3b41dca737f76efdc82eae4628e4fa905
   name: controller
-- image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:7de0ead127527c32611d59a9df7ef16851e592881291f17e8a008581b8526d9f
+- image: registry.stage.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:97868a1de19dc3d8ea6f010ed173ce6a3a9c24be6698fc993b915b3f6ff618c1
   name: ""
-- image: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412
-  name: aws-load-balancer-rhel9-operator-56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412-annotation
-- image: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:56c65884dab411f16c6f7c407a8f83be502fd4777712f12c12d4267792cd5412
+- image: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:1ce50e777efaef0e8df8d9488c1d065cbfa87494b8f191ac79c5ccd4cd37034f
+  name: aws-load-balancer-rhel9-operator-1ce50e777efaef0e8df8d9488c1d065cbfa87494b8f191ac79c5ccd4cd37034f-annotation
+- image: registry.stage.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:1ce50e777efaef0e8df8d9488c1d065cbfa87494b8f191ac79c5ccd4cd37034f
   name: manager
 schema: olm.bundle
 ---
