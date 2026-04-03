@@ -20,25 +20,18 @@ The minor channels contain patch releases. The major channels contain all patch 
 
 ## OpenShift Version Compatibility
 
-The table below illustrates the OpenShift versions for which various AWS Load Balancer Operator releases were intended:
+The AWS Load Balancer Operator supports all OCP versions down to the latest EUS release. All fixes, including CVE fixes, are published for all supported OCP versions.
 
-| OCP version | AWS Load Balancer Operator branch  | AWS Load Balancer Operator OLM channel |
-| :---------: | :-------------------------------:  | :------------------------------------: |
-| 4.17        | release-1.2                        | stable-v1.2, stable-v1                 |
-| 4.16        | release-1.1                        | stable-v1.1, stable-v1                 |
-| 4.15        | release-1.1                        | stable-v1.1, stable-v1                 |
-| 4.14        | release-1.1                        | stable-v1.1, stable-v1                 |
-| 4.13        | release-1.0                        | stable-v1.0, stable-v1                 |
-| 4.12        | release-0.2                        | stable-v0.2, stable-v0                 |
-| 4.11        | release-0.1                        | stable-v0.1, stable-v0                 |
+Some OCP versions may have reached [End of Life](https://access.redhat.com/support/policy/updates/openshift) (e.g. 4.13, 4.15, 4.17). The AWS Load Balancer Operator continues to publish on these versions to ensure smooth OCP upgrades, as upgrades traverse through all intermediate versions.
 
 ## Support model
 
 | AWS Load Balancer Operator release | Support model   |
 | :--------------------------------: | :-------------: |
+| 1.3                                | Full Support    |
 | 1.2                                | Full Support    |
 | 1.1                                | Full Support    |
-| 1.0                                | Full Support    |
+| 1.0                                | Deprecated      |
 | 0.2                                | End of Life     |
 | 0.1                                | End of Life     |
 
@@ -47,4 +40,18 @@ The table below illustrates the OpenShift versions for which various AWS Load Ba
 During the Full Support phase, qualified critical and important security fixes will be released as they become available.
 Urgent and high priority bug fixes will be released as they become available. Other fixes and qualified patches may be released via periodic updates.
 To receive security and bug fixes, users are expected to upgrade the operator to the most current supported patch version.
-Users should install operator releases on the designated OpenShift versions (see [OpenShift Version Compatibility](#openshift-version-compatibility)).
+
+### Deprecated
+
+Deprecated releases are no longer receiving any fixes, including critical security (CVE) fixes. A deprecated release will be pruned with the next minor release of the operator. Users are strongly encouraged to upgrade to a supported release.
+
+## Minor version release history
+
+| AWS Load Balancer Operator version | First published on OCP |
+| :--------------------------------: | :--------------------: |
+| 1.3                                | 4.19                   |
+| 1.2                                | 4.17                   |
+| 1.1                                | 4.14                   |
+| 1.0                                | 4.13                   |
+| 0.2                                | 4.12                   |
+| 0.1                                | 4.11                   |
