@@ -11,14 +11,14 @@ RUN test "$(sha1sum Dockerfile.cached | cut -d' ' -f1)" = "$(sha1sum catalog.Doc
 # The base image is expected to contain
 # /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
 # Note: The base image version should match the targeted OCP version
-FROM registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.22
+FROM registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.21
 COPY LICENSE /licenses/
 # dummy copy to trigger the drift detection
 COPY --from=drift /app/catalog.Dockerfile .
 # Configure the entrypoint and command
 ENTRYPOINT ["/bin/opm"]
 # Copy the ALBO FBC catalog (OCP version-based)
-COPY catalog/v4.22/catalog.yaml /configs/aws-load-balancer-operator/catalog.yaml
+COPY catalog/v4.21/catalog.yaml /configs/aws-load-balancer-operator/catalog.yaml
 
 # Pre-populate serve cache
 RUN ["/bin/opm", "serve", "/configs/aws-load-balancer-operator", "--cache-dir=/tmp/cache", "--cache-only"]
@@ -29,4 +29,3 @@ LABEL operators.operatorframework.io.index.configs.v1=/configs
 
 # Configure the command to serve the catalog
 CMD ["serve", "/configs/aws-load-balancer-operator", "--cache-dir=/tmp/cache"]
-
