@@ -72,7 +72,7 @@ spec:
   - ingress
   links:
   - name: Aws Load Balancer Operator
-    url: https://aws-load-balancer-operator.domain
+    url: https://github.com/openshift/aws-load-balancer-operator
   maturity: alpha
   minKubeVersion: 1.20.0
   provider:

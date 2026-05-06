@@ -235,7 +235,7 @@ properties:
       oc get secret -n aws-load-balancer-operator aws-load-balancer-operator
       ```
 
-      After this the operator can be installated through the console or through the command line.
+      After this the operator can be installed through the console or through the command line.
 
       __Note about UPI:__ For UPI based installs, additional documentation can be found in
       [VPC and subnets](https://github.com/openshift/aws-load-balancer-operator/blob/main/docs/prerequisites.md#vpc-and-subnets)
@@ -258,7 +258,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://aws-load-balancer-operator.domain
+      url: https://github.com/openshift/aws-load-balancer-operator
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -466,7 +466,7 @@ properties:
       oc get secret -n aws-load-balancer-operator aws-load-balancer-operator
       ```
 
-      After this the operator can be installated through the console or through the command line.
+      After this the operator can be installed through the console or through the command line.
 
       __Note about UPI:__ For UPI based installs, additional documentation can be found in
       [VPC and subnets](https://github.com/openshift/aws-load-balancer-operator/blob/release-1.0/docs/prerequisites.md#vpc-and-subnets)
@@ -489,7 +489,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://aws-load-balancer-operator.domain
+      url: https://github.com/openshift/aws-load-balancer-operator
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -671,7 +671,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://aws-load-balancer-operator.domain
+      url: https://github.com/openshift/aws-load-balancer-operator
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -859,7 +859,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://aws-load-balancer-operator.domain
+      url: https://github.com/openshift/aws-load-balancer-operator
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -1047,7 +1047,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://aws-load-balancer-operator.domain
+      url: https://github.com/openshift/aws-load-balancer-operator
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
