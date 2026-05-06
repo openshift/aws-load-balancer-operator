@@ -68,6 +68,36 @@ func Test_ProvisionCredentials(t *testing.T) {
 			expectedContents: "oksts",
 		},
 		{
+			name: "nominal sts iso partition",
+			envVars: map[string]string{
+				"ROLEARN": "arn:aws-iso:iam::123456789012:role/foo",
+			},
+			scheme: test.Scheme,
+			provisionedSecret: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "aws-load-balancer-operator",
+					Namespace: "aws-load-balancer-operator",
+				},
+				Data: map[string][]byte{
+					"credentials": []byte("okiso"),
+				},
+			},
+			expectedCredReqName: types.NamespacedName{
+				Namespace: "openshift-cloud-credential-operator",
+				Name:      "aws-load-balancer-operator",
+			},
+			compareCredReq: func(credReq *cco.CredentialsRequest, providerSpec *cco.AWSProviderSpec) error {
+				if providerSpec.STSIAMRoleARN != "arn:aws-iso:iam::123456789012:role/foo" {
+					return fmt.Errorf("got unexpected role arn: %q", providerSpec.STSIAMRoleARN)
+				}
+				if credReq.Spec.CloudTokenPath != "/var/run/secrets/openshift/serviceaccount/token" {
+					return fmt.Errorf("got unexpected token path: %q", credReq.Spec.CloudTokenPath)
+				}
+				return nil
+			},
+			expectedContents: "okiso",
+		},
+		{
 			name:   "nominal non sts",
 			scheme: test.Scheme,
 			provisionedSecret: &corev1.Secret{

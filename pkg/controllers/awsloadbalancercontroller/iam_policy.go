@@ -96,7 +96,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:ec2:*:*:security-group/*",
+				Resource: "arn:*:ec2:*:*:security-group/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
@@ -111,7 +111,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:ec2:*:*:security-group/*",
+				Resource: "arn:*:ec2:*:*:security-group/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
@@ -163,7 +163,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+				Resource: "arn:*:elasticloadbalancing:*:*:targetgroup/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
@@ -177,7 +177,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+				Resource: "arn:*:elasticloadbalancing:*:*:loadbalancer/net/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
@@ -191,7 +191,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
+				Resource: "arn:*:elasticloadbalancing:*:*:loadbalancer/app/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster":  "true",
@@ -205,7 +205,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:          "Allow",
-				Resource:        "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*",
+				Resource:        "arn:*:elasticloadbalancing:*:*:listener/net/*/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
 					"elasticloadbalancing:AddTags",
@@ -214,7 +214,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:          "Allow",
-				Resource:        "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
+				Resource:        "arn:*:elasticloadbalancing:*:*:listener/app/*/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
 					"elasticloadbalancing:AddTags",
@@ -223,7 +223,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:          "Allow",
-				Resource:        "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
+				Resource:        "arn:*:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
 					"elasticloadbalancing:AddTags",
@@ -232,7 +232,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:          "Allow",
-				Resource:        "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*",
+				Resource:        "arn:*:elasticloadbalancing:*:*:listener-rule/app/*/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
 					"elasticloadbalancing:AddTags",
@@ -241,7 +241,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+				Resource: "arn:*:elasticloadbalancing:*:*:targetgroup/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
@@ -256,7 +256,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+				Resource: "arn:*:elasticloadbalancing:*:*:loadbalancer/net/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
@@ -271,7 +271,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:   "Allow",
-				Resource: "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*",
+				Resource: "arn:*:elasticloadbalancing:*:*:loadbalancer/app/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{
 					"Null": cco.IAMPolicyConditionKeyValue{
 						"aws:RequestTag/elbv2.k8s.aws/cluster": "false",
@@ -305,7 +305,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:          "Allow",
-				Resource:        "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+				Resource:        "arn:*:elasticloadbalancing:*:*:targetgroup/*/*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
 					"elasticloadbalancing:RegisterTargets",
