@@ -31,7 +31,7 @@ Some OCP versions may have reached [End of Life](https://access.redhat.com/suppo
 | 1.3                                | Full Support    |
 | 1.2                                | Full Support    |
 | 1.1                                | Full Support    |
-| 1.0                                | Deprecated      |
+| 1.0                                | End of Life     |
 | 0.2                                | End of Life     |
 | 0.1                                | End of Life     |
 
