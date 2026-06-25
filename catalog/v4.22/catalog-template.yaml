@@ -70,4 +70,22 @@ entries:
   - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:5175d8c7c3b9936674eb30938fc5d744a0e665ad9f335f7d73e81938debb41b0
     name: aws-load-balancer-operator.v1.3.1
     schema: olm.bundle
+  - schema: olm.deprecations
+    package: aws-load-balancer-operator
+    entries:
+      - reference:
+          schema: olm.channel
+          name: stable-v1.1
+        message: |
+          The stable-v1.1 channel is no longer supported. Please switch to a supported stable channel to receive the latest updates and support.
+      - reference:
+          schema: olm.bundle
+          name: aws-load-balancer-operator.v1.1.0
+        message: |
+          aws-load-balancer-operator.v1.1.0 is no longer supported. Please upgrade to the latest version from a supported stable channel.
+      - reference:
+          schema: olm.bundle
+          name: aws-load-balancer-operator.v1.1.1
+        message: |
+          aws-load-balancer-operator.v1.1.1 is no longer supported. Please upgrade to the latest version from a supported stable channel.
 schema: olm.template.basic

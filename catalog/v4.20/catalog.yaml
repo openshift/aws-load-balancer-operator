@@ -995,3 +995,22 @@ relatedImages:
 - image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9@sha256:32540431240e12c07d35f9f390b196aae5cc2188e9db6365e41e6bbe7070d8c2
   name: kube-rbac-proxy
 schema: olm.bundle
+---
+entries:
+- message: |
+    The stable-v1.1 channel is no longer supported. Please switch to a supported stable channel to receive the latest updates and support.
+  reference:
+    name: stable-v1.1
+    schema: olm.channel
+- message: |
+    aws-load-balancer-operator.v1.1.0 is no longer supported. Please upgrade to the latest version from a supported stable channel.
+  reference:
+    name: aws-load-balancer-operator.v1.1.0
+    schema: olm.bundle
+- message: |
+    aws-load-balancer-operator.v1.1.1 is no longer supported. Please upgrade to the latest version from a supported stable channel.
+  reference:
+    name: aws-load-balancer-operator.v1.1.1
+    schema: olm.bundle
+package: aws-load-balancer-operator
+schema: olm.deprecations
