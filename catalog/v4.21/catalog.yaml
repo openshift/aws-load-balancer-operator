@@ -18,6 +18,9 @@ entries:
 - name: aws-load-balancer-operator.v1.3.0
   replaces: aws-load-balancer-operator.v1.2.0
   skipRange: <1.3.0
+- name: aws-load-balancer-operator.v1.3.1
+  replaces: aws-load-balancer-operator.v1.3.0
+  skipRange: <1.3.1
 name: stable-v1
 package: aws-load-balancer-operator
 schema: olm.channel
@@ -58,6 +61,9 @@ schema: olm.channel
 entries:
 - name: aws-load-balancer-operator.v1.3.0
   skipRange: <1.3.0
+- name: aws-load-balancer-operator.v1.3.1
+  replaces: aws-load-balancer-operator.v1.3.0
+  skipRange: <1.3.1
 name: stable-v1.3
 package: aws-load-balancer-operator
 schema: olm.channel
@@ -245,7 +251,7 @@ properties:
       oc get secret -n aws-load-balancer-operator aws-load-balancer-operator
       ```
 
-      After this the operator can be installed through the console or through the command line.
+      After this the operator can be installated through the console or through the command line.
 
       __Note about UPI:__ For UPI based installs, additional documentation can be found in
       [VPC and subnets](https://github.com/openshift/aws-load-balancer-operator/blob/main/docs/prerequisites.md#vpc-and-subnets)
@@ -268,7 +274,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://github.com/openshift/aws-load-balancer-operator
+      url: https://aws-load-balancer-operator.domain
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -476,7 +482,7 @@ properties:
       oc get secret -n aws-load-balancer-operator aws-load-balancer-operator
       ```
 
-      After this the operator can be installed through the console or through the command line.
+      After this the operator can be installated through the console or through the command line.
 
       __Note about UPI:__ For UPI based installs, additional documentation can be found in
       [VPC and subnets](https://github.com/openshift/aws-load-balancer-operator/blob/release-1.0/docs/prerequisites.md#vpc-and-subnets)
@@ -499,7 +505,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://github.com/openshift/aws-load-balancer-operator
+      url: https://aws-load-balancer-operator.domain
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -681,7 +687,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://github.com/openshift/aws-load-balancer-operator
+      url: https://aws-load-balancer-operator.domain
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -869,7 +875,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://github.com/openshift/aws-load-balancer-operator
+      url: https://aws-load-balancer-operator.domain
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -1057,7 +1063,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://github.com/openshift/aws-load-balancer-operator
+      url: https://aws-load-balancer-operator.domain
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -1247,7 +1253,7 @@ properties:
     - ingress
     links:
     - name: Aws Load Balancer Operator
-      url: https://github.com/openshift/aws-load-balancer-operator
+      url: https://aws-load-balancer-operator.domain
     maturity: alpha
     minKubeVersion: 1.20.0
     provider:
@@ -1263,6 +1269,196 @@ relatedImages:
 - image: registry.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:1ce50e777efaef0e8df8d9488c1d065cbfa87494b8f191ac79c5ccd4cd37034f
   name: manager
 - image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:ba9ff4c933739f1774bc8277d636053c5306863221a8c7b7b9ddc4470eb7feff
+  name: kube-rbac-proxy
+schema: olm.bundle
+---
+image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:5175d8c7c3b9936674eb30938fc5d744a0e665ad9f335f7d73e81938debb41b0
+name: aws-load-balancer-operator.v1.3.1
+package: aws-load-balancer-operator
+properties:
+- type: olm.gvk
+  value:
+    group: elbv2.k8s.aws
+    kind: IngressClassParams
+    version: v1beta1
+- type: olm.gvk
+  value:
+    group: elbv2.k8s.aws
+    kind: TargetGroupBinding
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: elbv2.k8s.aws
+    kind: TargetGroupBinding
+    version: v1beta1
+- type: olm.gvk
+  value:
+    group: networking.olm.openshift.io
+    kind: AWSLoadBalancerController
+    version: v1
+- type: olm.gvk
+  value:
+    group: networking.olm.openshift.io
+    kind: AWSLoadBalancerController
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: aws-load-balancer-operator
+    version: 1.3.1
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "elbv2.k8s.aws/v1alpha1",
+            "kind": "TargetGroupBinding",
+            "metadata": {
+              "name": "my-tgb"
+            },
+            "spec": {
+              "serviceRef": {
+                "name": "awesome-service",
+                "port": 80
+              },
+              "targetGroupARN": "\u003carn-to-targetGroup\u003e"
+            }
+          },
+          {
+            "apiVersion": "elbv2.k8s.aws/v1beta1",
+            "kind": "IngressClassParams",
+            "metadata": {
+              "name": "awesome-class"
+            },
+            "spec": {
+              "group": {
+                "name": "my-group"
+              }
+            }
+          },
+          {
+            "apiVersion": "elbv2.k8s.aws/v1beta1",
+            "kind": "TargetGroupBinding",
+            "metadata": {
+              "name": "my-tgb"
+            },
+            "spec": {
+              "serviceRef": {
+                "name": "awesome-service",
+                "port": 80
+              },
+              "targetGroupARN": "\u003carn-to-targetGroup\u003e"
+            }
+          },
+          {
+            "apiVersion": "networking.olm.openshift.io/v1",
+            "kind": "AWSLoadBalancerController",
+            "metadata": {
+              "name": "cluster"
+            },
+            "spec": {
+              "subnetTagging": "Auto"
+            }
+          },
+          {
+            "apiVersion": "networking.olm.openshift.io/v1alpha1",
+            "kind": "AWSLoadBalancerController",
+            "metadata": {
+              "name": "cluster"
+            },
+            "spec": {
+              "subnetTagging": "Auto"
+            }
+          }
+        ]
+      capabilities: Basic Install
+      containerImage: registry.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:b59ee634581b767eb547327926de12d0c01bd2c348bed9d9d293e1b96e3c197c
+      createdAt: 2026-06-19T08:45:10
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "true"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "true"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: <1.3.1
+      operatorframework.io/suggested-namespace: aws-load-balancer-operator
+      operators.openshift.io/valid-subscription: '["OpenShift Kubernetes Engine",
+        "OpenShift Container Platform", "OpenShift Platform Plus"]'
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+      repository: https://github.com/openshift/aws-load-balancer-operator
+      support: Red Hat, Inc.
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
+          API.
+        displayName: AWSLoad Balancer Controller
+        kind: AWSLoadBalancerController
+        name: awsloadbalancercontrollers.networking.olm.openshift.io
+        version: v1
+      - description: AWSLoadBalancerController is the Schema for the awsloadbalancercontrollers
+          API
+        displayName: AWSLoad Balancer Controller
+        kind: AWSLoadBalancerController
+        name: awsloadbalancercontrollers.networking.olm.openshift.io
+        version: v1alpha1
+      - kind: IngressClassParams
+        name: ingressclassparams.elbv2.k8s.aws
+        version: v1beta1
+      - kind: TargetGroupBinding
+        name: targetgroupbindings.elbv2.k8s.aws
+        version: v1alpha1
+      - kind: TargetGroupBinding
+        name: targetgroupbindings.elbv2.k8s.aws
+        version: v1beta1
+    description: |-
+      Operator to simplify the management of aws-load-balancer-controller.
+
+      ### Prerequisites for installation
+      In certain scenarios, the operator requires extra steps to be executed before it can be installed.
+
+      #### Instructions for STS cluster (including ROSA in STS mode)
+
+      [Bootstrapping AWS Load Balancer Operator on Security Token Service cluster](https://docs.openshift.com/container-platform/latest/networking/aws_load_balancer_operator/installing-albo-sts-cluster.html#nw-bootstra-albo-on-sts-cluster_albo-sts-cluster).
+
+      #### Instructions for UPI based installation
+
+      Additional documentation can be found in [VPC and Subnets](https://github.com/openshift/aws-load-balancer-operator/blob/main/docs/prerequisites.md#vpc-and-subnets).
+    displayName: AWS Load Balancer Operator
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - aws
+    - load-balancer
+    - ALB
+    - ingress
+    links:
+    - name: Aws Load Balancer Operator
+      url: https://github.com/openshift/aws-load-balancer-operator
+    maturity: alpha
+    minKubeVersion: 1.20.0
+    provider:
+      name: Red Hat Inc.
+      url: https://redhat.com
+relatedImages:
+- image: registry.redhat.io/albo/aws-load-balancer-controller-rhel9@sha256:fcb63bc601772fe5ef4740c46c0c2f158e5ab1228b4f01170feb1fe40c694b61
+  name: controller
+- image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:5175d8c7c3b9936674eb30938fc5d744a0e665ad9f335f7d73e81938debb41b0
+  name: ""
+- image: registry.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:b59ee634581b767eb547327926de12d0c01bd2c348bed9d9d293e1b96e3c197c
+  name: aws-load-balancer-rhel9-operator-b59ee634581b767eb547327926de12d0c01bd2c348bed9d9d293e1b96e3c197c-annotation
+- image: registry.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:b59ee634581b767eb547327926de12d0c01bd2c348bed9d9d293e1b96e3c197c
+  name: manager
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9@sha256:32540431240e12c07d35f9f390b196aae5cc2188e9db6365e41e6bbe7070d8c2
   name: kube-rbac-proxy
 schema: olm.bundle
 ---
