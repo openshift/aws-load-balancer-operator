@@ -1,6 +1,6 @@
 # Do not remove comment lines, they are there to reduce conflicts
 # Operator
-export OPERATOR_IMAGE_PULLSPEC='registry.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:b59ee634581b767eb547327926de12d0c01bd2c348bed9d9d293e1b96e3c197c'
+export OPERATOR_IMAGE_PULLSPEC='registry.redhat.io/albo/aws-load-balancer-rhel9-operator@sha256:772794e9a6cf910a7fe75ad43df7ee7ace6acbf60896ba46c510a74cf35567c0'
 # Controller
 export OPERAND_IMAGE_PULLSPEC='registry.redhat.io/albo/aws-load-balancer-controller-rhel9@sha256:992c4fb804e11ccef4a0d3ed7764f26176af02554390bdb22548b3ec4a97a9be'
 # kube-rbac-proxy
