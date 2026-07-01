@@ -48,8 +48,8 @@ LABEL com.redhat.delivery.backport: false
 # this is a bundle image and should be delivered via an index image
 LABEL com.redhat.delivery.operator.bundle: true
 LABEL name="albo/aws-load-balancer-operator-bundle"
-LABEL version="1.3.1"
-LABEL release="1.3.1"
+LABEL version="1.3.2"
+LABEL release="1.3.2"
 LABEL maintainer='NetworkEdge team <aos-network-edge-staff@redhat.com>'
 LABEL io.k8s.display-name='AWS Load Balancer Operator'
 LABEL io.k8s.description='Operator bundle for the AWS Load Balancer Operator'
