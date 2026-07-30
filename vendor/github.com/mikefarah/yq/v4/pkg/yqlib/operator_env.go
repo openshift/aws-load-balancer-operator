@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	parse "github.com/a8m/envsubst/parse"
-	yaml "gopkg.in/yaml.v3"
 )
 
 type envOpPreferences struct {
@@ -17,43 +16,50 @@ type envOpPreferences struct {
 	FailFast    bool
 }
 
-func envOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
-	envName := expressionNode.Operation.CandidateNode.Node.Value
-	log.Debug("EnvOperator, env name:", envName)
+func envOperator(_ *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	if ConfiguredSecurityPreferences.DisableEnvOps {
+		return Context{}, fmt.Errorf("env operations have been disabled")
+	}
+	envName := expressionNode.Operation.CandidateNode.Value
+	log.Debugf("EnvOperator, env name: %v", envName)
 
 	rawValue := os.Getenv(envName)
 
 	preferences := expressionNode.Operation.Preferences.(envOpPreferences)
 
-	var node *yaml.Node
+	var node *CandidateNode
 	if preferences.StringValue {
-		node = &yaml.Node{
-			Kind:  yaml.ScalarNode,
+		node = &CandidateNode{
+			Kind:  ScalarNode,
 			Tag:   "!!str",
 			Value: rawValue,
 		}
 	} else if rawValue == "" {
-		return Context{}, fmt.Errorf("Value for env variable '%v' not provided in env()", envName)
+		return Context{}, fmt.Errorf("value for env variable '%v' not provided in env()", envName)
 	} else {
-		var dataBucket yaml.Node
-		decoder := yaml.NewDecoder(strings.NewReader(rawValue))
-		errorReading := decoder.Decode(&dataBucket)
-		if errorReading != nil {
-			return Context{}, errorReading
+		decoder := NewYamlDecoder(ConfiguredYamlPreferences)
+		if err := decoder.Init(strings.NewReader(rawValue)); err != nil {
+			return Context{}, err
 		}
-		//first node is a doc
-		node = unwrapDoc(&dataBucket)
+		var err error
+		node, err = decoder.Decode()
+
+		if err != nil {
+			return Context{}, err
+		}
+
 	}
-	log.Debug("ENV tag", node.Tag)
-	log.Debug("ENV value", node.Value)
-	log.Debug("ENV Kind", node.Kind)
+	log.Debugf("ENV tag: %v", node.Tag)
+	log.Debugf("ENV value: %v", node.Value)
+	log.Debugf("ENV Kind: %v", node.Kind)
 
-	target := &CandidateNode{Node: node}
-
-	return context.SingleChildContext(target), nil
+	return context.SingleChildContext(node), nil
 }
 
-func envsubstOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+func envsubstOperator(_ *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
+	if ConfiguredSecurityPreferences.DisableEnvOps {
+		return Context{}, fmt.Errorf("env operations have been disabled")
+	}
 	var results = list.New()
 	preferences := envOpPreferences{}
 	if expressionNode.Operation.Preferences != nil {
@@ -70,10 +76,9 @@ func envsubstOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 	}
 
 	for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
-		candidate := el.Value.(*CandidateNode)
-		node := unwrapDoc(candidate.Node)
+		node := el.Value.(*CandidateNode)
 		if node.Tag != "!!str" {
-			log.Warning("EnvSubstOperator, env name:", node.Tag, node.Value)
+			log.Warningf("EnvSubstOperator, env name: %v %v", node.Tag, node.Value)
 			return Context{}, fmt.Errorf("cannot substitute with %v, can only substitute strings. Hint: Most often you'll want to use '|=' over '=' for this operation", node.Tag)
 		}
 
@@ -81,8 +86,7 @@ func envsubstOperator(d *dataTreeNavigator, context Context, expressionNode *Exp
 		if err != nil {
 			return Context{}, err
 		}
-		targetNode := &yaml.Node{Kind: yaml.ScalarNode, Value: value, Tag: "!!str"}
-		result := candidate.CreateReplacement(targetNode)
+		result := node.CreateReplacement(ScalarNode, "!!str", value)
 		results.PushBack(result)
 	}
 

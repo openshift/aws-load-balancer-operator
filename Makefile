@@ -46,13 +46,6 @@ IMG_VERSION ?= latest
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(IMG_VERSION)
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
-
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -70,7 +63,7 @@ OPERATOR_SDK_VERSION = v1.17.0
 
 OPM_VERSION = v1.52.0
 
-GOLANGCI_LINT ?= go run github.com/golangci/golangci-lint/cmd/golangci-lint
+GOLANGCI_LINT ?= go tool golangci-lint
 ## iamctl vars
 
 # Assets folder for iamctl cli.
@@ -250,11 +243,11 @@ OPERATOR_SDK=$(shell which operator-sdk)
 endif
 endif
 
-CONTROLLER_GEN ?= go run sigs.k8s.io/controller-tools/cmd/controller-gen
+CONTROLLER_GEN ?= go tool controller-gen
 
-KUSTOMIZE ?= go run sigs.k8s.io/kustomize/kustomize/v5
+KUSTOMIZE ?= go tool kustomize
 
-ENVTEST ?= go run sigs.k8s.io/controller-runtime/tools/setup-envtest
+ENVTEST ?= go tool setup-envtest
 
 .PHONY: bundle
 bundle: operator-sdk manifests ## Generate bundle manifests and metadata, then validate generated files.

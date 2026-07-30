@@ -1,5 +1,4 @@
 //go:build tools
-// +build tools
 
 /*
 Copyright 2022.
@@ -17,13 +16,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package tools is used to vendor non-executable dependencies that
+// cannot be tracked by the "tool" directive in go.mod (which only
+// supports executable packages).
 package tools
 
 import (
-	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
-	_ "github.com/mikefarah/yq/v4"
+	// Vendored CRD manifests used during the build.
 	_ "github.com/openshift/api/config/v1/zz_generated.crd-manifests"
-	_ "sigs.k8s.io/controller-runtime/tools/setup-envtest"
-	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
-	_ "sigs.k8s.io/kustomize/kustomize/v5"
 )
