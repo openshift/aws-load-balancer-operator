@@ -80,6 +80,7 @@ type AWSLoadBalancerControllerReconciler struct {
 //+kubebuilder:rbac:groups="networking.k8s.io",resources=ingressclasses,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="config.openshift.io",resources=infrastructures,verbs=get;list;watch
 //+kubebuilder:rbac:groups="apps",resources=deployments,namespace=system,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,namespace=system,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=serviceaccounts,namespace=system,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,namespace=system,resources=roles;rolebindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
