@@ -2,7 +2,7 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 .SHELLFLAGS := -o pipefail -euc
 .DEFAULT_GOAL := install
-ENGINE := $(shell { command -v podman || command -v docker; } 2>/dev/null)
+ENGINE := $(shell { (podman version > /dev/null 2>&1 && command -v podman) || command -v docker; } 2>/dev/null)
 
 include Makefile.variables
 
@@ -35,6 +35,7 @@ clean:
 ## prefix before other make targets to run in your local dev environment
 local: | quiet
 	@$(eval ENGINERUN= )
+	@$(eval GOFLAGS="$(GOFLAGS)" )
 	@mkdir -p tmp
 	@touch tmp/dev_image_id
 quiet: # this is silly but shuts up 'Nothing to be done for `local`'
@@ -84,8 +85,12 @@ format: vendor
 	${ENGINERUN} bash ./scripts/format.sh
 
 
+.PHONY: spelling
+spelling: format
+	${ENGINERUN} bash ./scripts/spelling.sh
+
 .PHONY: secure
-secure: format
+secure: spelling
 	${ENGINERUN} bash ./scripts/secure.sh
 
 .PHONY: check

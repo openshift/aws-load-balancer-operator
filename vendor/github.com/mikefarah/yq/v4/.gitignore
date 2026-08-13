@@ -22,8 +22,10 @@ _cgo_gotypes.go
 _cgo_export.*
 
 _testmain.go
+cover.out
 coverage.out
 coverage.html
+coverage_sorted.txt
 *.exe
 *.test
 *.prof
@@ -41,6 +43,13 @@ yq*.snap
 
 test.yml
 test*.yml
+test*.tf
+test*.xml
+test*.toml
+test*.yaml
+*.kyaml
+test_dir1/
+test_dir2/
 0.yml
 1.yml
 2.yml
@@ -53,3 +62,15 @@ yq.1
 # debian pkg
 _build
 debian/files
+
+# intellij
+/.idea
+
+# vscode
+.vscode
+
+yq3
+
+# Golang
+.gomodcache/
+.gocache/
