@@ -27,22 +27,6 @@ const (
 	FlowStyle
 )
 
-// EncodeHint controls how a mapping node is serialised by format-specific encoders
-// that distinguish between inline and block/section representations (e.g. TOML, HCL).
-type EncodeHint int
-
-const (
-	// EncodeHintDefault lets the encoder choose the representation (e.g. TOML block
-	// mappings default to [section] headers).
-	EncodeHintDefault EncodeHint = iota
-	// EncodeHintSeparateBlock forces the node to be emitted as a separate block or
-	// table-section header (used by TOML [section] and HCL block decoders).
-	EncodeHintSeparateBlock
-	// EncodeHintInline forces the node to be emitted as an inline / flow table
-	// (used by TOML inline-table decoder and TOML encoder).
-	EncodeHintInline
-)
-
 func createStringScalarNode(stringValue string) *CandidateNode {
 	var node = &CandidateNode{Kind: ScalarNode}
 	node.Value = stringValue
@@ -113,9 +97,6 @@ type CandidateNode struct {
 	// (e.g. top level cross document merge). This property does not propagate to child nodes.
 	EvaluateTogether bool
 	IsMapKey         bool
-	// EncodeHint controls how a mapping node is serialised by format-specific encoders
-	// (e.g. TOML, HCL) that support both inline and block/section representations.
-	EncodeHint EncodeHint
 }
 
 func (n *CandidateNode) CreateChild() *CandidateNode {
@@ -296,7 +277,7 @@ func (n *CandidateNode) AddChild(rawChild *CandidateNode) {
 
 func (n *CandidateNode) AddChildren(children []*CandidateNode) {
 	if n.Kind == MappingNode {
-		for i := 0; i < len(children)-1; i += 2 {
+		for i := 0; i < len(children); i += 2 {
 			key := children[i]
 			value := children[i+1]
 			n.AddKeyValueChild(key, value)
@@ -339,11 +320,11 @@ func (n *CandidateNode) guessTagFromCustomType() string {
 	dataBucket, errorReading := parseSnippet(n.Value)
 
 	if errorReading != nil {
-		log.Debugf("guessTagFromCustomType: could not guess underlying tag type %v", errorReading)
+		log.Debug("guessTagFromCustomType: could not guess underlying tag type %v", errorReading)
 		return n.Tag
 	}
 	guessedTag := dataBucket.Tag
-	log.Infof("im guessing the tag %v is a %v", n.Tag, guessedTag)
+	log.Info("im guessing the tag %v is a %v", n.Tag, guessedTag)
 	return guessedTag
 }
 
@@ -426,8 +407,6 @@ func (n *CandidateNode) doCopy(cloneContent bool) *CandidateNode {
 
 		EvaluateTogether: n.EvaluateTogether,
 		IsMapKey:         n.IsMapKey,
-
-		EncodeHint: n.EncodeHint,
 	}
 
 	if cloneContent {
@@ -461,7 +440,7 @@ func (n *CandidateNode) UpdateFrom(other *CandidateNode, prefs assignPreferences
 }
 
 func (n *CandidateNode) UpdateAttributesFrom(other *CandidateNode, prefs assignPreferences) {
-	log.Debugf("UpdateAttributesFrom: n: %v other: %v", NodeToString(n), NodeToString(other))
+	log.Debug("UpdateAttributesFrom: n: %v other: %v", NodeToString(n), NodeToString(other))
 	if n.Kind != other.Kind {
 		// clear out the contents when switching to a different type
 		// e.g. map to array
@@ -480,9 +459,6 @@ func (n *CandidateNode) UpdateAttributesFrom(other *CandidateNode, prefs assignP
 	if !prefs.DontOverWriteAnchor {
 		n.Anchor = other.Anchor
 	}
-
-	// Preserve EncodeHint for format-specific encoding hints
-	n.EncodeHint = other.EncodeHint
 
 	// merge will pickup the style of the new thing
 	// when autocreating nodes

@@ -26,7 +26,7 @@ func newExpressionParser() ExpressionParserInterface {
 }
 
 func (p *expressionParserImpl) ParseExpression(expression string) (*ExpressionNode, error) {
-	log.Debugf("Parsing expression: [%v]", expression)
+	log.Debug("Parsing expression: [%v]", expression)
 	tokens, err := p.pathTokeniser.Tokenise(expression)
 	if err != nil {
 		return nil, err
@@ -54,12 +54,6 @@ func (p *expressionParserImpl) createExpressionTree(postFixPath []*Operation) (*
 			switch numArgs {
 			case 1:
 				if len(stack) < 1 {
-					// Allow certain unary ops to accept zero args by interpreting missing RHS as nil
-					// TODO - make this more general on OperationType
-					if Operation.OperationType == firstOpType {
-						// no RHS provided; proceed without popping
-						break
-					}
 					return nil, fmt.Errorf("'%v' expects 1 arg but received none", strings.TrimSpace(Operation.StringValue))
 				}
 				remaining, rhs := stack[:len(stack)-1], stack[len(stack)-1]

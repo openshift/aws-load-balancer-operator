@@ -170,10 +170,6 @@ func fixedReconstructAliasedMap(node *CandidateNode) error {
 				if mergeNodeSeq.Kind == AliasNode {
 					mergeNodeSeq = mergeNodeSeq.Alias
 				}
-				mergeNodeSeq = mergeNodeSeq.Copy()
-				if err := explodeNode(mergeNodeSeq, Context{}); err != nil {
-					return err
-				}
 				if mergeNodeSeq.Kind != MappingNode {
 					return fmt.Errorf("can only use merge anchors with maps (!!map) or sequences (!!seq) of maps, but got sequence containing %v", mergeNodeSeq.Tag)
 				}
@@ -183,7 +179,12 @@ func fixedReconstructAliasedMap(node *CandidateNode) error {
 				})
 
 				for _, item := range itemsToAdd {
-					newContent = append(newContent, item.Copy())
+					// copy to ensure exploding doesn't modify the original node
+					itemCopy := item.Copy()
+					if err := explodeNode(itemCopy, Context{}); err != nil {
+						return err
+					}
+					newContent = append(newContent, itemCopy)
 				}
 			}
 		}
@@ -255,7 +256,7 @@ func explodeNode(node *CandidateNode, context Context) error {
 			node.Value = node.Alias.Value
 			node.Alias = nil
 		}
-		log.Debugf("now I'm %v", NodeToString(node))
+		log.Debug("now I'm %v", NodeToString(node))
 		return nil
 	case MappingNode:
 		// //check the map has an alias in it
@@ -303,7 +304,7 @@ func applyAlias(node *CandidateNode, alias *CandidateNode, aliasIndex int, newCo
 	if alias == nil {
 		return nil
 	}
-	log.Debugf("alias: %v", NodeToString(alias))
+	log.Debug("alias: %v", NodeToString(alias))
 	if alias.Kind != MappingNode {
 		return fmt.Errorf("can only use merge anchors with maps (!!map) or sequences (!!seq) of maps, but got sequence containing %v", alias.Tag)
 	}

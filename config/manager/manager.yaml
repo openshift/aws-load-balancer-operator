@@ -33,7 +33,6 @@ spec:
         - /manager
         args:
         - "--health-probe-bind-address=:8081"
-        - "--metrics-bind-address=127.0.0.1:8080"
         - "--leader-elect"
         - "--image=$(RELATED_IMAGE_CONTROLLER)"
         - "--namespace=$(TARGET_NAMESPACE)"
@@ -41,6 +40,10 @@ spec:
         - "--webhook-disable-http2"
         image: controller:latest
         name: manager
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

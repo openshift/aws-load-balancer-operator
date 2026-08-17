@@ -74,7 +74,7 @@ func evaluateSequence(cmd *cobra.Command, args []string) (cmdError error) {
 	}
 
 	if writeInplace {
-		// only use colours if its forced
+		// only use colors if its forced
 		colorsEnabled = forceColor
 		writeInPlaceHandler := yqlib.NewWriteInPlaceHandler(args[0])
 		out, err = writeInPlaceHandler.CreateTempFile()
@@ -122,15 +122,12 @@ func evaluateSequence(cmd *cobra.Command, args []string) (cmdError error) {
 
 	if frontMatter != "" {
 		yqlib.GetLogger().Debug("using front matter handler")
-		originalFilename := args[0]
 		frontMatterHandler := yqlib.NewFrontMatterHandler(args[0])
 		err = frontMatterHandler.Split()
 		if err != nil {
 			return err
 		}
 		args[0] = frontMatterHandler.GetYamlFrontMatterFilename()
-		yqlib.SetFilenameAlias(args[0], originalFilename)
-		defer yqlib.ClearFilenameAliases()
 
 		if frontMatter == "process" {
 			reader := frontMatterHandler.GetContentReader()

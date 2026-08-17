@@ -26,7 +26,7 @@ func parseStyle(customStyle string) (Style, error) {
 
 func assignStyleOperator(d *dataTreeNavigator, context Context, expressionNode *ExpressionNode) (Context, error) {
 
-	log.Debugf("AssignStyleOperator")
+	log.Debugf("AssignStyleOperator: %v")
 	var style Style
 	if !expressionNode.Operation.UpdateAssign {
 		rhs, err := d.GetMatchingNodes(context.ReadOnlyClone(), expressionNode.RHS)
