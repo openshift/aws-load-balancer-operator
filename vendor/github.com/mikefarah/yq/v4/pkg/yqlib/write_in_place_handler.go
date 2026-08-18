@@ -38,13 +38,13 @@ func (w *writeInPlaceHandlerImpl) CreateTempFile() (*os.File, error) {
 	if err = changeOwner(info, file); err != nil {
 		return nil, err
 	}
-	log.Debugf("WriteInPlaceHandler: writing to tempfile: %v", file.Name())
+	log.Debug("WriteInPlaceHandler: writing to tempfile: %v", file.Name())
 	w.tempFile = file
 	return file, err
 }
 
 func (w *writeInPlaceHandlerImpl) FinishWriteInPlace(evaluatedSuccessfully bool) error {
-	log.Debugf("Going to write in place, evaluatedSuccessfully=%v, target=%v", evaluatedSuccessfully, w.inputFilename)
+	log.Debug("Going to write in place, evaluatedSuccessfully=%v, target=%v", evaluatedSuccessfully, w.inputFilename)
 	safelyCloseFile(w.tempFile)
 	if evaluatedSuccessfully {
 		log.Debug("Moving temp file to target")

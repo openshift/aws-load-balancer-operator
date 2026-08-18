@@ -15,4 +15,15 @@ cat <<EOF > "${POLICY_FILE}"
 }
 EOF
 ${YQ_BIN} -i -o=json "${POLICY_FILE}"
-sed -i -e 's/action/Action/g' -e 's/effect/Effect/g' -e 's/resource/Resource/g' "${POLICY_FILE}"
+python3 -c '
+import json, sys
+p = sys.argv[1]
+data = json.load(open(p))
+for stmt in data.get("Statement", []):
+    if "action" in stmt: stmt["Action"] = stmt.pop("action")
+    if "effect" in stmt: stmt["Effect"] = stmt.pop("effect")
+    if "resource" in stmt: stmt["Resource"] = stmt.pop("resource")
+with open(p, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+' "${POLICY_FILE}"

@@ -3,7 +3,8 @@ package yqlib
 import (
 	"errors"
 	"fmt"
-	"log/slog"
+
+	logging "gopkg.in/op/go-logging.v1"
 )
 
 type expressionPostFixer interface {
@@ -133,7 +134,7 @@ func (p *expressionPostFixerImpl) ConvertToPostfix(infixTokens []*token) ([]*Ope
 		return nil, fmt.Errorf("bad expression - probably missing close bracket on %v", opStack[len(opStack)-1].toString(false))
 	}
 
-	if log.IsEnabledFor(slog.LevelDebug) {
+	if log.IsEnabledFor(logging.DEBUG) {
 		log.Debugf("PostFix Result:")
 		for _, currentToken := range result {
 			log.Debugf("> %v", currentToken.toString())

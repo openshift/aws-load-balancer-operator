@@ -4,7 +4,6 @@ IMPORT_PATH := github.com/mikefarah/${PROJECT}
 export GIT_COMMIT = $(shell git rev-parse --short HEAD)
 export GIT_DIRTY = $(shell test -n "$$(git status --porcelain)" && echo "+CHANGES" || true)
 export GIT_DESCRIBE = $(shell git describe --tags --always)
-GOFLAGS :=
 LDFLAGS :=
 LDFLAGS += -X main.GitCommit=${GIT_COMMIT}${GIT_DIRTY}
 LDFLAGS += -X main.GitDescribe=${GIT_DESCRIBE}
@@ -27,15 +26,13 @@ ifeq ($(CYG_CHECK),1)
 else
 	# all non-windows environments
 	ROOT := $(shell pwd)
-	# Deliberately use `command -v` instead of `which` to be POSIX compliant
-	SELINUX := $(shell command -v getenforce >/dev/null 2>&1 && echo :z)
+	SELINUX := $(shell which getenforce 2>&1 >/dev/null && echo :z)
 endif
 
 DEV_IMAGE := ${PROJECT}_dev
 
 ENGINERUN := ${ENGINE} run --rm \
 	-e LDFLAGS="${LDFLAGS}" \
-	-e GOFLAGS="${GOFLAGS}" \
 	-e GITHUB_TOKEN="${GITHUB_TOKEN}" \
 	-v ${ROOT}/vendor:/go/src${SELINUX} \
 	-v ${ROOT}:/${PROJECT}/src/${IMPORT_PATH}${SELINUX} \

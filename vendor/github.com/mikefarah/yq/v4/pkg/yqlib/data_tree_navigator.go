@@ -2,7 +2,8 @@ package yqlib
 
 import (
 	"fmt"
-	"log/slog"
+
+	logging "gopkg.in/op/go-logging.v1"
 )
 
 type DataTreeNavigator interface {
@@ -54,7 +55,7 @@ func (d *dataTreeNavigator) GetMatchingNodes(context Context, expressionNode *Ex
 		return context, nil
 	}
 	log.Debugf("Processing Op: %v", expressionNode.Operation.toString())
-	if log.IsEnabledFor(slog.LevelDebug) {
+	if log.IsEnabledFor(logging.DEBUG) {
 		for el := context.MatchingNodes.Front(); el != nil; el = el.Next() {
 			log.Debug(NodeToString(el.Value.(*CandidateNode)))
 		}

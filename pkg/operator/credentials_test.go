@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -298,7 +299,7 @@ func Test_CredentialsFileFromSecret(t *testing.T) {
 				},
 			},
 			pattern:          "test-",
-			expectedPrefix:   "/tmp/test-",
+			expectedPrefix:   filepath.Join(os.TempDir(), "test-"),
 			expectedContents: "ok",
 		},
 		{
