@@ -177,7 +177,7 @@ type AWSLoadBalancerCredentialsRequestConfig struct {
 	// This ARN is added to AWSProviderSpec initiating the creation of a secret containing IAM
 	// Role details necessary for assuming the IAM Role via Amazon's Secure Token Service (STS).
 	//
-	// +kubebuilder:validation:Pattern:=`^arn:(aws|aws-cn|aws-us-gov):iam::[0-9]{12}:role\/.*$`
+	// +kubebuilder:validation:Pattern:=`^arn:(aws|aws-cn|aws-us-gov|aws-iso|aws-iso-b|aws-iso-e|aws-iso-f):iam::[0-9]{12}:role\/.*$`
 	// +kubebuilder:validation:Optional
 	// +optional
 	STSIAMRoleARN string `json:"stsIAMRoleARN,omitempty"`

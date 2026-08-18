@@ -20,7 +20,7 @@ func GetIAMPolicy() IAMPolicy {
 			},
 			{
 				Effect:          "Allow",
-				Resource:        "arn:aws:ec2:*:*:subnet/*",
+				Resource:        "arn:*:ec2:*:*:subnet/*",
 				PolicyCondition: cco.IAMPolicyCondition{},
 				Action: []string{
 					"ec2:CreateTags",

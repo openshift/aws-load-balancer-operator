@@ -14,7 +14,7 @@
         "ec2:DeleteTags"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:ec2:*:*:subnet/*"
+      "Resource": "arn:*:ec2:*:*:subnet/*"
     },
     {
       "Action": [
