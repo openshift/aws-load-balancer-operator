@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: aws-load-balancer-operator-controller-manager-metrics-monitor
+spec:
+  endpoints:
+  - authorization:
+      credentials:
+        key: token
+        name: aws-load-balancer-operator-metrics-scraper-token
+    path: /metrics
+    port: https
+    scheme: https
+    tlsConfig:
+      ca:
+        configMap:
+          key: service-ca.crt
+          name: aws-load-balancer-operator-cabundle
+      serverName: aws-load-balancer-operator-controller-manager-metrics-service.aws-load-balancer-operator.svc
+  selector:
+    matchLabels:
+      control-plane: controller-manager

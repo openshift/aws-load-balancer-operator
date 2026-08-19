@@ -12,9 +12,16 @@ spec:
     - path: /metrics
       port: https
       scheme: https
-      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      authorization:
+        credentials:
+          key: token
+          name: aws-load-balancer-operator-metrics-scraper-token
       tlsConfig:
-        insecureSkipVerify: true
+        ca:
+          configMap:
+            key: service-ca.crt
+            name: aws-load-balancer-operator-cabundle
+        serverName: aws-load-balancer-operator-controller-manager-metrics-service.aws-load-balancer-operator.svc
   selector:
     matchLabels:
       control-plane: controller-manager

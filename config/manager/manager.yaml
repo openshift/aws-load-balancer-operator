@@ -37,6 +37,7 @@ spec:
         - "--image=$(RELATED_IMAGE_CONTROLLER)"
         - "--namespace=$(TARGET_NAMESPACE)"
         - "--trusted-ca-configmap=$(TRUSTED_CA_CONFIGMAP_NAME)"
+        - "--metrics-tls-cert-dir=/var/run/secrets/serving-cert"
         - "--webhook-disable-http2"
         image: controller:latest
         name: manager
@@ -97,6 +98,9 @@ spec:
           - mountPath: /etc/pki/tls/certs/albo-tls-ca-bundle.crt
             name: trusted-cabundle
             subPath: ca-bundle.crt
+          - mountPath: /var/run/secrets/serving-cert
+            name: metrics-cert
+            readOnly: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
@@ -112,3 +116,7 @@ spec:
           configMap:
             defaultMode: 420
             name: aws-load-balancer-operator-trusted-cabundle
+        - name: metrics-cert
+          secret:
+            defaultMode: 420
+            secretName: aws-load-balancer-operator-metrics-tls
