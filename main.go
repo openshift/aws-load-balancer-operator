@@ -90,6 +90,7 @@ func init() {
 func main() {
 	var (
 		metricsAddr            string
+		metricsTLSCertDir      string
 		enableLeaderElection   bool
 		probeAddr              string
 		namespace              string
@@ -98,6 +99,7 @@ func main() {
 		webhookDisableHTTP2    bool
 	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8443", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsTLSCertDir, "metrics-tls-cert-dir", "", "The directory containing TLS certificates for the metrics endpoint.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -138,6 +140,7 @@ func main() {
 		Metrics: metrics.Options{
 			BindAddress:    metricsAddr,
 			SecureServing:  true,
+			CertDir:        metricsTLSCertDir,
 			FilterProvider: filters.WithAuthenticationAndAuthorization,
 			TLSOpts: []func(*tls.Config){
 				func(config *tls.Config) {

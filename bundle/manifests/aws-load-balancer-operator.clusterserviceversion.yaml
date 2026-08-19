@@ -258,6 +258,7 @@ spec:
                 - --image=$(RELATED_IMAGE_CONTROLLER)
                 - --namespace=$(TARGET_NAMESPACE)
                 - --trusted-ca-configmap=$(TRUSTED_CA_CONFIGMAP_NAME)
+                - --metrics-tls-cert-dir=/var/run/secrets/serving-cert
                 - --webhook-disable-http2
                 command:
                 - /manager
@@ -318,6 +319,9 @@ spec:
                 - mountPath: /etc/pki/tls/certs/albo-tls-ca-bundle.crt
                   name: trusted-cabundle
                   subPath: ca-bundle.crt
+                - mountPath: /var/run/secrets/serving-cert
+                  name: metrics-cert
+                  readOnly: true
               securityContext:
                 runAsNonRoot: true
                 seccompProfile:
@@ -337,6 +341,10 @@ spec:
                   defaultMode: 420
                   name: aws-load-balancer-operator-trusted-cabundle
                 name: trusted-cabundle
+              - name: metrics-cert
+                secret:
+                  defaultMode: 420
+                  secretName: aws-load-balancer-operator-metrics-tls
       permissions:
       - rules:
         - apiGroups:
