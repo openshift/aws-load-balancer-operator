@@ -295,8 +295,9 @@ CATALOG_DIR := catalog
 # Catalog version subdirectory based on OCP_VERSION (used by Konflux)
 OCP_VERSION ?= 4.21
 OCP_CATALOG_DIR := $(CATALOG_DIR)/v$(OCP_VERSION)
+OCP_VERSION_MAJOR := $(shell echo $(OCP_VERSION) | cut -d. -f1)
 OCP_VERSION_MINOR := $(shell echo $(OCP_VERSION) | cut -d. -f2)
-MIGRATE_LEVEL_FLAG := $(shell [ $(OCP_VERSION_MINOR) -ge 17 ] && echo --migrate-level bundle-object-to-csv-metadata)
+MIGRATE_LEVEL_FLAG := $(shell [ $(OCP_VERSION_MAJOR) -ge 5 ] || ([ $(OCP_VERSION_MAJOR) -eq 4 ] && [ $(OCP_VERSION_MINOR) -ge 17 ]) && echo --migrate-level bundle-object-to-csv-metadata)
 # Directory for the aws-load-balancer-operator package files.
 PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
 
