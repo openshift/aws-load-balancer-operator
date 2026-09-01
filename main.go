@@ -35,6 +35,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 
 	configv1 "github.com/openshift/api/config/v1"
 	cco "github.com/openshift/cloud-credential-operator/pkg/apis/cloudcredential/v1"
@@ -162,6 +163,7 @@ func main() {
 			DefaultNamespaces: map[string]cache.Config{
 				namespace: {},
 			},
+			DefaultEnableWatchBookmarks: ptr.To(true),
 		},
 		WebhookServer: webhookSrv,
 	})
