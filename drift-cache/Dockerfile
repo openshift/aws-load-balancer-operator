@@ -12,7 +12,7 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 
 # Build
-RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o manager main.go
+RUN go build -tags strictfipsruntime -a -o manager main.go
 
 WORKDIR /
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
