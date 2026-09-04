@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: aws-load-balancer-operator-metrics-scraper
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aws-load-balancer-operator-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: aws-load-balancer-operator-metrics-scraper
+  namespace: aws-load-balancer-operator

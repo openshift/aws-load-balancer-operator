@@ -17,3 +17,6 @@ resources:
 - auth_proxy_role.yaml
 - auth_proxy_role_binding.yaml
 - auth_proxy_client_clusterrole.yaml
+- metrics_scraper_service_account.yaml
+- metrics_scraper_secret.yaml
+- metrics_scraper_clusterrolebinding.yaml
