@@ -142,15 +142,15 @@ func waitForDeletion(ctx context.Context, t *testing.T, cl client.Client, obj cl
 	deletionPolicy := v1.DeletePropagationForeground
 	_ = wait.PollUntilContextTimeout(ctx, 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 		err := cl.Delete(ctx, obj, &client.DeleteOptions{PropagationPolicy: &deletionPolicy})
-		if err != nil && !errors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
+			t.Logf("deleted resource %s/%s", obj.GetName(), obj.GetNamespace())
+			return true, nil
+		}
+		if err != nil {
 			t.Logf("failed to delete resource %s/%s: %v", obj.GetName(), obj.GetNamespace(), err)
 			return false, nil
-		} else if err == nil {
-			t.Logf("retrying deletion of resource %q/%q", obj.GetName(), obj.GetNamespace())
-			return false, nil
 		}
-		t.Logf("deleted resource %s/%s", obj.GetName(), obj.GetNamespace())
-		return true, nil
+		return false, nil
 	})
 }
 
