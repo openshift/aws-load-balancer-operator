@@ -34,6 +34,7 @@ rules:
 - apiGroups:
   - config.openshift.io
   resources:
+  - apiservers
   - infrastructures
   verbs:
   - get

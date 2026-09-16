@@ -298,13 +298,13 @@ var tlsGroupToCurveID = map[configv1.TLSGroup]tls.CurveID{
 func getTLSSecurityProfile(ctx context.Context, config *rest.Config) *configv1.TLSSecurityProfile {
 	cl, err := client.New(config, client.Options{Scheme: scheme})
 	if err != nil {
-		setupLog.Info("failed to create temporary client to fetch APIServer config, using default intermediate profile")
+		setupLog.Info("failed to create temporary client to fetch APIServer config, using default intermediate profile", "error", err)
 		return nil
 	}
 	var apiServer configv1.APIServer
 	err = cl.Get(ctx, types.NamespacedName{Name: "cluster"}, &apiServer)
 	if err != nil {
-		setupLog.Info("failed to fetch APIServer config, using default intermediate profile")
+		setupLog.Info("failed to fetch APIServer config, using default intermediate profile", "error", err)
 		return nil
 	}
 	return apiServer.Spec.TLSSecurityProfile
