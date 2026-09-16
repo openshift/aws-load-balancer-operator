@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -44,10 +45,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metrics "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	networkingolmv1 "github.com/openshift/aws-load-balancer-operator/api/v1"
@@ -128,9 +131,15 @@ func main() {
 		Port: 9443,
 	})
 
+	// The manager runs with a cancelable context so that the TLS profile watcher
+	// can trigger a graceful shutdown when the cluster TLS configuration changes,
+	// letting the Deployment restart the pod to pick up the new profile.
+	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+	defer cancel()
+
 	restConfig := ctrl.GetConfigOrDie()
-	profile := getTLSSecurityProfile(context.TODO(), restConfig)
-	tlsConfig, err := getTLSConfigFromProfile(profile)
+	profile := getTLSSecurityProfile(ctx, restConfig)
+	tlsConfig, err := getTLSConfigFromProfile(profile.spec)
 	if err != nil {
 		setupLog.Error(err, "unable to get TLS configuration from profile")
 		os.Exit(1)
@@ -224,6 +233,13 @@ func main() {
 	}
 	//+kubebuilder:scaffold:builder
 
+	// Watch the cluster APIServer so that runtime changes to the TLS security
+	// profile or adherence policy trigger a restart to re-apply them.
+	if err = setupTLSProfileWatch(mgr, cancel, profile); err != nil {
+		setupLog.Error(err, "unable to set up TLS profile watch")
+		os.Exit(1)
+	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
@@ -234,7 +250,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
@@ -295,19 +311,110 @@ var tlsGroupToCurveID = map[configv1.TLSGroup]tls.CurveID{
 	configv1.TLSGroupX25519MLKEM768: tls.X25519MLKEM768,
 }
 
-func getTLSSecurityProfile(ctx context.Context, config *rest.Config) *configv1.TLSSecurityProfile {
+// shouldHonorClusterTLSProfile returns true if the component should honor the
+// cluster-wide TLS security profile settings from apiserver.config.openshift.io/cluster.
+// Unknown enum values are treated as StrictAllComponents for forward compatibility.
+func shouldHonorClusterTLSProfile(adherence configv1.TLSAdherencePolicy) bool {
+	switch adherence {
+	case configv1.TLSAdherencePolicyNoOpinion, configv1.TLSAdherencePolicyLegacyAdheringComponentsOnly:
+		return false
+	default:
+		return true
+	}
+}
+
+// tlsProfileWatcher watches the cluster APIServer for changes to the TLS security
+// profile or adherence policy. When either changes from the value observed at
+// startup, it cancels the manager context so the pod restarts and re-applies the
+// new configuration to its TLS servers.
+type tlsProfileWatcher struct {
+	client           client.Client
+	cancel           context.CancelFunc
+	initialProfile   *configv1.TLSSecurityProfile
+	initialAdherence configv1.TLSAdherencePolicy
+}
+
+func (w *tlsProfileWatcher) Reconcile(ctx context.Context, _ reconcile.Request) (reconcile.Result, error) {
+	var apiServer configv1.APIServer
+	if err := w.client.Get(ctx, types.NamespacedName{Name: "cluster"}, &apiServer); err != nil {
+		return reconcile.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// An adherence change always requires re-evaluation. A profile change only
+	// matters when the current adherence policy makes the operator honor the
+	// profile; in legacy or unset mode the profile does not affect the operator's
+	// TLS configuration, so a profile-only change must not trigger a restart.
+	adherenceChanged := apiServer.Spec.TLSAdherence != w.initialAdherence
+	profileChanged := shouldHonorClusterTLSProfile(apiServer.Spec.TLSAdherence) &&
+		!reflect.DeepEqual(apiServer.Spec.TLSSecurityProfile, w.initialProfile)
+
+	if adherenceChanged || profileChanged {
+		setupLog.Info("cluster TLS configuration changed, shutting down to re-apply it",
+			"oldAdherence", w.initialAdherence, "newAdherence", apiServer.Spec.TLSAdherence)
+		w.cancel()
+	}
+
+	return reconcile.Result{}, nil
+}
+
+// setupTLSProfileWatch registers a controller that watches the cluster APIServer
+// and cancels the manager context when the TLS profile or adherence policy
+// changes. It is a no-op when the APIServer config API is unavailable
+// (e.g. on non-OpenShift clusters).
+func setupTLSProfileWatch(mgr ctrl.Manager, cancel context.CancelFunc, profile *tlsProfile) error {
+	if !profile.found {
+		return nil
+	}
+
+	watcher := &tlsProfileWatcher{
+		client:           mgr.GetClient(),
+		cancel:           cancel,
+		initialProfile:   profile.spec,
+		initialAdherence: profile.adherence,
+	}
+
+	return ctrl.NewControllerManagedBy(mgr).
+		Named("tlsprofilewatcher").
+		WithOptions(controller.Options{NeedLeaderElection: ptr.To(false)}).
+		For(&configv1.APIServer{}).
+		Complete(watcher)
+}
+
+type tlsProfile struct {
+	spec      *configv1.TLSSecurityProfile
+	adherence configv1.TLSAdherencePolicy
+	// found reports whether the APIServer config was read;
+	// when false the TLS profile watch is not set up.
+	found bool
+}
+
+func getTLSSecurityProfile(ctx context.Context, config *rest.Config) *tlsProfile {
+	profile := &tlsProfile{}
+
 	cl, err := client.New(config, client.Options{Scheme: scheme})
 	if err != nil {
 		setupLog.Info("failed to create temporary client to fetch APIServer config, using default intermediate profile", "error", err)
-		return nil
+		return profile
 	}
 	var apiServer configv1.APIServer
 	err = cl.Get(ctx, types.NamespacedName{Name: "cluster"}, &apiServer)
 	if err != nil {
 		setupLog.Info("failed to fetch APIServer config, using default intermediate profile", "error", err)
-		return nil
+		return profile
 	}
-	return apiServer.Spec.TLSSecurityProfile
+
+	profile.found = true
+	profile.adherence = apiServer.Spec.TLSAdherence
+
+	// Only honor the cluster TLS profile if tlsAdherence is set to StrictAllComponents
+	if !shouldHonorClusterTLSProfile(apiServer.Spec.TLSAdherence) {
+		setupLog.Info("not honoring cluster TLS profile due to tlsAdherence policy", "tlsAdherence", apiServer.Spec.TLSAdherence)
+		return profile
+	}
+
+	profile.spec = apiServer.Spec.TLSSecurityProfile
+
+	return profile
 }
 
 func getTLSConfigFromProfile(profile *configv1.TLSSecurityProfile) (*tls.Config, error) {
