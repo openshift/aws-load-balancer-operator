@@ -120,17 +120,6 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	webhookSrv := webhook.NewServer(webhook.Options{
-		TLSOpts: []func(config *tls.Config){
-			func(config *tls.Config) {
-				if webhookDisableHTTP2 {
-					config.NextProtos = []string{"http/1.1"}
-				}
-			},
-		},
-		Port: 9443,
-	})
-
 	// The manager runs with a cancelable context so that the TLS profile watcher
 	// can trigger a graceful shutdown when the cluster TLS configuration changes,
 	// letting the Deployment restart the pod to pick up the new profile.
@@ -144,6 +133,20 @@ func main() {
 		setupLog.Error(err, "unable to get TLS configuration from profile")
 		os.Exit(1)
 	}
+
+	webhookSrv := webhook.NewServer(webhook.Options{
+		TLSOpts: []func(config *tls.Config){
+			func(config *tls.Config) {
+				config.MinVersion = tlsConfig.MinVersion
+				config.CipherSuites = tlsConfig.CipherSuites
+				config.CurvePreferences = tlsConfig.CurvePreferences
+				if webhookDisableHTTP2 {
+					config.NextProtos = []string{"http/1.1"}
+				}
+			},
+		},
+		Port: 9443,
+	})
 
 	mgr, err := ctrl.NewManager(restConfig, ctrl.Options{
 		Scheme: scheme,
