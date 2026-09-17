@@ -303,8 +303,8 @@ PACKAGE_DIR := $(CATALOG_DIR)/aws-load-balancer-operator
 
 .PHONY: generate-catalog
 generate-catalog: opm ## Generate OCP version-based catalog for the Konflux-built operator
-	mkdir -p $(OCP_CATALOG_DIR)
-	$(OPM) alpha render-template basic $(MIGRATE_LEVEL_FLAG) -o yaml $(OCP_CATALOG_DIR)/catalog-template.yaml > $(OCP_CATALOG_DIR)/catalog.yaml
+	mkdir -p $(OCP_CATALOG_DIR)/aws-load-balancer-operator
+	$(OPM) alpha render-template basic $(MIGRATE_LEVEL_FLAG) -o yaml $(OCP_CATALOG_DIR)/catalog-template.yaml > $(OCP_CATALOG_DIR)/aws-load-balancer-operator/catalog.yaml
 
 .PHONY: catalog
 catalog: opm
