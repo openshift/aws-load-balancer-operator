@@ -18,7 +18,7 @@ COPY --from=drift /app/catalog.Dockerfile .
 # Configure the entrypoint and command
 ENTRYPOINT ["/bin/opm"]
 # Copy the ALBO FBC catalog (OCP version-based)
-COPY catalog/v4.13/catalog.yaml /configs/aws-load-balancer-operator/catalog.yaml
+COPY catalog/v4.13/aws-load-balancer-operator /configs/aws-load-balancer-operator
 
 # Pre-populate serve cache
 RUN ["/bin/opm", "serve", "/configs/aws-load-balancer-operator", "--cache-dir=/tmp/cache", "--cache-only"]
