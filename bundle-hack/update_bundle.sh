@@ -15,7 +15,6 @@ source ./bundle_vars.sh
 # Check for environment variables pertaining to the bundle
 if  [ -z "${OPERATOR_IMAGE_PULLSPEC}" ] ||
     [ -z "${OPERAND_IMAGE_PULLSPEC}" ] ||
-    [ -z "${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}" ] ||
     [ -z "${MANIFESTS_DIR}" ] ||
     [ -z "${METADATA_DIR}" ] ||
     [ -z "${SUPPORTED_OCP_VERSIONS}" ] ||
@@ -23,7 +22,6 @@ if  [ -z "${OPERATOR_IMAGE_PULLSPEC}" ] ||
   echo "ERROR: Not all required environment variables are set"
   echo "    OPERATOR_IMAGE_PULLSPEC"
   echo "    OPERAND_IMAGE_PULLSPEC"
-  echo "    KUBE_RBAC_PROXY_IMAGE_PULLSPEC"
   echo "    MANIFESTS_DIR"
   echo "    METADATA_DIR"
   echo "    SUPPORTED_OCP_VERSIONS"
@@ -37,9 +35,7 @@ CSV_FILE=${MANIFESTS_DIR}/aws-load-balancer-operator.clusterserviceversion.yaml
 sed -i -e "s|openshift.io/aws-load-balancer-operator:latest|${OPERATOR_IMAGE_PULLSPEC}|g" \
        -e "s|docker.io/amazon/aws-alb-ingress-controller:.*$|${OPERAND_IMAGE_PULLSPEC}|g" \
        -e "s|quay.io/aws-load-balancer-operator/aws-load-balancer-controller:.*$|${OPERAND_IMAGE_PULLSPEC}|g" \
-       -e "s|quay.io/aws-load-balancer-operator/aws-load-balancer-controller@.*$|${OPERAND_IMAGE_PULLSPEC}|g" \
-       -e "s|gcr.io/kubebuilder/kube-rbac-proxy:.*$|${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}|g" \
-       -e "s|quay.io/openshift/origin-kube-rbac-proxy:.*$|${KUBE_RBAC_PROXY_IMAGE_PULLSPEC}|g" "${CSV_FILE}"
+       -e "s|quay.io/aws-load-balancer-operator/aws-load-balancer-controller@.*$|${OPERAND_IMAGE_PULLSPEC}|g" "${CSV_FILE}"
 
 export EPOC_TIMESTAMP=$(date +%s)
 export TARGET_CSV_FILE="${CSV_FILE}"
@@ -71,7 +67,6 @@ version = os.getenv('VERSION')
 replaces = os.getenv('REPLACES_VERSION')
 operator_pullspec = os.getenv('OPERATOR_IMAGE_PULLSPEC', '')
 operand_pullspec = os.getenv('OPERAND_IMAGE_PULLSPEC', '')
-kube_rbac_proxy_pullspec = os.getenv('KUBE_RBAC_PROXY_IMAGE_PULLSPEC', '')
 csv = load_manifest(os.getenv('TARGET_CSV_FILE'))
 
 # Update metadata
@@ -96,7 +91,6 @@ operator_sha = operator_pullspec.split('@sha256:')[1]
 annotation_image_name = f'aws-load-balancer-rhel9-operator-{operator_sha}-annotation'
 csv['spec']['relatedImages'] = [
     {'name': annotation_image_name, 'image': operator_pullspec},
-    {'name': 'kube-rbac-proxy', 'image': kube_rbac_proxy_pullspec},
     {'name': 'manager', 'image': operator_pullspec},
     {'name': 'controller', 'image': operand_pullspec}
 ]
