@@ -1,18 +1,22 @@
 approvers:
   - Miciah
   - alebedev87
-  - thejasn
   - gcs278
   - candita
-  - frobware
   - rfredette
-  - miheer
+  - Thealisyed
+  - grzpiotrowski
+  - davidesalerno
+  - bentito
+  - jcmoraisjr
+  - pedjak
 reviewers:
-  - Miciah
   - alebedev87
-  - thejasn
   - gcs278
-  - candita
-  - frobware
   - rfredette
-  - miheer
+  - Thealisyed
+  - grzpiotrowski
+  - davidesalerno
+  - bentito
+  - jcmoraisjr
+  - pedjak
