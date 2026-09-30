@@ -23,7 +23,7 @@ COPY . /workspace
 # Build
 RUN GOOS=linux GOARCH=amd64 go build -tags strictfipsruntime -a -o manager main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest@sha256:41c6aeb7c681d89b63b35dbb8168875cd2e7b00e9ebe1d2d3d6a3c205c9dba10
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest@sha256:fed79bafb51b25e53c902756ae4f9c0925453d56c9fb5b142505b5af8b554f35
 # Define build arguments to receive dynamic values
 ARG FULL_COMMIT
 ARG GIT_URL
