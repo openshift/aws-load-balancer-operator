@@ -13,6 +13,8 @@ metadata:
     features.operators.openshift.io/token-auth-gcp: "false"
     olm.skipRange: <1.2.0
     operatorframework.io/suggested-namespace: aws-load-balancer-operator
+    operators.openshift.io/valid-subscription: '["OpenShift Kubernetes Engine", "OpenShift
+      Container Platform", "OpenShift Platform Plus"]'
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
   name: aws-load-balancer-operator.v1.2.0
