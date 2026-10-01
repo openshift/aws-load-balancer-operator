@@ -7,7 +7,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "release-1.2"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "release-1.2" && !files.all.all(f, f.matches('^bundle-hack/container_digest\\.sh$') || f.matches('^bundle/') || f.matches('^catalog/'))
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: aws-lb-optr-1-2-rhel-8
