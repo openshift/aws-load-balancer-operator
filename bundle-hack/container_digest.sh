@@ -2,7 +2,7 @@
 # Operator
 export OPERATOR_IMAGE_PULLSPEC='registry.redhat.io/albo/aws-load-balancer-rhel8-operator@sha256:3216ac39cd2353b73f540ff06b60b4f26ce1d47095f32c6b3f522f48906084e7'
 # Controller
-export OPERAND_IMAGE_PULLSPEC='registry.redhat.io/albo/aws-load-balancer-controller-rhel8@sha256:819c4449504493450169ac3fd9c17b3f19af67a977cf946096b09378a0dd5c9b'
+export OPERAND_IMAGE_PULLSPEC='registry.redhat.io/albo/aws-load-balancer-controller-rhel8@sha256:83275e1136094e06a5320fa0d7687a61247bfb9551f0ea0cff99d826be84860f'
 # kube-rbac-proxy
 # Latest version of v4.12 tag is used.
 # Catalog link (health grade A): https://catalog.redhat.com/en/software/containers/openshift4/ose-kube-rbac-proxy/5cdb2634dd19c778293b4d98?image=6aab84313772c4c0c3adae20
