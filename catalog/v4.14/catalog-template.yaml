@@ -15,6 +15,9 @@ entries:
       - name: aws-load-balancer-operator.v1.2.0
         replaces: aws-load-balancer-operator.v1.1.1
         skipRange: <1.2.0
+      - name: aws-load-balancer-operator.v1.2.1
+        replaces: aws-load-balancer-operator.v1.2.0
+        skipRange: <1.2.1
     name: stable-v1
     package: aws-load-balancer-operator
     schema: olm.channel
@@ -37,6 +40,9 @@ entries:
       - name: aws-load-balancer-operator.v1.2.0
         replaces: aws-load-balancer-operator.v1.1.1
         skipRange: <1.2.0
+      - name: aws-load-balancer-operator.v1.2.1
+        replaces: aws-load-balancer-operator.v1.2.0
+        skipRange: <1.2.1
     name: stable-v1.2
     package: aws-load-balancer-operator
     schema: olm.channel
@@ -48,6 +54,9 @@ entries:
     schema: olm.bundle
   - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:e371c45e259eaf54d79b1bfc6c47b1093d87965a8d6076205d4860047146ed43
     name: aws-load-balancer-operator.v1.2.0
+    schema: olm.bundle
+  - image: registry.redhat.io/albo/aws-load-balancer-operator-bundle@sha256:b10a23dacdb76df4ce2cea789223ed789d052edeaeede3dd7cdaf5b7411cc147
+    name: aws-load-balancer-operator.v1.2.1
     schema: olm.bundle
   - schema: olm.deprecations
     package: aws-load-balancer-operator
