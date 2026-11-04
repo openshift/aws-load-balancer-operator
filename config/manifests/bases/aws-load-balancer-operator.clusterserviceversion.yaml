@@ -17,6 +17,10 @@ metadata:
       Container Platform", "OpenShift Platform Plus"]'
     repository: https://github.com/openshift/aws-load-balancer-operator
     support: Red Hat, Inc.
+  labels:
+    operatorframework.io/arch.amd64: supported
+    operatorframework.io/arch.arm64: supported
+    operatorframework.io/os.linux: supported
   name: aws-load-balancer-operator.v1.2.0
   namespace: placeholder
 spec:
