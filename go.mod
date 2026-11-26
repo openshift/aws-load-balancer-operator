@@ -2,7 +2,7 @@ module github.com/openshift/aws-load-balancer-operator
 
 go 1.25.0
 
-toolchain go1.25.14
+toolchain go1.26.11
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.16.2
